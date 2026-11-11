@@ -168,6 +168,21 @@ fn an_unchanged_canvas_uploads_nothing_and_problems_are_reported() {
     assert_eq!(problems, [(0, "invalid rectangle"), (1, "no text backend")]);
 }
 
+#[test]
+fn a_host_can_draw_a_range_of_items() {
+    // Three squares; only the middle one is asked for.
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    let mut c = Canvas::new();
+    for x in [10., 40., 70.] {
+        c.shape(Shape::rect(Rect::new(x, 10., 20., 20.)).fill(hex(0xFF0000)));
+    }
+    let i = gpu.render_items(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText, 1..2);
+    assert_eq!(i.pixel(20, 20), CLEAR);
+    assert_eq!(i.pixel(50, 20), RED);
+    assert_eq!(i.pixel(80, 20), CLEAR);
+}
+
 #[cfg(feature = "text-coretext")]
 #[test]
 fn text_lands_in_its_box_in_its_colour() {

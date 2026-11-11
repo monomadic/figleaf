@@ -96,6 +96,9 @@ let report = renderer.prepare(&device, &queue, &canvas, [width_px, height_px], s
 renderer.draw(&mut pass);
 ```
 
+A host that keeps its own ordered list of things to draw can call
+`renderer.draw_items(&mut pass, range)` to put its drawing between ours.
+
 An unchanged canvas uploads nothing and reports `changed: false`. Anything
 that could not be drawn is listed by `renderer.problems()`; nothing is dropped
 silently. A host on another renderer can call `Shape::layers` and draw the

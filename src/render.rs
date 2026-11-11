@@ -59,9 +59,11 @@ struct MaskSlot {
     used: bool,
 }
 
+/// What one canvas item draws: a run of shape instances, or one text
+/// instance with its mask (and the mask's identity, for change detection).
 enum Draw {
     Shapes(Range<u32>),
-    Text(u32, wgpu::BindGroup),
+    Text(u32, wgpu::BindGroup, u64),
 }
 
 struct Instances {
@@ -124,7 +126,8 @@ pub struct Renderer {
     texts: Instances,
     masks: HashMap<MaskKey, MaskSlot>,
     next_mask: u64,
-    draws: Vec<Draw>,
+    /// One entry per canvas item; `None` for items that draw nothing.
+    draws: Vec<Option<Draw>>,
     order: Vec<u64>,
     problems: Vec<Problem>,
     layers: Vec<Layer>,
@@ -293,9 +296,8 @@ impl Renderer {
         for slot in self.masks.values_mut() {
             slot.used = false;
         }
-        let mut order = Vec::new();
-        let mut run_start = 0u32;
         for (index, item) in canvas.items().iter().enumerate() {
+            self.draws.push(None);
             match item {
                 Item::Shape(shape) => {
                     if let Some(reason) = shape.problem() {
@@ -305,6 +307,7 @@ impl Renderer {
                         });
                         continue;
                     }
+                    let first = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
                     self.layers.clear();
                     shape.layers(&mut self.layers);
                     for i in 0..self.layers.len() {
@@ -347,6 +350,10 @@ impl Renderer {
                         self.shapes.push(&clip_rect);
                         self.shapes.push(&edges(quad, 1.));
                         self.shapes.push(&clip_radii);
+                    }
+                    let end = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
+                    if end > first {
+                        self.draws[index] = Some(Draw::Shapes(first..end));
                     }
                 }
                 Item::Text(t) => {
@@ -406,28 +413,24 @@ impl Renderer {
                         origin[1] + mask.size[1] as f32,
                     ];
                     let (id, group) = (mask.id, mask.group.clone());
-                    // Close the run of shapes drawn before this text.
-                    let shapes = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
-                    if shapes > run_start {
-                        self.draws.push(Draw::Shapes(run_start..shapes));
-                        order.extend([0, u64::from(run_start), u64::from(shapes)]);
-                        run_start = shapes;
-                    }
                     let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
                     let color = self.color(t.color);
                     self.texts.push(&rect);
                     self.texts.push(&edges(clip_px(t.clip), 1.));
                     self.texts.push(&color);
-                    self.draws.push(Draw::Text(instance, group));
-                    order.extend([1, u64::from(instance), id]);
+                    self.draws[index] = Some(Draw::Text(instance, group, id));
                 }
             }
         }
-        let shapes = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
-        if shapes > run_start {
-            self.draws.push(Draw::Shapes(run_start..shapes));
-            order.extend([0, u64::from(run_start), u64::from(shapes)]);
-        }
+        let order: Vec<u64> = self
+            .draws
+            .iter()
+            .flat_map(|d| match d {
+                None => [0, 0, 0],
+                Some(Draw::Shapes(r)) => [1, u64::from(r.start), u64::from(r.end)],
+                Some(Draw::Text(instance, _, id)) => [2, u64::from(*instance), *id],
+            })
+            .collect();
         self.masks.retain(|_, slot| slot.used);
 
         for uploaded in [
@@ -501,15 +504,36 @@ impl Renderer {
 
     /// Draws what the last `prepare` saw, over whatever the pass already holds.
     pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
-        for draw in &self.draws {
+        self.draw_items(pass, 0..self.draws.len());
+    }
+
+    /// Draws only the canvas items in `items`, by index. A host with its own
+    /// ordered display list uses this to put its drawing between ours. This
+    /// sets the pipeline, bind group 0 and vertex buffer 0; the host restores
+    /// its own afterwards. The scissor rectangle is left as the host set it.
+    pub fn draw_items(&self, pass: &mut wgpu::RenderPass<'_>, items: Range<usize>) {
+        let end = items.end.min(self.draws.len());
+        let mut run: Option<Range<u32>> = None;
+        let flush = |pass: &mut wgpu::RenderPass<'_>, run: &mut Option<Range<u32>>| {
+            if let Some(range) = run.take() {
+                pass.set_pipeline(&self.shape_pipeline);
+                pass.set_bind_group(0, &self.view_group, &[]);
+                pass.set_vertex_buffer(0, self.shapes.buffer.slice(..));
+                pass.draw(0..6, range);
+            }
+        };
+        for draw in self.draws[items.start.min(end)..end].iter().flatten() {
             match draw {
-                Draw::Shapes(range) => {
-                    pass.set_pipeline(&self.shape_pipeline);
-                    pass.set_bind_group(0, &self.view_group, &[]);
-                    pass.set_vertex_buffer(0, self.shapes.buffer.slice(..));
-                    pass.draw(0..6, range.clone());
-                }
-                Draw::Text(instance, group) => {
+                // Instances of consecutive shapes are contiguous.
+                Draw::Shapes(range) => match &mut run {
+                    Some(open) if open.end == range.start => open.end = range.end,
+                    _ => {
+                        flush(pass, &mut run);
+                        run = Some(range.clone());
+                    }
+                },
+                Draw::Text(instance, group, _) => {
+                    flush(pass, &mut run);
                     pass.set_pipeline(&self.text_pipeline);
                     pass.set_bind_group(0, group, &[]);
                     pass.set_vertex_buffer(0, self.texts.buffer.slice(..));
@@ -517,6 +541,7 @@ impl Renderer {
                 }
             }
         }
+        flush(pass, &mut run);
     }
 }
 

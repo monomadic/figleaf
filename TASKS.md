@@ -70,12 +70,25 @@ the ON/OFF switch (node 103:2651) has an inner shadow on text, which figleaf
 cannot draw; the brush cursor (node 4:362 in Abner Screens) has centre strokes
 on ellipses.
 
-## 2. Use it in a real host
+## 2. Use it in a real host — started 2026-11-12
 
-Replace one hand-drawn control in one of the owner's apps (they are wgpu 30
-hosts) with figleaf calls. Needs the owner's go-ahead for that repository. This
-is where the API's rough edges show: surface formats, multisampled passes,
-scale factors, when to rebuild the canvas.
+Abner's Process rail switch is drawn by figleaf, on branch `figleaf-switch` in
+the worktree `~/src/abner-figleaf` (not merged). Seen in the running app in
+both states: [docs/abner-in-app.png](docs/abner-in-app.png).
+
+What it taught:
+
+- A host with its own ordered display list needs to draw our items between
+  its own, so tooltips and overlays still cover them. `Renderer::draw_items`
+  draws a range of canvas items; Abner calls it once per shape.
+- Abner's surface is sRGB with premultiplied alpha. The renderer's blending
+  works there unchanged; colours are converted and blended in linear light,
+  like the rest of Abner's UI.
+- The host sets its scissor rectangle; we leave it alone.
+
+Left to do: move a control with text across (Abner draws text with its own
+glyph atlas, so this needs either a text backend over that atlas or CoreText
+beside it), and decide whether hosts depend on figleaf by path or by git.
 
 ## 3. Gradients and multiple fills
 

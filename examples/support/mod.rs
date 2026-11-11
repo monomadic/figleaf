@@ -41,6 +41,22 @@ impl Gpu {
         clear: [f64; 4],
         text: &mut dyn Backend,
     ) -> Image {
+        let all = 0..canvas.items().len();
+        self.render_items(renderer, canvas, size, scale, clear, text, all)
+    }
+
+    /// `render`, drawing only the canvas items in `items`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_items(
+        &self,
+        renderer: &mut Renderer,
+        canvas: &Canvas,
+        size: [u32; 2],
+        scale: f32,
+        clear: [f64; 4],
+        text: &mut dyn Backend,
+        items: std::ops::Range<usize>,
+    ) -> Image {
         let [width, height] = size;
         let extent = wgpu::Extent3d {
             width,
@@ -81,7 +97,7 @@ impl Gpu {
                 })],
                 ..Default::default()
             });
-            renderer.draw(&mut pass);
+            renderer.draw_items(&mut pass, items);
         }
         let stride = (width * 4).div_ceil(256) * 256;
         let readback = self.device.create_buffer(&wgpu::BufferDescriptor {
