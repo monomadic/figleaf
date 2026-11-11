@@ -1,0 +1,33 @@
+[package]
+name = "figleaf"
+version = "0.0.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Figma-flavoured paint primitives and auto layout for small native Rust UIs"
+
+[features]
+# Default builds have no dependencies: layout, the display list and the text
+# types only.
+default = []
+# Draws a `Canvas` with the host's wgpu device.
+wgpu = ["dep:wgpu"]
+# Single-line text rasterized by CoreText. macOS only; needs clang and ar.
+text-coretext = []
+
+[dependencies]
+wgpu = { version = "30", default-features = false, features = ["std", "metal", "wgsl"], optional = true }
+
+[dev-dependencies]
+pollster = "1"
+png = "0.18"
+
+[[example]]
+name = "switch"
+required-features = ["wgpu"]
+
+[[test]]
+name = "render"
+required-features = ["wgpu"]
+
+[profile.dev.package."*"]
+opt-level = 2

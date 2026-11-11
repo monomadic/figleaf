@@ -1,0 +1,370 @@
+//! Explicit-font, grayscale, single-line Latin text, borrowed from figui. No
+//! system fallback, wrapping, rich text, letter spacing, bidi or emoji. A
+//! backend turns a string into a bounded alpha mask; the renderer tints it.
+//! Fonts and their variable axes are caller-supplied; nothing here names a font.
+use crate::Error;
+
+pub const MAX_FONTS: usize = 64;
+pub const MAX_AXES: usize = 8;
+pub const MAX_TEXT_BYTES: usize = 512;
+/// Widest mask, in logical units. Longer lines are cut there.
+pub const MAX_WIDTH: f32 = 2048.;
+
+/// A variable font axis, such as `wght` 600.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Axis {
+    pub tag: [u8; 4],
+    pub value: f32,
+}
+
+/// The characters the single-line Latin scope accepts: printable Basic Latin
+/// through Latin Extended-B, general punctuation, currency, letterlike symbols,
+/// arrows and mathematical operators. No controls, line breaks, bidi or emoji.
+pub fn supported_char(c: char) -> bool {
+    matches!(
+        c as u32,
+        0x20..=0x7E
+            | 0xA0..=0xAC
+            | 0xAE..=0x24F
+            | 0x2010..=0x2027
+            | 0x2030..=0x205E
+            | 0x20A0..=0x20BF
+            | 0x2100..=0x22FF
+    )
+}
+
+pub fn validate_characters(text: &str) -> Result<(), Error> {
+    if text.len() > MAX_TEXT_BYTES {
+        return Err(Error("text exceeds 512 bytes"));
+    }
+    if !text.chars().all(supported_char) {
+        return Err(Error(
+            "text has characters outside the single-line Latin scope",
+        ));
+    }
+    Ok(())
+}
+
+/// Font bytes and the axis values to instantiate them with. An axis left out
+/// stays with the font: optical size then follows the logical font size.
+#[derive(Clone, Copy)]
+pub struct FontSource<'a> {
+    pub bytes: &'a [u8],
+    pub axes: &'a [Axis],
+}
+#[cfg(feature = "text-coretext")]
+fn check_source(f: &FontSource) -> Result<(), Error> {
+    if f.bytes.is_empty() || f.bytes.len() > 32 * 1024 * 1024 {
+        return Err(Error("font byte budget exceeded"));
+    }
+    if f.axes.len() > MAX_AXES {
+        return Err(Error("too many font axes"));
+    }
+    Ok(())
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Style {
+    pub font: usize,
+    pub size: f32,
+    pub line_height: f32,
+}
+#[derive(Clone, Copy, Debug, Default)]
+#[repr(C)]
+pub struct Metrics {
+    pub advance: f64,
+    pub ascent: f64,
+    pub descent: f64,
+    pub baseline: f64,
+    pub glyphs: u32,
+    pub lines: u32,
+}
+pub struct Mask {
+    pub width: u32,
+    pub height: u32,
+    pub alpha: Vec<u8>,
+    pub metrics: Metrics,
+}
+pub trait Backend {
+    fn raster(&mut self, text: &str, style: Style, width: f32, scale: f32) -> Result<Mask, Error>;
+    /// Shapes without rasterizing. The default rasterizes at the widest mask.
+    fn measure(&mut self, text: &str, style: Style) -> Result<Metrics, Error> {
+        Ok(self.raster(text, style, 2048., 1.)?.metrics)
+    }
+}
+pub fn validate(text: &str, s: Style, width: f32, scale: f32) -> Result<[u32; 2], Error> {
+    if text.is_empty()
+        || validate_characters(text).is_err()
+        || s.font >= MAX_FONTS
+        || ![s.size, s.line_height, width, scale]
+            .iter()
+            .all(|x| x.is_finite() && *x > 0.)
+        || s.size > 128.
+        || s.line_height > 256.
+        || s.line_height < s.size
+        || width > MAX_WIDTH
+        || !(0.5..=4.).contains(&scale)
+    {
+        return Err(Error("unsupported single-line text request"));
+    }
+    Ok([
+        (width * scale).ceil() as u32,
+        (s.line_height * scale).ceil() as u32,
+    ])
+}
+#[cfg(feature = "text-coretext")]
+pub mod coretext {
+    use super::*;
+    use std::{ffi::c_void, ptr::NonNull};
+    unsafe extern "C" {
+        fn figleaf_ct_font(bytes: *const u8, len: usize) -> *mut c_void;
+        fn figleaf_ct_drop(font: *mut c_void);
+        fn figleaf_ct_instance(
+            base: *mut c_void,
+            size: f64,
+            tags: *const u32,
+            values: *const f64,
+            count: usize,
+        ) -> *mut c_void;
+        fn figleaf_ct_instance_drop(font: *mut c_void);
+        fn figleaf_ct_run(
+            font: *mut c_void,
+            text: *const u8,
+            len: usize,
+            height: f64,
+            scale: f64,
+            pixels: *mut u8,
+            width: u32,
+            rows: u32,
+            metrics: *mut Metrics,
+        ) -> i32;
+    }
+    struct Font(NonNull<c_void>);
+    impl Drop for Font {
+        fn drop(&mut self) {
+            unsafe { figleaf_ct_drop(self.0.as_ptr()) }
+        }
+    }
+    struct Instance(NonNull<c_void>);
+    impl Drop for Instance {
+        fn drop(&mut self) {
+            unsafe { figleaf_ct_instance_drop(self.0.as_ptr()) }
+        }
+    }
+    /// A font with its axis tags and values, in matching order.
+    type Loaded = (Font, Vec<u32>, Vec<f64>);
+    /// Caller-supplied fonts, indexed by `Style::font`. A `None` slot is a font
+    /// the host could not supply: text using it fails with a diagnostic instead
+    /// of falling back. No automatic font discovery.
+    pub struct CoreText {
+        fonts: Vec<Option<Loaded>>,
+        instances: Vec<(usize, u32, Instance)>,
+    }
+    impl CoreText {
+        pub fn new(sources: &[Option<FontSource>]) -> Result<Self, Error> {
+            if sources.len() > MAX_FONTS {
+                return Err(Error("too many fonts"));
+            }
+            let mut fonts = Vec::new();
+            for source in sources {
+                fonts.push(match source {
+                    None => None,
+                    Some(f) => {
+                        check_source(f)?;
+                        let font = NonNull::new(unsafe {
+                            figleaf_ct_font(f.bytes.as_ptr(), f.bytes.len())
+                        })
+                        .map(Font)
+                        .ok_or(Error("invalid CoreText font bytes"))?;
+                        Some((
+                            font,
+                            f.axes.iter().map(|a| u32::from_be_bytes(a.tag)).collect(),
+                            f.axes.iter().map(|a| f64::from(a.value)).collect(),
+                        ))
+                    }
+                });
+            }
+            Ok(Self {
+                fonts,
+                instances: Vec::new(),
+            })
+        }
+        fn instance(&mut self, style: Style) -> Result<usize, Error> {
+            if let Some(i) = self
+                .instances
+                .iter()
+                .position(|(f, s, _)| *f == style.font && *s == style.size.to_bits())
+            {
+                return Ok(i);
+            }
+            let (font, tags, values) = self
+                .fonts
+                .get(style.font)
+                .ok_or(Error("font index outside the supplied fonts"))?
+                .as_ref()
+                .ok_or(Error("font was not supplied"))?;
+            if self.instances.len() >= 64 {
+                return Err(Error("CoreText font-instance budget exceeded"));
+            }
+            // Tags and values stay alive for this synchronous call and have equal length.
+            let ptr = NonNull::new(unsafe {
+                figleaf_ct_instance(
+                    font.0.as_ptr(),
+                    style.size as f64,
+                    tags.as_ptr(),
+                    values.as_ptr(),
+                    tags.len(),
+                )
+            })
+            .ok_or(Error("CoreText font instance failed"))?;
+            self.instances
+                .push((style.font, style.size.to_bits(), Instance(ptr)));
+            Ok(self.instances.len() - 1)
+        }
+        fn run(
+            &mut self,
+            text: &str,
+            style: Style,
+            scale: f32,
+            mut pixels: Option<(&mut [u8], u32, u32)>,
+        ) -> Result<Metrics, Error> {
+            let index = self.instance(style)?;
+            let mut metrics = Metrics::default();
+            let (ptr, w, h) = match &mut pixels {
+                Some((p, w, h)) => (p.as_mut_ptr(), *w, *h),
+                None => (std::ptr::null_mut(), 0, 0),
+            };
+            // Fonts and strings remain alive for this synchronous C call; output spans
+            // exactly w*h bytes and the repr(C) metrics struct matches the shim.
+            let result = unsafe {
+                figleaf_ct_run(
+                    self.instances[index].2.0.as_ptr(),
+                    text.as_ptr(),
+                    text.len(),
+                    style.line_height as f64,
+                    scale as f64,
+                    ptr,
+                    w,
+                    h,
+                    &mut metrics,
+                )
+            };
+            match result {
+                0 => Ok(metrics),
+                3 => Err(Error("font has no glyph for a character")),
+                _ => Err(Error("CoreText rejected the text or bitmap context")),
+            }
+        }
+    }
+    impl Backend for CoreText {
+        fn raster(
+            &mut self,
+            text: &str,
+            style: Style,
+            width: f32,
+            scale: f32,
+        ) -> Result<Mask, Error> {
+            let [w, h] = validate(text, style, width, scale)?;
+            let mut alpha = vec![0; w as usize * h as usize];
+            let metrics = self.run(text, style, scale, Some((&mut alpha, w, h)))?;
+            Ok(Mask {
+                width: w,
+                height: h,
+                alpha,
+                metrics,
+            })
+        }
+        fn measure(&mut self, text: &str, style: Style) -> Result<Metrics, Error> {
+            validate(text, style, 1., 1.)?;
+            self.run(text, style, 1., None)
+        }
+    }
+}
+
+/// A backend for hosts that draw no text: every request fails, so text items
+/// show up in the renderer's problems instead of vanishing quietly.
+pub struct NoText;
+impl Backend for NoText {
+    fn raster(&mut self, _: &str, _: Style, _: f32, _: f32) -> Result<Mask, Error> {
+        Err(Error("no text backend"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn rejects_unimplemented_text_before_raster() {
+        let s = Style {
+            font: 0,
+            size: 12.,
+            line_height: 16.,
+        };
+        assert!(validate("abc", s, 100., 2.).is_ok());
+        for t in ["", "a\nb", "🙂", "مرحبا"] {
+            assert!(validate(t, s, 100., 1.).is_err());
+        }
+        assert!(validate("abc", s, f32::NAN, 1.).is_err());
+        assert!(validate("abc", s, 100., 8.).is_err());
+    }
+}
+
+#[cfg(all(test, feature = "text-coretext"))]
+mod backend_tests {
+    use super::*;
+    fn exercise(b: &mut dyn Backend) {
+        let s = Style {
+            font: 1,
+            size: 10.,
+            line_height: 18.,
+        };
+        let a = b.raster("source3", s, 100., 2.).unwrap();
+        let changed = b.raster("source4", s, 100., 2.).unwrap();
+        assert_eq!([a.width, a.height], [200, 36]);
+        assert_eq!(a.metrics.lines, 1);
+        assert!((a.metrics.advance - 42.).abs() < 0.01);
+        assert!(a.alpha.iter().any(|a| *a > 0));
+        assert_ne!(a.alpha, changed.alpha);
+        assert!(b.raster("🙂", s, 100., 1.).is_err());
+    }
+    const FONT: &[u8] = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
+    fn font(axes: &[Axis]) -> Option<FontSource<'_>> {
+        Some(FontSource { bytes: FONT, axes })
+    }
+    fn bad() -> Option<FontSource<'static>> {
+        Some(FontSource {
+            bytes: b"bad",
+            axes: &[],
+        })
+    }
+    /// Slot 0 of `b` was not supplied. Caller-supplied weight changes the glyphs.
+    fn missing_and_axes(b: &mut dyn Backend, make: impl Fn(&[Axis]) -> Box<dyn Backend>) {
+        let s = Style {
+            font: 0,
+            size: 10.,
+            line_height: 18.,
+        };
+        assert!(b.raster("abc", s, 100., 1.).is_err());
+        assert!(b.measure("abc", s).is_err());
+        let bold = [Axis {
+            tag: *b"wght",
+            value: 800.,
+        }];
+        let regular = make(&[]).raster("source", s, 100., 2.).unwrap();
+        let heavy = make(&bold).raster("source", s, 100., 2.).unwrap();
+        assert_ne!(regular.alpha, heavy.alpha);
+        let measured = make(&[]).measure("source", s).unwrap();
+        assert!((measured.advance - regular.metrics.advance).abs() < 0.01);
+    }
+    #[test]
+    fn coretext_shapes_pinned_bytes_and_releases_repeated_runs() {
+        let mut b = coretext::CoreText::new(&[None, font(&[])]).unwrap();
+        exercise(&mut b);
+        for _ in 0..16 {
+            exercise(&mut b)
+        }
+        missing_and_axes(&mut b, |axes| {
+            Box::new(coretext::CoreText::new(&[font(axes)]).unwrap())
+        });
+        assert!(coretext::CoreText::new(&[bad()]).is_err());
+    }
+}

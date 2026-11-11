@@ -1,0 +1,5 @@
+Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+Version 2.211; Figma catalog identifier JetBrainsMono_wght__1.
+This font is licensed under the SIL Open Font License, Version 1.1.
+See OFL-JetBrainsMono.txt for the full license. The font bytes are unmodified.
