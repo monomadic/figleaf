@@ -295,6 +295,8 @@ pub struct Text {
     pub font: usize,
     pub size: f32,
     pub line_height: f32,
+    /// Figma's letter spacing in pixels.
+    pub letter_spacing: f32,
     pub color: Color,
     pub align: Align,
     pub vertical_align: Align,
@@ -310,6 +312,7 @@ impl Text {
             font: 0,
             size: 12.,
             line_height: 16.,
+            letter_spacing: 0.,
             color: [0., 0., 0., 1.],
             align: Align::Start,
             vertical_align: Align::Start,
@@ -323,6 +326,10 @@ impl Text {
     /// Font size and line height, as in Figma's "13 / 16".
     pub fn size(mut self, size: f32, line_height: f32) -> Self {
         (self.size, self.line_height) = (size, line_height);
+        self
+    }
+    pub fn letter_spacing(mut self, pixels: f32) -> Self {
+        self.letter_spacing = pixels;
         self
     }
     pub fn color(mut self, color: Color) -> Self {
@@ -342,6 +349,7 @@ impl Text {
             font: self.font,
             size: self.size,
             line_height: self.line_height,
+            letter_spacing: self.letter_spacing,
         }
     }
     /// Top-left of a line `advance` wide, in logical units.

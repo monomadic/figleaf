@@ -43,6 +43,7 @@ struct MaskKey {
     font: usize,
     size: u32,
     line_height: u32,
+    letter_spacing: u32,
     scale: u32,
 }
 
@@ -360,6 +361,7 @@ impl Renderer {
                         font: t.font,
                         size: t.size.to_bits(),
                         line_height: t.line_height.to_bits(),
+                        letter_spacing: t.letter_spacing.to_bits(),
                         scale: scale.to_bits(),
                     };
                     if !self.masks.contains_key(&key) {

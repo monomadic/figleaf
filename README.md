@@ -10,9 +10,19 @@ this go" and "draw it the way Figma would".
 
 ![The switch example](docs/switch.png)
 
-That image is `cargo run --example switch --features wgpu,text-coretext`. The
-design is made up for the example. **Nothing here has been compared against a
-Figma export yet**; see [TASKS.md](TASKS.md).
+That image is `cargo run --example switch --features wgpu,text-coretext`; its
+design is made up for the example.
+
+One real control has been checked against Figma so far: a segmented control
+from the Abner Timeline file, written from the values Figma reports
+([examples/full_range.rs](examples/full_range.rs)). Figma's export is on the
+left, figleaf on the right, both enlarged 3x:
+
+![Figma beside figleaf](docs/full-range-compare.png)
+
+Shapes, strokes and layout land on the same pixels; the glow is within 3/255;
+glyph edges differ slightly because Figma does not rasterize text with
+CoreText. What has and has not been checked is in [TASKS.md](TASKS.md).
 
 ## Paint
 
@@ -43,6 +53,7 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | Inner shadow | `.shadow(Shadow::inner(color, [x, y], blur))` |
 | Clip content (rectangular) | `.clip(rect)` |
 | Text, size / line height, alignment | `Text::new(..).size(13., 16.).align(..)` |
+| Letter spacing (pixels) | `.letter_spacing(0.7)` |
 
 Colours are straight-alpha encoded sRGB, the numbers Figma shows.
 
@@ -97,7 +108,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 Gradients, images, vectors, multiple fills, blurs, blend modes, rounded clips,
 flattened layer opacity, corner smoothing, multisampled targets, layout
-wrapping and grid, and for text: wrapping, letter spacing, mixed styles,
+wrapping and grid, and for text: wrapping, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
 ## Where it came from

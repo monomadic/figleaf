@@ -67,6 +67,9 @@ pub struct Style {
     pub font: usize,
     pub size: f32,
     pub line_height: f32,
+    /// Extra space after each glyph, in logical units: Figma's letter spacing
+    /// in pixels. The space after the last glyph is not counted in the advance.
+    pub letter_spacing: f32,
 }
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(C)]
@@ -98,6 +101,8 @@ pub fn validate(text: &str, s: Style, width: f32, scale: f32) -> Result<[u32; 2]
         || ![s.size, s.line_height, width, scale]
             .iter()
             .all(|x| x.is_finite() && *x > 0.)
+        || !s.letter_spacing.is_finite()
+        || s.letter_spacing.abs() > s.size
         || s.size > 128.
         || s.line_height > 256.
         || s.line_height < s.size
@@ -131,6 +136,7 @@ pub mod coretext {
             text: *const u8,
             len: usize,
             height: f64,
+            tracking: f64,
             scale: f64,
             pixels: *mut u8,
             width: u32,
@@ -241,6 +247,7 @@ pub mod coretext {
                     text.as_ptr(),
                     text.len(),
                     style.line_height as f64,
+                    style.letter_spacing as f64,
                     scale as f64,
                     ptr,
                     w,
@@ -298,6 +305,7 @@ mod tests {
             font: 0,
             size: 12.,
             line_height: 16.,
+            letter_spacing: 0.,
         };
         assert!(validate("abc", s, 100., 2.).is_ok());
         for t in ["", "a\nb", "🙂", "مرحبا"] {
@@ -316,6 +324,7 @@ mod backend_tests {
             font: 1,
             size: 10.,
             line_height: 18.,
+            letter_spacing: 0.,
         };
         let a = b.raster("source3", s, 100., 2.).unwrap();
         let changed = b.raster("source4", s, 100., 2.).unwrap();
@@ -325,6 +334,17 @@ mod backend_tests {
         assert!(a.alpha.iter().any(|a| *a > 0));
         assert_ne!(a.alpha, changed.alpha);
         assert!(b.raster("🙂", s, 100., 1.).is_err());
+        // Letter spacing goes between glyphs, not after the last one.
+        let tracked = Style {
+            letter_spacing: 1.5,
+            ..s
+        };
+        let wide = b.measure("source3", tracked).unwrap().advance;
+        assert!((wide - (42. + 6. * 1.5)).abs() < 0.01, "{wide}");
+        assert_ne!(
+            b.raster("source3", tracked, 100., 2.).unwrap().alpha,
+            a.alpha
+        );
     }
     const FONT: &[u8] = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
     fn font(axes: &[Axis]) -> Option<FontSource<'_>> {
@@ -342,6 +362,7 @@ mod backend_tests {
             font: 0,
             size: 10.,
             line_height: 18.,
+            letter_spacing: 0.,
         };
         assert!(b.raster("abc", s, 100., 1.).is_err());
         assert!(b.measure("abc", s).is_err());

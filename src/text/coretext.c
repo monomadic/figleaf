@@ -58,24 +58,30 @@ void figleaf_ct_instance_drop(void *font) {
 }
 
 int figleaf_ct_run(void *base, const uint8_t *text, size_t len,
-                 double height, double scale, uint8_t *pixels,
+                 double height, double tracking, double scale, uint8_t *pixels,
                  uint32_t width, uint32_t rows, Metrics *metrics) {
     CTFontRef font = (CTFontRef)base;
     CFStringRef string = CFStringCreateWithBytes(
         NULL, text, len, kCFStringEncodingUTF8, false);
     if (!string) return 2;
-    const void *keys[] = {kCTFontAttributeName, kCTForegroundColorFromContextAttributeName};
-    const void *values[] = {font, kCFBooleanTrue};
+    // Tracking is added after every glyph, as Figma's letter spacing is.
+    CFNumberRef kern = CFNumberCreate(NULL, kCFNumberDoubleType, &tracking);
+    const void *keys[] = {kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
+                          kCTKernAttributeName};
+    const void *values[] = {font, kCFBooleanTrue, kern};
     CFDictionaryRef attrs = CFDictionaryCreate(
-        NULL, keys, values, 2,
+        NULL, keys, values, 3,
         &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFRelease(kern);
     CFAttributedStringRef attributed = CFAttributedStringCreate(NULL, string, attrs);
     CFRelease(attrs);
     CFRelease(string);
     CTLineRef line = CTLineCreateWithAttributedString(attributed);
     CFRelease(attributed);
     double ascent = CTFontGetAscent(font), descent = CTFontGetDescent(font);
+    // The space after the last glyph is not part of the line's width.
     metrics->advance = CTLineGetTypographicBounds(line, NULL, NULL, NULL);
+    if (CTLineGetGlyphCount(line) > 0) metrics->advance -= tracking;
     metrics->ascent = ascent;
     metrics->descent = descent;
     metrics->baseline = (height - ascent - descent) / 2 + ascent;

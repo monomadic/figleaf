@@ -8,25 +8,42 @@ item unless the owner says otherwise.
 
 Works: rectangles, rounded rectangles, ellipses, solid fills, strokes in all
 three alignments, drop and inner shadows, rectangular clips, single-line text
-through CoreText, the auto layout solver with a builder API, and a wgpu
-renderer that draws inside the host's pass. Checked by unit tests, GPU pixel
-tests and one reviewed render of a made-up design ([docs/switch.png](docs/switch.png)).
+with letter spacing through CoreText, the auto layout solver with a builder
+API, and a wgpu renderer that draws inside the host's pass.
 
-Not checked: anything against Figma. These are assumptions until task 1:
+Checked beside Figma on one control (below): rounded rectangles, an inside
+stroke, a drop shadow shown behind its shape, tracked text in two weights, and
+nested auto layout. Everything else is checked only by unit tests, GPU pixel
+tests and a reviewed render of a made-up design ([docs/switch.png](docs/switch.png)).
 
-- a shadow's Gaussian sigma is half of Figma's blur value;
-- shadows follow the fill and stroke together, and inner shadows paint over the stroke;
-- growing a shape (outside strokes, spread) keeps square corners square and
-  adds to round ones;
-- shadow blur is computed from the distance to the edge, which is exact for
-  straight edges and approximate at corners and for shapes smaller than the blur.
+Still assumptions, not yet seen beside Figma:
 
-## 1. One real control beside its Figma export
+- inner shadows paint over the stroke, and shadows follow fill and stroke together;
+- growing a shape (outside and centre strokes, spread) keeps square corners
+  square and adds to round ones;
+- a drop shadow without "show behind" is hidden exactly inside the shape;
+- ellipses, per-corner radii and opacity.
 
-Take a control the owner designed (a switch with its shadows and label is the
-obvious one), write it as figleaf calls from the inspector values, render it,
-and look at it beside the Figma export. Fix what is visibly wrong and correct
-the assumptions above. One screenshot and a short note.
+## 1. One real control beside its Figma export — done 2026-11-12
+
+"Abner / Processing / Full Range" (node 214:399 of the Abner Timeline Edit
+file) written from Figma's values in [examples/full_range.rs](examples/full_range.rs)
+and rendered beside Figma's export: [docs/full-range-compare.png](docs/full-range-compare.png).
+The layout solves to Figma's 210x111 and every box lands where Figma put it.
+Largest differences are at glyph edges; the mean is 1.4/255.
+
+What it taught:
+
+- Sigma is half of Figma's blur: the glow matches within 3/255, slightly
+  stronger in the tail (the edge-distance approximation).
+- A frame's stroke lies under its children. The glow tints the track's stroke.
+- Letter spacing was needed straight away, so it was added. Figma does not
+  count the space after the last glyph in a hugging text box, and neither does
+  the measured advance.
+- Figma's export of a node includes shadow spill to the right and bottom.
+
+Next real control should cover the assumptions still listed above: a switch
+with a knob (ellipse, drop shadow hidden under the shape) and an inner shadow.
 
 ## 2. Use it in a real host
 
