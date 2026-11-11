@@ -7,22 +7,30 @@ item unless the owner says otherwise.
 ## Where things stand (2026-11-12)
 
 Works: rectangles, rounded rectangles, ellipses, solid fills, strokes in all
-three alignments, drop and inner shadows, rectangular clips, single-line text
-with letter spacing through CoreText, the auto layout solver with a builder
-API, and a wgpu renderer that draws inside the host's pass.
+three alignments, drop and inner shadows, rectangular and rounded clips,
+single-line text with letter spacing through CoreText, the auto layout solver
+with a builder API, and a wgpu renderer that draws inside the host's pass.
 
-Checked beside Figma on one control (below): rounded rectangles, an inside
-stroke, a drop shadow shown behind its shape, tracked text in two weights, and
-nested auto layout. Everything else is checked only by unit tests, GPU pixel
-tests and a reviewed render of a made-up design ([docs/switch.png](docs/switch.png)).
+Checked beside Figma on two controls (task 1): rounded rectangles and pills,
+inside and outside strokes, a drop shadow shown behind its shape and one
+hidden under it, a shadow cut by a rounded clipping frame, tracked text in two
+weights, nested auto layout and an absolutely placed child. Everything else is
+checked only by unit tests, GPU pixel tests and a reviewed render of a made-up
+design ([docs/switch.png](docs/switch.png)).
 
 Still assumptions, not yet seen beside Figma:
 
-- inner shadows paint over the stroke, and shadows follow fill and stroke together;
-- growing a shape (outside and centre strokes, spread) keeps square corners
-  square and adds to round ones;
-- a drop shadow without "show behind" is hidden exactly inside the shape;
-- ellipses, per-corner radii and opacity.
+- inner shadows, and that they paint over the stroke;
+- spread, and that it keeps square corners square;
+- centre strokes, ellipses that are not circles, per-corner radii, opacity.
+
+Known differences from Figma:
+
+- curved edges are antialiased over a slightly narrower band (up to 28/255 on
+  single edge pixels of the switch);
+- shadow tails are a little stronger (up to 4/255);
+- a fill under a translucent outside stroke can show a faint seam on curves.
+  Opaque strokes are handled.
 
 ## 1. One real control beside its Figma export — done 2026-11-12
 
@@ -42,8 +50,25 @@ What it taught:
   the measured advance.
 - Figma's export of a node includes shadow spill to the right and bottom.
 
-Next real control should cover the assumptions still listed above: a switch
-with a knob (ellipse, drop shadow hidden under the shape) and an inner shadow.
+Second control, same day: the orange switch from the Abner design system
+(node 143:5040) in [examples/abner_switch.rs](examples/abner_switch.rs),
+beside Figma's 2x export: [docs/abner-switch-compare.png](docs/abner-switch-compare.png).
+Mean difference 1.6/255, largest 28/255 on curved edge pixels.
+
+What it taught:
+
+- A frame with "clip content" and a corner radius clips its children to the
+  rounded shape, so rounded clips were added.
+- A fill meeting an outside stroke on a curve showed the background through
+  the seam. The fill now runs half way under an opaque outside stroke.
+- A drop shadow without "show behind" is hidden inside its shape, as assumed.
+- An oversized corner radius (17 on a 16-tall frame) makes a pill, and an
+  outside stroke adds its width to the radius, as assumed.
+
+The Abner files hold more worth porting when the remaining assumptions matter:
+the ON/OFF switch (node 103:2651) has an inner shadow on text, which figleaf
+cannot draw; the brush cursor (node 4:362 in Abner Screens) has centre strokes
+on ellipses.
 
 ## 2. Use it in a real host
 

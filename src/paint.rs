@@ -74,7 +74,8 @@ pub struct Shape {
     /// Multiplies every layer. Unlike Figma's layer opacity it does not flatten
     /// the shape first, so a translucent fill shows through a translucent stroke.
     pub opacity: f32,
-    pub clip: Option<Rect>,
+    /// Figma's "clip content" on an ancestor frame: the frame's own outline.
+    pub clip: Option<Outline>,
 }
 
 impl Shape {
@@ -124,8 +125,15 @@ impl Shape {
         self.opacity = opacity;
         self
     }
-    pub fn clip(mut self, clip: Rect) -> Self {
-        self.clip = Some(clip);
+    pub fn clip(self, clip: Rect) -> Self {
+        self.clip_rounded(clip, 0.)
+    }
+    /// Clips to a rounded rectangle, as a frame with a corner radius does.
+    pub fn clip_rounded(mut self, rect: Rect, radius: f32) -> Self {
+        self.clip = Some(Outline {
+            rect,
+            radii: [radius; 4],
+        });
         self
     }
 
@@ -147,6 +155,7 @@ impl Shape {
     /// Why the shape can't be drawn, if it can't.
     pub fn problem(&self) -> Option<&'static str> {
         let mut numbers = self.radii.to_vec();
+        numbers.extend(self.clip.map_or([0.; 4], |c| c.radii));
         numbers.push(self.opacity);
         numbers.extend(self.fill.unwrap_or_default());
         if let Some(s) = self.stroke {
@@ -157,11 +166,12 @@ impl Shape {
             numbers.extend([s.blur, s.spread, s.offset[0], s.offset[1]]);
             numbers.extend(s.color);
         }
-        if self.rect.validate().is_err() || self.clip.is_some_and(|c| c.validate().is_err()) {
+        if self.rect.validate().is_err() || self.clip.is_some_and(|c| c.rect.validate().is_err()) {
             Some("invalid rectangle")
         } else if !numbers.iter().all(|v| v.is_finite()) {
             Some("non-finite shape value")
         } else if self.radii.iter().any(|r| *r < 0.)
+            || self.clip.is_some_and(|c| c.radii.iter().any(|r| *r < 0.))
             || self.stroke.is_some_and(|s| s.width < 0.)
             || self.shadows.iter().any(|s| s.blur < 0.)
         {
@@ -189,6 +199,13 @@ impl Shape {
         // Effects follow the fill and the stroke together.
         let silhouette = self.outline(outside);
         let start = out.len();
+        let clip = self.clip.map(|c| {
+            let limit = c.rect.w.min(c.rect.h) / 2.;
+            Outline {
+                rect: c.rect,
+                radii: c.radii.map(|r| r.min(limit)),
+            }
+        });
         let layer = |mode, a, b, color: Color, sigma| Layer {
             mode,
             a,
@@ -201,7 +218,7 @@ impl Shape {
                 color[3] * self.opacity.clamp(0., 1.),
             ],
             sigma,
-            clip: self.clip,
+            clip,
         };
         for s in self.shadows.iter().filter(|s| !s.inner) {
             let mut a = self.outline(outside + s.spread);
@@ -210,7 +227,12 @@ impl Shape {
             out.push(layer(Mode::Drop, a, knockout, s.color, s.blur / 2.));
         }
         if let Some(color) = self.fill {
-            out.push(layer(Mode::Band, self.outline(0.), None, color, 0.));
+            // Two antialiased edges that meet let the background through.
+            // Under an opaque stroke the fill can run on to the middle of
+            // the stroke's outer part, where it is hidden, and close the seam.
+            let opaque = self.stroke.is_some_and(|s| s.color[3] >= 1.);
+            let under = if opaque { outside / 2. } else { 0. };
+            out.push(layer(Mode::Band, self.outline(under), None, color, 0.));
         }
         if let Some(s) = self.stroke.filter(|s| s.width > 0.) {
             let hole = self.outline(-inside);
@@ -263,7 +285,7 @@ pub struct Layer {
     pub color: Color,
     /// Gaussian standard deviation: half of Figma's blur value.
     pub sigma: f32,
-    pub clip: Option<Rect>,
+    pub clip: Option<Outline>,
 }
 
 impl Layer {
@@ -467,6 +489,9 @@ mod tests {
             l.iter().map(|l| l.mode).collect::<Vec<_>>(),
             [Mode::Drop, Mode::Band, Mode::Band, Mode::Inner]
         );
+        // The fill runs half way under the opaque outside stroke.
+        assert_eq!(l[1].a.rect, Rect::new(-0.5, -0.5, 21., 21.));
+        assert_eq!(l[1].a.radii, [4.5; 4]);
         // Drop shadow: stroke 1 + spread 1 outwards, moved down 2, sigma 4.
         assert_eq!(l[0].a.rect, Rect::new(-2., 0., 24., 24.));
         assert_eq!((l[0].sigma, l[0].color[3]), (4., 0.5));

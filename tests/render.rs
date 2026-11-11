@@ -34,6 +34,22 @@ fn fills_are_crisp_on_pixel_edges_and_clip() {
     assert_eq!(i.pixel(30, 29), CLEAR);
     assert_eq!(i.pixel(69, 30), BLUE);
     assert_eq!(i.pixel(70, 30), CLEAR);
+
+    // A rounded clip cuts the corners of what it holds.
+    let mut c = Canvas::new();
+    let frame = Rect::new(10., 10., 40., 40.);
+    c.shape(
+        Shape::rect(Rect::new(0., 0., 100., 60.))
+            .fill(hex(0xFF0000))
+            .clip_rounded(frame, 12.),
+    );
+    let i = draw(&c);
+    assert_eq!(i.pixel(30, 30), RED);
+    assert_eq!(i.pixel(30, 10), RED);
+    assert_eq!(i.pixel(11, 11), CLEAR);
+    assert_eq!(i.pixel(48, 48), CLEAR);
+    assert_eq!(i.pixel(9, 30), CLEAR);
+    assert_eq!(i.pixel(50, 30), CLEAR);
 }
 
 #[test]
@@ -74,6 +90,25 @@ fn strokes_follow_their_alignment() {
     assert_eq!(at(StrokeAlign::Inside), [CLEAR, RED, BLUE]);
     assert_eq!(at(StrokeAlign::Outside), [RED, BLUE, BLUE]);
     assert_eq!(at(StrokeAlign::Center), [RED, RED, BLUE]);
+
+    // Where a fill meets an opaque outside stroke on a curve, nothing of the
+    // background shows through: every pixel well inside the outer edge is
+    // fully covered.
+    let mut c = Canvas::new();
+    c.shape(
+        Shape::ellipse(Rect::new(30., 10., 40., 40.))
+            .fill(hex(0x0000FF))
+            .stroke(3., hex(0xFF0000), StrokeAlign::Outside),
+    );
+    let i = draw(&c);
+    for y in 0..60 {
+        for x in 0..100 {
+            let (dx, dy) = (x as f32 + 0.5 - 50., y as f32 + 0.5 - 30.);
+            if (dx * dx + dy * dy).sqrt() < 21.5 {
+                assert_eq!(i.pixel(x, y)[3], 255, "{x} {y}");
+            }
+        }
+    }
 }
 
 #[test]

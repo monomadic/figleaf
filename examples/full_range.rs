@@ -98,11 +98,10 @@ fn main() {
     c.text(place(off, off_box));
     c.text(place(on, on_box));
 
-    let figma = load("docs/figma/full-range-figma.png");
-    let background = figma
-        .as_ref()
-        .map_or([30, 30, 30, 255], |f| f.pixel(0, 0))
-        .map(|v| f64::from(v) / 255.);
+    let figma = support::load("docs/figma/full-range-figma.png");
+    // The export is opaque: its corner is Figma's canvas colour.
+    let canvas = figma.as_ref().map_or([30, 30, 30, 255], |f| f.pixel(0, 0));
+    let background = canvas.map(|v| f64::from(v) / 255.);
 
     let gpu = support::Gpu::new();
     let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
@@ -111,74 +110,13 @@ fn main() {
         eprintln!("item {} left out: {}", p.item, p.reason);
     }
     std::fs::create_dir_all("out").unwrap();
-    save("out/full-range.png", &ours);
+    support::save("out/full-range.png", &ours);
     println!("layout size {:?}", solved.size());
-
-    let Some(figma) = figma else {
-        println!("no Figma export to compare against");
-        return;
-    };
-    assert_eq!([figma.width, figma.height], SIZE);
-    // Side by side, 3x nearest-neighbour, with a gap.
-    let (zoom, gap) = (3, 8);
-    let width = (SIZE[0] * 2 + gap) * zoom;
-    let height = SIZE[1] * zoom;
-    let mut rgba = vec![255u8; (width * height * 4) as usize];
-    let (mut worst, mut worst_at) = (0u32, [0u32; 2]);
-    let mut total = 0u64;
-    for y in 0..SIZE[1] {
-        for x in 0..SIZE[0] {
-            let (a, b) = (figma.pixel(x, y), ours.pixel(x, y));
-            let d = (0..3)
-                .map(|i| u32::from(a[i].abs_diff(b[i])))
-                .max()
-                .unwrap();
-            if d > worst {
-                (worst, worst_at) = (d, [x, y]);
-            }
-            total += u64::from(d);
-            for (image, pixel) in [a, b].into_iter().enumerate() {
-                let x0 = (image as u32 * (SIZE[0] + gap) + x) * zoom;
-                for dy in 0..zoom {
-                    for dx in 0..zoom {
-                        let i = (((y * zoom + dy) * width + x0 + dx) * 4) as usize;
-                        rgba[i..i + 4].copy_from_slice(&pixel);
-                    }
-                }
-            }
+    match figma {
+        Some(figma) => {
+            let background = [canvas[0], canvas[1], canvas[2]];
+            support::compare(&figma, &ours, background, 3, "out/full-range-compare.png");
         }
+        None => println!("no Figma export to compare against"),
     }
-    save(
-        "out/full-range-compare.png",
-        &support::Image {
-            width,
-            height,
-            rgba,
-        },
-    );
-    let mean = total as f64 / f64::from(SIZE[0] * SIZE[1]);
-    println!("largest channel difference {worst}/255 at {worst_at:?}, mean {mean:.2}/255");
-}
-
-fn load(path: &str) -> Option<support::Image> {
-    let mut decoder = png::Decoder::new(std::io::BufReader::new(std::fs::File::open(path).ok()?));
-    decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::ALPHA);
-    let mut reader = decoder.read_info().unwrap();
-    let mut rgba = vec![0; reader.output_buffer_size().unwrap()];
-    let info = reader.next_frame(&mut rgba).unwrap();
-    rgba.truncate(info.buffer_size());
-    Some(support::Image {
-        width: info.width,
-        height: info.height,
-        rgba,
-    })
-}
-
-fn save(path: &str, image: &support::Image) {
-    let file = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
-    let mut encoder = png::Encoder::new(file, image.width, image.height);
-    encoder.set_color(png::ColorType::Rgba);
-    encoder.set_depth(png::BitDepth::Eight);
-    let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(&image.rgba).unwrap();
 }

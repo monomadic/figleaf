@@ -133,3 +133,79 @@ impl Gpu {
         }
     }
 }
+
+pub fn load(path: &str) -> Option<Image> {
+    let file = std::io::BufReader::new(std::fs::File::open(path).ok()?);
+    let mut decoder = png::Decoder::new(file);
+    decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::ALPHA);
+    let mut reader = decoder.read_info().unwrap();
+    let mut rgba = vec![0; reader.output_buffer_size().unwrap()];
+    let info = reader.next_frame(&mut rgba).unwrap();
+    rgba.truncate(info.buffer_size());
+    Some(Image {
+        width: info.width,
+        height: info.height,
+        rgba,
+    })
+}
+
+pub fn save(path: &str, image: &Image) {
+    let file = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+    let mut encoder = png::Encoder::new(file, image.width, image.height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(&image.rgba).unwrap();
+}
+
+/// Writes a Figma export (left) beside our render (right), both enlarged
+/// `zoom` times, and prints how far apart they are. The export may be
+/// transparent; it is laid over `background` the way Figma's canvas would.
+pub fn compare(figma: &Image, ours: &Image, background: [u8; 3], zoom: u32, path: &str) {
+    assert_eq!(
+        [figma.width, figma.height],
+        [ours.width, ours.height],
+        "the render must be the size of the Figma export"
+    );
+    let (w, h, gap) = (figma.width, figma.height, 8);
+    let width = (w * 2 + gap) * zoom;
+    let mut rgba = vec![255u8; (width * h * zoom * 4) as usize];
+    let (mut worst, mut worst_at, mut total) = (0u32, [0u32; 2], 0u64);
+    for y in 0..h {
+        for x in 0..w {
+            let over = |p: [u8; 4]| {
+                let a = f32::from(p[3]) / 255.;
+                let mix = |i: usize| {
+                    (f32::from(p[i]) * a + f32::from(background[i]) * (1. - a)).round() as u8
+                };
+                [mix(0), mix(1), mix(2), 255]
+            };
+            let (a, b) = (over(figma.pixel(x, y)), ours.pixel(x, y));
+            let d = (0..3)
+                .map(|i| u32::from(a[i].abs_diff(b[i])))
+                .max()
+                .unwrap();
+            if d > worst {
+                (worst, worst_at) = (d, [x, y]);
+            }
+            total += u64::from(d);
+            for (image, pixel) in [a, b].into_iter().enumerate() {
+                let x0 = (image as u32 * (w + gap) + x) * zoom;
+                for dy in 0..zoom {
+                    for dx in 0..zoom {
+                        let i = (((y * zoom + dy) * width + x0 + dx) * 4) as usize;
+                        rgba[i..i + 4].copy_from_slice(&pixel);
+                    }
+                }
+            }
+        }
+    }
+    let image = Image {
+        width,
+        height: h * zoom,
+        rgba,
+    };
+    save(path, &image);
+    let mean = total as f64 / f64::from(w * h);
+    println!("{path}: largest channel difference {worst}/255 at {worst_at:?}, mean {mean:.2}/255");
+}

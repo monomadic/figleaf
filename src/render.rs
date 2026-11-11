@@ -18,7 +18,7 @@ use crate::{
 };
 use std::{collections::HashMap, ops::Range};
 
-const SHAPE_STRIDE: usize = 128;
+const SHAPE_STRIDE: usize = 144;
 const TEXT_STRIDE: usize = 48;
 
 /// What a `prepare` call did. An unchanged canvas uploads nothing and reports
@@ -200,7 +200,7 @@ impl Renderer {
             include_str!("render/shapes.wgsl"),
             format,
             SHAPE_STRIDE,
-            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4],
+            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4],
         );
         let text_pipeline = pipeline(
             device,
@@ -309,7 +309,10 @@ impl Renderer {
                     shape.layers(&mut self.layers);
                     for i in 0..self.layers.len() {
                         let l = self.layers[i];
-                        let clip = clip_px(l.clip);
+                        let clip = clip_px(l.clip.map(|c| c.rect));
+                        // The clip's own outline, for its antialiased edge.
+                        const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];
+                        let (clip_rect, clip_radii) = l.clip.map_or((OPEN, [0.; 4]), outline);
                         let e = edges(l.extent(), scale);
                         // One spare pixel for the antialiased edge.
                         let quad = Rect::new(
@@ -341,8 +344,9 @@ impl Renderer {
                             f32::from(u8::from(l.ellipse)),
                             f32::from(u8::from(l.b.is_some())),
                         ]);
-                        self.shapes.push(&edges(clip, 1.));
+                        self.shapes.push(&clip_rect);
                         self.shapes.push(&edges(quad, 1.));
+                        self.shapes.push(&clip_radii);
                     }
                 }
                 Item::Text(t) => {

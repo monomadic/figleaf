@@ -14,6 +14,7 @@ struct Vertex {
     // sigma, mode (0 band, 1 drop, 2 inner), ellipse, has b
     @location(5) @interpolate(flat) params: vec4f,
     @location(6) @interpolate(flat) clip: vec4f,
+    @location(7) @interpolate(flat) clip_radii: vec4f,
 }
 
 @vertex fn vs(@builtin(vertex_index) i: u32,
@@ -24,7 +25,8 @@ struct Vertex {
               @location(4) color: vec4f,
               @location(5) params: vec4f,
               @location(6) clip: vec4f,
-              @location(7) quad: vec4f) -> Vertex {
+              @location(7) quad: vec4f,
+              @location(8) clip_radii: vec4f) -> Vertex {
     let corners = array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(1,1),vec2f(0,0),vec2f(1,1),vec2f(0,1));
     let p = mix(quad.xy, quad.zw, corners[i]);
     var v: Vertex;
@@ -36,6 +38,7 @@ struct Vertex {
     v.color = color;
     v.params = params;
     v.clip = clip;
+    v.clip_radii = clip_radii;
     return v;
 }
 
@@ -86,7 +89,8 @@ fn blurred(d: f32, sigma: f32) -> f32 {
 
 @fragment fn fs(v: Vertex) -> @location(0) vec4f {
     let p = v.position.xy;
-    if (any(p < v.clip.xy) || any(p >= v.clip.zw)) { discard; }
+    // The quad is already cut to the clip's box; this rounds its corners.
+    let clipped = cover(sd_round(p, v.clip, v.clip_radii));
     let ellipse = v.params.z > 0.5;
     let da = sd(p, v.a_rect, v.a_radii, ellipse);
     var b = 0.0;
@@ -99,5 +103,5 @@ fn blurred(d: f32, sigma: f32) -> f32 {
     } else {
         alpha = b * (1.0 - blurred(da, v.params.x));
     }
-    return vec4f(v.color.rgb, v.color.a * alpha);
+    return vec4f(v.color.rgb, v.color.a * alpha * clipped);
 }

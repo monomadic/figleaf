@@ -29,6 +29,10 @@ required-features = ["wgpu"]
 name = "full_range"
 required-features = ["wgpu", "text-coretext"]
 
+[[example]]
+name = "abner_switch"
+required-features = ["wgpu"]
+
 [[test]]
 name = "render"
 required-features = ["wgpu"]
