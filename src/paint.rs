@@ -322,6 +322,9 @@ pub struct Text {
     pub color: Color,
     pub align: Align,
     pub vertical_align: Align,
+    /// Figma's inner shadow effect on a text layer: colour, X and Y, blur.
+    /// Spread is not supported on text.
+    pub inner_shadow: Option<(Color, [f32; 2], f32)>,
     pub clip: Option<Rect>,
 }
 
@@ -338,6 +341,7 @@ impl Text {
             color: [0., 0., 0., 1.],
             align: Align::Start,
             vertical_align: Align::Start,
+            inner_shadow: None,
             clip: None,
         }
     }
@@ -348,6 +352,10 @@ impl Text {
     /// Font size and line height, as in Figma's "13 / 16".
     pub fn size(mut self, size: f32, line_height: f32) -> Self {
         (self.size, self.line_height) = (size, line_height);
+        self
+    }
+    pub fn inner_shadow(mut self, color: Color, offset: [f32; 2], blur: f32) -> Self {
+        self.inner_shadow = Some((color, offset, blur));
         self
     }
     pub fn letter_spacing(mut self, pixels: f32) -> Self {

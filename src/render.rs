@@ -8,9 +8,10 @@
 //! ```
 //!
 //! Colours blend in the target's own space. On a plain `Rgba8Unorm` or
-//! `Bgra8Unorm` target that is encoded sRGB, which is how Figma blends; on an
-//! `*Srgb` target colours are converted first and blending is linear, so
-//! translucent edges and shadows come out slightly different from Figma.
+//! `Bgra8Unorm` target that is encoded sRGB, which is how Figma blends. On an
+//! `*Srgb` target colours are converted first and blending is linear:
+//! translucent black (most shadows) is corrected to darken as Figma shows,
+//! other translucent colours come out slightly different from Figma.
 use crate::{
     Canvas, Color, Error, Rect,
     paint::{Item, Layer, Mode, Outline},
@@ -45,11 +46,15 @@ struct MaskKey {
     line_height: u32,
     letter_spacing: u32,
     scale: u32,
+    /// Inner shadow offset and blur; the colour is applied when drawing.
+    shadow: Option<[u32; 3]>,
 }
 
 struct Mask {
     id: u64,
     group: wgpu::BindGroup,
+    /// Where the inner shadow falls on the glyphs, when the text has one.
+    shadow: Option<wgpu::BindGroup>,
     size: [u32; 2],
     advance: f32,
 }
@@ -64,6 +69,8 @@ struct MaskSlot {
 enum Draw {
     Shapes(Range<u32>),
     Text(u32, wgpu::BindGroup, u64),
+    /// Text followed by its inner shadow, which is the next instance.
+    ShadowedText(u32, wgpu::BindGroup, u64, wgpu::BindGroup),
 }
 
 struct Instances {
@@ -276,7 +283,8 @@ impl Renderer {
         }
         let mut report = Preparation::default();
         if self.viewport != target {
-            let size = [target[0] as f32, target[1] as f32, 0., 0.];
+            let linear = f32::from(u8::from(self.linear));
+            let size = [target[0] as f32, target[1] as f32, linear, 0.];
             queue.write_buffer(&self.view, 0, &size.map(f32::to_le_bytes).concat());
             self.viewport = target;
             report.changed = true;
@@ -374,16 +382,37 @@ impl Renderer {
                         line_height: t.line_height.to_bits(),
                         letter_spacing: t.letter_spacing.to_bits(),
                         scale: scale.to_bits(),
+                        shadow: t
+                            .inner_shadow
+                            .map(|(_, o, blur)| [o[0], o[1], blur].map(f32::to_bits)),
                     };
+                    if t.inner_shadow.is_some_and(|(c, o, blur)| {
+                        !c.iter().chain(&o).all(|v| v.is_finite()) || !(0. ..=64.).contains(&blur)
+                    }) {
+                        self.problems.push(Problem {
+                            item: index,
+                            reason: "invalid text shadow",
+                        });
+                        continue;
+                    }
                     if !self.masks.contains_key(&key) {
                         let mask = match raster(text, &t.string, t.style(), scale) {
                             Ok(m) => {
                                 report.textures_created += 1;
                                 report.uploaded_bytes += m.alpha.len() as u64;
                                 self.next_mask += 1;
+                                let size = [m.width, m.height];
+                                let shadow = t.inner_shadow.map(|(_, offset, blur)| {
+                                    let offset = offset.map(|v| v * scale);
+                                    let alpha =
+                                        inner_shadow(&m.alpha, size, offset, blur / 2. * scale);
+                                    report.uploaded_bytes += alpha.len() as u64;
+                                    self.upload_mask(device, queue, size, &alpha)
+                                });
                                 Ok(Mask {
                                     id: self.next_mask,
-                                    group: self.upload_mask(device, queue, &m),
+                                    shadow,
+                                    group: self.upload_mask(device, queue, size, &m.alpha),
                                     size: [m.width, m.height],
                                     advance: m.metrics.advance as f32,
                                 })
@@ -412,13 +441,22 @@ impl Renderer {
                         origin[0] + mask.size[0] as f32,
                         origin[1] + mask.size[1] as f32,
                     ];
-                    let (id, group) = (mask.id, mask.group.clone());
+                    let (id, group, shadow) = (mask.id, mask.group.clone(), mask.shadow.clone());
                     let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
                     let color = self.color(t.color);
                     self.texts.push(&rect);
                     self.texts.push(&edges(clip_px(t.clip), 1.));
                     self.texts.push(&color);
-                    self.draws[index] = Some(Draw::Text(instance, group, id));
+                    self.draws[index] = Some(match (shadow, t.inner_shadow) {
+                        (Some(shadow), Some((shadow_color, ..))) => {
+                            let color = self.color(shadow_color);
+                            self.texts.push(&rect);
+                            self.texts.push(&edges(clip_px(t.clip), 1.));
+                            self.texts.push(&color);
+                            Draw::ShadowedText(instance, group, id, shadow)
+                        }
+                        _ => Draw::Text(instance, group, id),
+                    });
                 }
             }
         }
@@ -429,6 +467,7 @@ impl Renderer {
                 None => [0, 0, 0],
                 Some(Draw::Shapes(r)) => [1, u64::from(r.start), u64::from(r.end)],
                 Some(Draw::Text(instance, _, id)) => [2, u64::from(*instance), *id],
+                Some(Draw::ShadowedText(instance, _, id, _)) => [3, u64::from(*instance), *id],
             })
             .collect();
         self.masks.retain(|_, slot| slot.used);
@@ -452,11 +491,12 @@ impl Renderer {
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        mask: &text::Mask,
+        [width, height]: [u32; 2],
+        alpha: &[u8],
     ) -> wgpu::BindGroup {
         let size = wgpu::Extent3d {
-            width: mask.width,
-            height: mask.height,
+            width,
+            height,
             depth_or_array_layers: 1,
         };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -476,11 +516,11 @@ impl Renderer {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &mask.alpha,
+            alpha,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(mask.width),
-                rows_per_image: Some(mask.height),
+                bytes_per_row: Some(width),
+                rows_per_image: Some(height),
             },
             size,
         );
@@ -532,12 +572,16 @@ impl Renderer {
                         run = Some(range.clone());
                     }
                 },
-                Draw::Text(instance, group, _) => {
+                Draw::Text(instance, group, _) | Draw::ShadowedText(instance, group, ..) => {
                     flush(pass, &mut run);
                     pass.set_pipeline(&self.text_pipeline);
                     pass.set_bind_group(0, group, &[]);
                     pass.set_vertex_buffer(0, self.texts.buffer.slice(..));
                     pass.draw(0..6, *instance..*instance + 1);
+                    if let Draw::ShadowedText(.., shadow) = draw {
+                        pass.set_bind_group(0, shadow, &[]);
+                        pass.draw(0..6, *instance + 1..*instance + 2);
+                    }
                 }
             }
         }
@@ -568,4 +612,89 @@ fn raster(
         return Err(Error("text backend violated mask or metric limits"));
     }
     Ok(mask)
+}
+
+/// Coverage of an inner shadow on glyphs: inside the glyph, wherever the
+/// blurred, shifted outside of the glyph reaches. `sigma` and `offset` are in
+/// mask pixels; beyond the mask counts as outside.
+fn inner_shadow(alpha: &[u8], [w, h]: [u32; 2], offset: [f32; 2], sigma: f32) -> Vec<u8> {
+    let (w, h) = (w as usize, h as usize);
+    // How much of each pixel is outside the glyph.
+    let mut outside: Vec<f32> = alpha.iter().map(|a| 1. - f32::from(*a) / 255.).collect();
+    if sigma >= 0.25 {
+        let radius = (3. * sigma).ceil() as isize;
+        let kernel: Vec<f32> = (-radius..=radius)
+            .map(|i| (-((i * i) as f32) / (2. * sigma * sigma)).exp())
+            .collect();
+        let total: f32 = kernel.iter().sum();
+        let pass = |src: &[f32], horizontal: bool| -> Vec<f32> {
+            let mut out = vec![0.; src.len()];
+            for y in 0..h as isize {
+                for x in 0..w as isize {
+                    let mut sum = 0.;
+                    for (k, weight) in kernel.iter().enumerate() {
+                        let d = k as isize - radius;
+                        let (sx, sy) = if horizontal { (x + d, y) } else { (x, y + d) };
+                        let inside = sx >= 0 && sy >= 0 && sx < w as isize && sy < h as isize;
+                        let v = if inside {
+                            src[sy as usize * w + sx as usize]
+                        } else {
+                            1.
+                        };
+                        sum += weight * v;
+                    }
+                    out[y as usize * w + x as usize] = sum / total;
+                }
+            }
+            out
+        };
+        let rows = pass(&outside, true);
+        outside = pass(&rows, false);
+    }
+    let sample = |x: isize, y: isize| {
+        if x >= 0 && y >= 0 && x < w as isize && y < h as isize {
+            outside[y as usize * w + x as usize]
+        } else {
+            1.
+        }
+    };
+    let mut out = vec![0u8; alpha.len()];
+    for y in 0..h {
+        for x in 0..w {
+            // The shadow at a pixel is the outside as it was `offset` back.
+            let (fx, fy) = (x as f32 - offset[0], y as f32 - offset[1]);
+            let (x0, y0) = (fx.floor(), fy.floor());
+            let (tx, ty) = (fx - x0, fy - y0);
+            let (x0, y0) = (x0 as isize, y0 as isize);
+            let top = sample(x0, y0) * (1. - tx) + sample(x0 + 1, y0) * tx;
+            let bottom = sample(x0, y0 + 1) * (1. - tx) + sample(x0 + 1, y0 + 1) * tx;
+            let shade = top * (1. - ty) + bottom * ty;
+            let glyph = f32::from(alpha[y * w + x]) / 255.;
+            out[y * w + x] = (glyph * shade * 255.).round() as u8;
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn an_inner_shadow_stays_inside_the_glyph_and_follows_its_offset() {
+        // A 6x6 solid block in a 10x10 mask, shadow pushed 2 down, no blur.
+        let mut alpha = vec![0u8; 100];
+        for y in 2..8 {
+            for x in 2..8 {
+                alpha[y * 10 + x] = 255;
+            }
+        }
+        let shadow = inner_shadow(&alpha, [10, 10], [0., 2.], 0.);
+        let at = |x: usize, y: usize| shadow[y * 10 + x];
+        assert_eq!((at(4, 2), at(4, 3), at(4, 4), at(4, 7)), (255, 255, 0, 0));
+        assert_eq!((at(4, 1), at(1, 4), at(4, 8)), (0, 0, 0));
+        // Blurred, it fades into the block instead of stopping.
+        let soft = inner_shadow(&alpha, [10, 10], [0., 2.], 1.);
+        let at = |x: usize, y: usize| soft[y * 10 + x];
+        assert!(at(4, 2) > at(4, 4) && at(4, 4) > at(4, 6) && at(4, 1) == 0);
+    }
 }

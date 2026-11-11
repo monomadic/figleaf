@@ -33,6 +33,10 @@ required-features = ["wgpu", "text-coretext"]
 name = "abner_switch"
 required-features = ["wgpu"]
 
+[[example]]
+name = "abner_onoff"
+required-features = ["wgpu", "text-coretext"]
+
 [[test]]
 name = "render"
 required-features = ["wgpu"]

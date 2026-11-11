@@ -7,6 +7,8 @@ use std::{sync::mpsc, time::Duration};
 pub struct Gpu {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    /// Format of the offscreen target; `Rgba8Unorm` unless changed.
+    pub format: wgpu::TextureFormat,
 }
 
 pub struct Image {
@@ -28,7 +30,11 @@ impl Gpu {
         let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
         let (device, queue) =
             pollster::block_on(adapter.request_device(&Default::default())).unwrap();
-        Self { device, queue }
+        Self {
+            device,
+            queue,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+        }
     }
 
     /// Prepares and draws `canvas` over `clear` (straight alpha, encoded sRGB).
@@ -69,7 +75,7 @@ impl Gpu {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format: self.format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });

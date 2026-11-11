@@ -70,6 +70,17 @@ fn sd(p: vec2f, r: vec4f, radii: vec4f, ellipse: bool) -> f32 {
     return sd_round(p, r, radii);
 }
 
+// On a target that stores linear light (an sRGB format; `view.size.z` is 1)
+// translucent black would darken less than it does in Figma, which blends
+// encoded values. Raising its transparency to the display gamma gives black
+// the darkening Figma shows. Other colours blend in linear light there.
+fn figma_alpha(color: vec3f, a: f32) -> f32 {
+    if (view.size.z > 0.5 && all(color == vec3f(0.0))) {
+        return 1.0 - pow(1.0 - a, 2.2);
+    }
+    return a;
+}
+
 fn cover(d: f32) -> f32 { return clamp(0.5 - d, 0.0, 1.0); }
 
 fn erf(x: f32) -> f32 {
@@ -103,5 +114,5 @@ fn blurred(d: f32, sigma: f32) -> f32 {
     } else {
         alpha = b * (1.0 - blurred(da, v.params.x));
     }
-    return vec4f(v.color.rgb, v.color.a * alpha * clipped);
+    return vec4f(v.color.rgb, figma_alpha(v.color.rgb, v.color.a * alpha * clipped));
 }

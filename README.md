@@ -13,7 +13,7 @@ this go" and "draw it the way Figma would".
 That image is `cargo run --example switch --features wgpu,text-coretext`; its
 design is made up for the example.
 
-Two real controls have been checked against Figma so far, both written from
+Three real controls have been checked against Figma so far, all written from
 the values Figma reports. In each pair Figma's export is on the left and
 figleaf is on the right.
 
@@ -21,6 +21,11 @@ The switch from the Abner design system ([examples/abner_switch.rs](examples/abn
 enlarged 6x:
 
 ![Figma beside figleaf: switch](docs/abner-switch-compare.png)
+
+The ON/OFF switch from the same file ([examples/abner_onoff.rs](examples/abner_onoff.rs)),
+enlarged 4x:
+
+![Figma beside figleaf: ON/OFF switch](docs/abner-onoff-on-compare.png)
 
 A segmented control from the Abner Timeline file ([examples/full_range.rs](examples/full_range.rs)),
 enlarged 3x:
@@ -62,6 +67,7 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | Clip content on a frame | `.clip(rect)` / `.clip_rounded(rect, radius)` |
 | Text, size / line height, alignment | `Text::new(..).size(13., 16.).align(..)` |
 | Letter spacing (pixels) | `.letter_spacing(0.7)` |
+| Inner shadow on text | `.inner_shadow(color, [x, y], blur)` |
 
 Colours are straight-alpha encoded sRGB, the numbers Figma shows.
 
@@ -118,7 +124,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Gradients, images, vectors, multiple fills, blurs, blend modes, clipped text
-with rounded corners, effects on text, flattened layer opacity, corner smoothing, multisampled targets, layout
+with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
 wrapping and grid, and for text: wrapping, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 

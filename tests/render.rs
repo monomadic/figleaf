@@ -169,6 +169,27 @@ fn an_unchanged_canvas_uploads_nothing_and_problems_are_reported() {
 }
 
 #[test]
+fn black_darkens_an_srgb_target_as_it_does_in_figma() {
+    // Black at 50% over white is 128 in Figma, which blends encoded values.
+    // Blended naively in linear light it would read back as 188.
+    let mut gpu = Gpu::new();
+    gpu.format = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.shape(Shape::rect(Rect::new(10., 10., 20., 20.)).fill(hexa(0x00000080)));
+    c.shape(Shape::rect(Rect::new(50., 10., 20., 20.)).fill(hexa(0xFF000080)));
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [1.; 4], &mut NoText);
+    let grey = i.pixel(20, 20)[0];
+    assert!(grey.abs_diff(128) <= 3, "{grey}");
+    // Opaque colours are converted, so they read back as authored.
+    c.clear();
+    c.shape(Shape::rect(Rect::new(10., 10., 20., 20.)).fill(hex(0x34C759)));
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [1.; 4], &mut NoText);
+    let [r, g, b, _] = i.pixel(20, 20);
+    assert!(r.abs_diff(0x34) <= 1 && g.abs_diff(0xC7) <= 1 && b.abs_diff(0x59) <= 1);
+}
+
+#[test]
 fn a_host_can_draw_a_range_of_items() {
     // Three squares; only the middle one is asked for.
     let gpu = Gpu::new();

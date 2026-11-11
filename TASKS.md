@@ -8,11 +8,12 @@ item unless the owner says otherwise.
 
 Works: rectangles, rounded rectangles, ellipses, solid fills, strokes in all
 three alignments, drop and inner shadows, rectangular and rounded clips,
-single-line text with letter spacing through CoreText, the auto layout solver
+single-line text with letter spacing and inner shadows through CoreText, the auto layout solver
 with a builder API, and a wgpu renderer that draws inside the host's pass.
 
-Checked beside Figma on two controls (task 1): rounded rectangles and pills,
-inside and outside strokes, a drop shadow shown behind its shape and one
+Checked beside Figma on three controls (task 1): rounded rectangles and pills,
+inside and outside strokes (including 1.5 and 0.5 wide and translucent), an
+inner shadow on text, a drop shadow shown behind its shape and one
 hidden under it, a shadow cut by a rounded clipping frame, tracked text in two
 weights, nested auto layout and an absolutely placed child. Everything else is
 checked only by unit tests, GPU pixel tests and a reviewed render of a made-up
@@ -20,7 +21,7 @@ design ([docs/switch.png](docs/switch.png)).
 
 Still assumptions, not yet seen beside Figma:
 
-- inner shadows, and that they paint over the stroke;
+- inner shadows on shapes, and that they paint over the stroke;
 - spread, and that it keeps square corners square;
 - centre strokes, ellipses that are not circles, per-corner radii, opacity.
 
@@ -65,10 +66,19 @@ What it taught:
 - An oversized corner radius (17 on a 16-tall frame) makes a pill, and an
   outside stroke adds its width to the radius, as assumed.
 
-The Abner files hold more worth porting when the remaining assumptions matter:
-the ON/OFF switch (node 103:2651) has an inner shadow on text, which figleaf
-cannot draw; the brush cursor (node 4:362 in Abner Screens) has centre strokes
-on ellipses.
+Third control, same day: the ON/OFF switch (node 103:2651) in
+[examples/abner_onoff.rs](examples/abner_onoff.rs), both states:
+[on](docs/abner-onoff-on-compare.png), [off](docs/abner-onoff-off-compare.png).
+Mean difference 2.0/255 on, 1.2/255 off; the largest are on glyph edges.
+
+What it taught:
+
+- Figma's label carries an inner shadow that dims it visibly, so text inner
+  shadows were added (the glyph mask, blurred and shifted, on the CPU).
+- Inside strokes of 1.5 and 0.5, one of them translucent, match.
+
+The brush cursor (node 4:362 in Abner Screens) has centre strokes on ellipses,
+for when those assumptions matter.
 
 ## 2. Use it in a real host — started 2026-11-12
 
@@ -86,9 +96,22 @@ What it taught:
   like the rest of Abner's UI.
 - The host sets its scissor rectangle; we leave it alone.
 
-Left to do: move a control with text across (Abner draws text with its own
-glyph atlas, so this needs either a text backend over that atlas or CoreText
-beside it), and decide whether hosts depend on figleaf by path or by git.
+A control with text followed: Abner's ON/OFF switch and its label
+([docs/abner-onoff-in-app.png](docs/abner-onoff-in-app.png)). Abner keeps its
+own glyph atlas for all other text and uses figleaf text, through CoreText and
+its bundled font, only where a label needs a Figma text effect.
+
+More that it taught:
+
+- On an sRGB surface a translucent black shadow darkened much less than in
+  Figma. The shaders now correct translucent black there. Other translucent
+  colours still blend in linear light and differ; Abner writes those as the
+  opaque colour they make.
+- A host can have several windows from other builds open. Capture by process,
+  not by application name.
+
+Left to do: decide whether hosts depend on figleaf by path or by git, and
+whether a host should be able to rasterize figleaf text with its own glyphs.
 
 ## 3. Gradients and multiple fills
 
