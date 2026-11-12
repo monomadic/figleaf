@@ -228,9 +228,17 @@ capsule, wells and add icon through figleaf, seen running
 filter bar's applied pills with their remove well and cross
 ([docs/switchblade-applied-in-app.png](docs/switchblade-applied-in-app.png)). Switchblade
 keeps its own text. Its draw list gained a shape item, and its renderer draws
-each shape at its place among its own tiles with `draw_items`. Left there:
-shapes in its blurred backdrop pass, the add well seen running (it shows only
-with ⌘ held), and frame timing in a release build before it is merged.
+each shape at its place among its own tiles with `draw_items`. Timed in release builds on an M4 Pro (on battery, window in the background,
+so not a reference run): a scripted pass with the tag popup open, forty
+cursor moves and a filter applied, twice each on master and the branch. Frame
+times are the same within run noise (render p50 8.2 ms and p95 9.1 to 9.4 ms
+on both; app time under 0.1 ms on both). A temporary probe put figleaf's
+`prepare` at 6 to 12 microseconds a frame for ten shapes, 44 at worst, and
+zero bytes uploaded on every frame where the chips did not change.
+
+Left there: shapes in its blurred backdrop pass, the add well seen running (it
+shows only with ⌘ held), and a reference timing run (AC power, window in
+front, a real library) before it is merged.
 
 Not checked beside Figma: the labels and counts of the review frame (other
 strings and widths), hover and pressed states, which the file does not hold.
