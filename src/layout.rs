@@ -1,16 +1,19 @@
 //! Figma auto layout solver: fixed, hug and fill sizing, horizontal and vertical
-//! stacks, padding, gaps, alignment, absolute children and min/max limits.
+//! stacks, wrapping, padding, gaps, alignment, absolute children and min/max
+//! limits.
 //!
 //! Build a [`Tree`] from the values in Figma's auto layout panel, solve it for
 //! a size, and draw each thing at the rectangle it gets. Borrowed from figui,
 //! where it was checked against positions Figma recorded.
 //!
-//! Not covered: wrapping, baseline alignment, rotated children, grid layout,
-//! and constraints other than "keep the authored offset". Text does not measure
-//! itself: measure it with a text backend and set the node's size.
+//! Not covered: baseline alignment, rotated children, grid layout, "space
+//! between" for wrapped lines, and constraints other than "keep the authored
+//! offset". Text does not measure itself: measure it with a text backend and
+//! set the node's size.
 //!
-//! Each axis is solved on its own. That holds while no node's size on one axis
-//! depends on its size on the other, which text reflow and wrapping would break.
+//! Widths are solved first and heights second. The only thing heights take
+//! from widths is where a wrapping stack broke its lines; text reflow would
+//! need more.
 use crate::{Error, Rect};
 use std::ops::Index;
 
@@ -48,6 +51,11 @@ pub struct AutoLayout {
     pub spacing: f32,
     pub primary_align: Align,
     pub counter_align: Align,
+    /// Figma's "wrap": children that don't fit start a new line. Horizontal
+    /// stacks only.
+    pub wrap: bool,
+    /// The gap between wrapped lines.
+    pub counter_spacing: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -87,9 +95,27 @@ struct Solver<'a> {
     children: Vec<Vec<usize>>,
     measured: Vec<Option<f32>>,
     axis: usize,
+    /// The lines of each wrapping stack, set while widths are arranged and
+    /// read while heights are.
+    lines: Vec<Option<Vec<Vec<usize>>>>,
 }
 
-impl Solver<'_> {
+impl<'a> Solver<'a> {
+    fn new(
+        nodes: &'a [Node],
+        children: &[Vec<usize>],
+        axis: usize,
+        lines: Vec<Option<Vec<Vec<usize>>>>,
+    ) -> Self {
+        Self {
+            nodes,
+            children: children.to_vec(),
+            measured: vec![None; nodes.len()],
+            axis,
+            lines,
+        }
+    }
+
     fn clamp(&self, i: usize, v: f32) -> f32 {
         let n = &self.nodes[i];
         v.min(n.max[self.axis]).max(n.min[self.axis])
@@ -121,17 +147,58 @@ impl Solver<'_> {
             let sum: f32 = flow.iter().map(|&c| self.measure(c)).sum();
             sum + l.spacing * flow.len().saturating_sub(1) as f32
         } else {
-            // Children that fill the counter axis follow the parent, so they
-            // don't set its size unless nothing else does.
-            let fixed: Vec<usize> = flow
-                .iter()
-                .copied()
-                .filter(|&c| self.nodes[c].sizing[self.axis] != Sizing::Fill)
-                .collect();
-            let from = if fixed.is_empty() { &flow } else { &fixed };
-            from.iter().map(|&c| self.measure(c)).fold(0., f32::max)
+            let lines = self.lines_of(i, l, &flow);
+            let heights: f32 = lines.iter().map(|line| self.thickness(line)).sum();
+            heights + l.counter_spacing * lines.len().saturating_sub(1) as f32
         };
         content + start + end
+    }
+
+    /// The lines of a stack across its direction: one, unless it wrapped.
+    fn lines_of(&self, i: usize, l: AutoLayout, flow: &[usize]) -> Vec<Vec<usize>> {
+        match &self.lines[i] {
+            Some(lines) if l.wrap => lines.clone(),
+            _ => vec![flow.to_vec()],
+        }
+    }
+
+    /// How much room a line needs across the stack's direction.
+    fn thickness(&mut self, line: &[usize]) -> f32 {
+        // Children that fill the counter axis follow the line, so they
+        // don't set its size unless nothing else does.
+        let fixed: Vec<usize> = line
+            .iter()
+            .copied()
+            .filter(|&c| self.nodes[c].sizing[self.axis] != Sizing::Fill)
+            .collect();
+        let from = if fixed.is_empty() { line } else { &fixed };
+        from.iter().map(|&c| self.measure(c)).fold(0., f32::max)
+    }
+
+    /// Breaks a wrapping stack's children into lines that fit `inner`. A
+    /// child that fills counts as its minimum size here and then shares what
+    /// its line has left.
+    fn wrapped(&mut self, flow: &[usize], inner: f32, l: AutoLayout) -> Vec<Vec<usize>> {
+        let mut lines: Vec<Vec<usize>> = Vec::new();
+        let mut used = 0.;
+        for &c in flow {
+            let size = if self.nodes[c].sizing[self.axis] == Sizing::Fill {
+                self.clamp(c, 0.)
+            } else {
+                self.measure(c)
+            };
+            match lines.last_mut() {
+                Some(line) if used + l.spacing + size <= inner + 0.001 => {
+                    line.push(c);
+                    used += l.spacing + size;
+                }
+                _ => {
+                    lines.push(vec![c]);
+                    used = size;
+                }
+            }
+        }
+        lines
     }
 
     fn flow(&self, i: usize) -> Vec<usize> {
@@ -156,34 +223,66 @@ impl Solver<'_> {
         let inner = size - start - end;
         let flow = self.flow(i);
         if primary(l) == self.axis {
-            let sizes = self.distribute(&flow, inner, l);
-            let sum: f32 = sizes.iter().sum();
-            let k = flow.len();
-            let gaps = l.spacing * k.saturating_sub(1) as f32;
-            let (mut pos, gap) = match l.primary_align {
-                Align::Min => (start, l.spacing),
-                Align::Center => (start + (inner - sum - gaps) / 2., l.spacing),
-                Align::Max => (start + inner - sum - gaps, l.spacing),
-                Align::SpaceBetween if k > 1 => (start, (inner - sum) / (k - 1) as f32),
-                Align::SpaceBetween => (start, 0.),
+            let lines = if l.wrap {
+                self.wrapped(&flow, inner, l)
+            } else {
+                vec![flow]
             };
-            for (&c, &s) in flow.iter().zip(&sizes) {
-                out[c] = [pos, s];
-                pos += s + gap;
+            for flow in &lines {
+                let sizes = self.distribute(flow, inner, l);
+                let sum: f32 = sizes.iter().sum();
+                let k = flow.len();
+                let gaps = l.spacing * k.saturating_sub(1) as f32;
+                let (mut pos, gap) = match l.primary_align {
+                    Align::Min => (start, l.spacing),
+                    Align::Center => (start + (inner - sum - gaps) / 2., l.spacing),
+                    Align::Max => (start + inner - sum - gaps, l.spacing),
+                    Align::SpaceBetween if k > 1 => (start, (inner - sum) / (k - 1) as f32),
+                    Align::SpaceBetween => (start, 0.),
+                };
+                for (&c, &s) in flow.iter().zip(&sizes) {
+                    out[c] = [pos, s];
+                    pos += s + gap;
+                }
+            }
+            if l.wrap {
+                self.lines[i] = Some(lines);
             }
         } else {
-            for &c in &flow {
-                let s = if self.nodes[c].sizing[self.axis] == Sizing::Fill {
-                    self.clamp(c, inner)
-                } else {
-                    self.measure(c)
-                };
-                let pos = match l.counter_align {
-                    Align::Center => start + (inner - s) / 2.,
-                    Align::Max => start + inner - s,
+            let lines = self.lines_of(i, l, &flow);
+            // A stack that did not wrap has one line as thick as itself.
+            // Wrapped lines are as thick as their content and sit together,
+            // placed as a block by the counter alignment.
+            let mut bands = vec![(start, inner)];
+            if l.wrap {
+                let thick: Vec<f32> = lines.iter().map(|line| self.thickness(line)).collect();
+                let gaps = l.counter_spacing * lines.len().saturating_sub(1) as f32;
+                let spare = inner - thick.iter().sum::<f32>() - gaps;
+                let mut pos = match l.counter_align {
+                    Align::Center => start + spare / 2.,
+                    Align::Max => start + spare,
                     _ => start,
                 };
-                out[c] = [pos, s];
+                bands.clear();
+                for t in thick {
+                    bands.push((pos, t));
+                    pos += t + l.counter_spacing;
+                }
+            }
+            for (line, (start, inner)) in lines.iter().zip(bands) {
+                for &c in line {
+                    let s = if self.nodes[c].sizing[self.axis] == Sizing::Fill {
+                        self.clamp(c, inner)
+                    } else {
+                        self.measure(c)
+                    };
+                    let pos = match l.counter_align {
+                        Align::Center => start + (inner - s) / 2.,
+                        Align::Max => start + inner - s,
+                        _ => start,
+                    };
+                    out[c] = [pos, s];
+                }
             }
         }
         for c in self.children[i].clone() {
@@ -259,8 +358,12 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
             return Err(Error("invalid layout input"));
         }
         if let Some(l) = n.layout {
-            if !l.padding.iter().all(|v| v.is_finite()) || !l.spacing.is_finite() {
+            let gaps = [l.spacing, l.counter_spacing];
+            if !l.padding.iter().chain(&gaps).all(|v| v.is_finite()) {
                 return Err(Error("invalid layout input"));
+            }
+            if l.wrap && l.direction == Direction::Vertical {
+                return Err(Error("only horizontal stacks wrap"));
             }
             if l.counter_align == Align::SpaceBetween {
                 return Err(Error("space between applies to the primary axis only"));
@@ -276,15 +379,12 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
 /// The size the root takes from its own sizing: hugging axes wrap the content.
 pub fn measure(nodes: &[Node]) -> Result<[f32; 2], Error> {
     let children = children_of(nodes)?;
-    Ok([0, 1].map(|axis| {
-        Solver {
-            nodes,
-            children: children.clone(),
-            measured: vec![None; nodes.len()],
-            axis,
-        }
-        .measure(0)
-    }))
+    let mut s = Solver::new(nodes, &children, 0, vec![None; nodes.len()]);
+    let width = s.measure(0);
+    // Heights depend on where wrapping stacks break at that width.
+    s.arrange(0, width, &mut vec![[0.; 2]; nodes.len()]);
+    let height = Solver::new(nodes, &children, 1, s.lines).measure(0);
+    Ok([width, height])
 }
 
 /// The rectangle of every node relative to its parent, with the root at `root_size`.
@@ -294,13 +394,9 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
         return Err(Error("invalid layout input"));
     }
     let mut out = vec![Rect::default(); nodes.len()];
+    let mut lines = vec![None; nodes.len()];
     for (axis, &root) in root_size.iter().enumerate() {
-        let mut s = Solver {
-            nodes,
-            children: children.clone(),
-            measured: vec![None; nodes.len()],
-            axis,
-        };
+        let mut s = Solver::new(nodes, &children, axis, lines);
         let mut axis_out = vec![[0f32; 2]; nodes.len()];
         axis_out[0] = [0., root];
         s.arrange(0, root, &mut axis_out);
@@ -311,6 +407,7 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
                 (b.y, b.h) = (pos, size);
             }
         }
+        lines = s.lines;
     }
     Ok(out)
 }
@@ -343,6 +440,8 @@ impl Node {
             spacing: 0.,
             primary_align: Align::Min,
             counter_align: Align::Min,
+            wrap: false,
+            counter_spacing: 0.,
         });
         n
     }
@@ -399,6 +498,12 @@ impl Node {
         (l.primary_align, l.counter_align) = (primary, counter);
         self
     }
+    /// Figma's "wrap", with the gap between lines. Horizontal stacks only.
+    pub fn wrap(mut self, gap_between_lines: f32) -> Self {
+        let l = self.stack_mut();
+        (l.wrap, l.counter_spacing) = (true, gap_between_lines);
+        self
+    }
     fn stack_mut(&mut self) -> &mut AutoLayout {
         self.layout.get_or_insert(AutoLayout {
             direction: Direction::Horizontal,
@@ -406,6 +511,8 @@ impl Node {
             spacing: 0.,
             primary_align: Align::Min,
             counter_align: Align::Min,
+            wrap: false,
+            counter_spacing: 0.,
         })
     }
 }
@@ -490,6 +597,8 @@ mod tests {
             spacing: 4.,
             primary_align,
             counter_align,
+            wrap: false,
+            counter_spacing: 0.,
         });
         n
     }
@@ -613,6 +722,69 @@ mod tree_tests {
 
         // Hugging: 12 + 80 + 8 + 44 + 12 wide, 12 + 24 + 12 tall.
         assert_eq!(t.solve_natural().unwrap().size(), [156., 48.]);
+    }
+
+    #[test]
+    fn filter_segments_wrap_where_figma_wraps_them() {
+        // "Filter Segments" (node 145:3699 in the Abner design system file):
+        // 254 wide, hugging height, gap 9, 4 between lines, centred across.
+        // Expected rectangles are the ones Figma reports.
+        let mut t = Tree::new(
+            Node::row()
+                .gap(9.)
+                .wrap(4.)
+                .align(Align::Min, Align::Center)
+                .width(Sizing::Fixed),
+        );
+        t.node_mut(t.root()).size[0] = 254.;
+        let sizes = [[62., 18.], [85., 18.], [80., 23.], [76., 23.], [67., 23.]];
+        let ids = sizes.map(|s| t.add(t.root(), Node::fixed(s)));
+        let s = t.solve_natural().unwrap();
+        assert_eq!(s.size(), [254., 50.]);
+        let figma = [[0., 2.5], [71., 2.5], [165., 0.], [0., 27.], [85., 27.]];
+        for ((id, at), size) in ids.iter().zip(figma).zip(sizes) {
+            assert_eq!(s[*id], Rect::new(at[0], at[1], size[0], size[1]));
+        }
+        // Narrower, the third segment drops to the second line.
+        t.node_mut(t.root()).size[0] = 200.;
+        let s = t.solve_natural().unwrap();
+        assert_eq!(s.size(), [200., 18. + 4. + 23. + 4. + 23.]);
+        assert_eq!(s[ids[2]], Rect::new(0., 22., 80., 23.));
+        assert_eq!(s[ids[4]], Rect::new(0., 49., 67., 23.));
+    }
+
+    #[test]
+    fn a_palette_wraps_in_a_fixed_frame() {
+        // "Application palette" (node 26:3791): 1492x470, twenty 286x82
+        // swatches, 12 between them both ways. Figma puts five on a line.
+        let mut t = Tree::new(Node::row().gap(12.).wrap(12.).size([1492., 470.]));
+        let ids: Vec<NodeId> = (0..20)
+            .map(|_| t.add(t.root(), Node::fixed([286., 82.])))
+            .collect();
+        let s = t.solve_natural().unwrap();
+        assert_eq!(s.size(), [1492., 470.]);
+        assert_eq!(s[ids[4]], Rect::new(1192., 0., 286., 82.));
+        assert_eq!(s[ids[5]], Rect::new(0., 94., 286., 82.));
+        assert_eq!(s[ids[19]], Rect::new(1192., 282., 286., 82.));
+    }
+
+    #[test]
+    fn wrapped_fill_children_share_their_own_line() {
+        let mut t = Tree::new(Node::row().gap(10.).wrap(5.).size([100., 100.]));
+        let a = t.add(t.root(), Node::fixed([60., 10.]));
+        let b = t.add(
+            t.root(),
+            Node::fixed([0., 20.]).width(Sizing::Fill).min([50., 0.]),
+        );
+        let c = t.add(t.root(), Node::fixed([20., 10.]).height(Sizing::Fill));
+        let s = t.solve([100., 100.]).unwrap();
+        assert_eq!(s[a], Rect::new(0., 0., 60., 10.));
+        // 50 at least does not fit beside 60, so it starts a line and
+        // shares it with the 20 that follows.
+        assert_eq!(s[b], Rect::new(0., 15., 70., 20.));
+        assert_eq!(s[c], Rect::new(80., 15., 20., 20.));
+        let column = Tree::new(Node::column().wrap(4.));
+        assert!(column.solve([10., 10.]).is_err());
     }
 
     #[test]

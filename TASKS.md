@@ -9,7 +9,7 @@ item unless the owner says otherwise.
 Works: rectangles, rounded rectangles, ellipses, solid and linear-gradient
 fills (several per shape), strokes in all three alignments, drop and inner shadows, rectangular and rounded clips,
 single-line text with letter spacing and inner shadows through CoreText, the auto layout solver
-with a builder API, and a wgpu renderer that draws inside the host's pass.
+with wrapping and a builder API, and a wgpu renderer that draws inside the host's pass.
 
 Checked beside Figma on three controls (task 1) and four timeline pieces
 (task 3): rounded rectangles and pills, per-corner radii, linear gradients
@@ -144,9 +144,26 @@ text, more than eight stops (reported as a problem, not dropped), and blend
 modes on a fill. On an sRGB surface a translucent gradient blends in linear
 light like any other translucent colour. Abner does not use these fills yet.
 
-## 4. Layout wrapping
+## 4. Layout wrapping — done 2026-11-12
 
-Wrapping stacks. Then baseline alignment if a design needs it.
+Horizontal stacks wrap. Two wrapping frames from the Abner design system file
+solve to the rectangles Figma reports for them, as unit tests in
+`src/layout.rs`: "Filter Segments" (145:3699; five segments on two lines,
+centred across, hugging height 50) and "Application palette" (26:3791; twenty
+swatches, five to a line, in a fixed frame).
+
+What it taught:
+
+- A line is as tall as its tallest child, children are aligned inside their
+  own line, and a hugging frame is as tall as its lines and the gaps between.
+- Heights now depend on widths, through where the lines broke. Widths are
+  solved first and hand the line breaks to the height pass.
+
+Still assumptions, not seen in a Figma file: lines in a frame taller than they
+need are placed as a block by the counter alignment; a child that fills the
+width counts as its minimum width when lines are broken. Not done: "space
+between" for the lines themselves, and baseline alignment. Do those when a
+design needs them.
 
 ## 5. Text
 

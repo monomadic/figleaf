@@ -87,9 +87,9 @@ let solved = tree.solve([320., 48.])?;   // on every resize
 let where_the_switch_goes = solved[switch];
 ```
 
-Covers horizontal and vertical auto layout, padding, gap, alignment including
-space-between, fixed / hug / fill sizing, min and max sizes, and absolutely
-positioned children. `solve_natural` sizes a hugging root to its content. Text
+Covers horizontal and vertical auto layout, wrapping (`.wrap(gap_between_lines)`),
+padding, gap, alignment including space-between, fixed / hug / fill sizing, min
+and max sizes, and absolutely positioned children. `solve_natural` sizes a hugging root to its content. Text
 does not measure itself: ask the text backend for the advance and set the node.
 
 ## Drawing
@@ -128,7 +128,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 Radial, angular and diamond gradients, gradients on strokes and text, more
 than eight gradient stops, images, vectors, blurs, blend modes, clipped text
 with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
-wrapping and grid, and for text: wrapping, percentage letter spacing, mixed styles,
+grid, baseline alignment and space-between for wrapped lines, and for text: wrapping, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
 ## Where it came from
