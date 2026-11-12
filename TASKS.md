@@ -256,8 +256,8 @@ on both; app time under 0.1 ms on both). A temporary probe put figleaf's
 `prepare` at 6 to 12 microseconds a frame for ten shapes, 44 at worst, and
 zero bytes uploaded on every frame where the chips did not change.
 
-Applied pills follow the design's tone table since 2026-11-13 (Switchblade
-branch `figma-filter-pills`, worktree `../switchblade-pills`, not merged):
+Applied pills follow the design's tone table since 2026-11-13 (merged into
+Switchblade's `master` the same day):
 each tone's own well stroke, inner shadow, end padding and cross shadow, and
 the fill's own alpha. Seen running with a hot, a cold and a person pill
 ([docs/switchblade-applied-tones-in-app.png](docs/switchblade-applied-tones-in-app.png)).
