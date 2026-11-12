@@ -86,8 +86,8 @@ for when those assumptions matter.
 
 ## 2. Use it in a real host — started 2026-11-12
 
-Abner's Process rail switch is drawn by figleaf, on branch `figleaf-switch` in
-the worktree `~/src/abner-figleaf` (not merged). Seen in the running app in
+Abner's Process rail switch is drawn by figleaf, merged into Abner's `main`
+on 2026-11-12 (it depends on figleaf by path, `../figleaf`). Seen in the running app in
 both states: [docs/abner-in-app.png](docs/abner-in-app.png).
 
 What it taught:
