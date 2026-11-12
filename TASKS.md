@@ -120,8 +120,8 @@ Abner's button bar followed on 2026-11-12: the "Button Bar" component (node
 [examples/abner_button_bar.rs](examples/abner_button_bar.rs), beside Figma's
 2x export ([docs/abner-button-bar-compare.png](docs/abner-button-bar-compare.png),
 mean difference 1.3/255, largest on glyph edges). In Abner the bar itself is
-drawn by figleaf on branch `figleaf-button-bar` (worktree
-`../abner-button-bar`, not merged), seen running in the crop editor
+drawn by figleaf, merged into its `main` the same day, seen running in the
+crop editor
 ([docs/abner-button-bar-in-app.png](docs/abner-button-bar-in-app.png)). The
 buttons in Figma's bar are placeholders, so Abner keeps its own.
 
