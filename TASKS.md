@@ -265,9 +265,12 @@ merged) a chip at rest is the Count form and only takes the Addable form,
 Switchblade estimates label widths instead of measuring them, so its chips
 match Figma's widths to about a pixel or two, not exactly.
 
-The component's "Person / Count" variant now holds a bare add icon and is 92
-wide in Figma; the example still draws it without one, 76 wide, until the
-owner says which is meant.
+The component's "Person / Count" variant shows the add well at rest in
+Figma (95 wide, the same as "Person / Addable"). The owner's decision
+(2026-11-12) is no well at rest for a person chip, as for the heat tones, so
+the example and Switchblade draw it without one (76 wide) and the export in
+`docs/figma` is the earlier one that agrees. That one variant in the Figma
+file still differs.
 
 Left there: shapes in its blurred backdrop pass and a reference timing run (AC power, window in
 front, a real library), which was not done before the merge.
