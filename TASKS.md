@@ -224,11 +224,13 @@ What it taught:
 In Switchblade itself, as an experiment on branch `figleaf-tags` (worktree
 `../switchblade-figleaf`, not merged): the chips of the tag popup draw their
 capsule, wells and add icon through figleaf, seen running
-([docs/switchblade-in-app.png](docs/switchblade-in-app.png)). Switchblade
+([docs/switchblade-in-app.png](docs/switchblade-in-app.png)), and so do the
+filter bar's applied pills with their remove well and cross
+([docs/switchblade-applied-in-app.png](docs/switchblade-applied-in-app.png)). Switchblade
 keeps its own text. Its draw list gained a shape item, and its renderer draws
 each shape at its place among its own tiles with `draw_items`. Left there:
-the filter bar's applied pills, shapes in its blurred backdrop pass, and frame
-timing in a release build before it is merged.
+shapes in its blurred backdrop pass, the add well seen running (it shows only
+with ⌘ held), and frame timing in a release build before it is merged.
 
 Not checked beside Figma: the labels and counts of the review frame (other
 strings and widths), hover and pressed states, which the file does not hold.
