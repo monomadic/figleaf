@@ -17,4 +17,4 @@ pub mod text;
 pub mod render;
 
 pub use geom::{Color, Error, Rect, hex, hexa};
-pub use paint::{Canvas, Shadow, Shape, Stroke, StrokeAlign, Text};
+pub use paint::{Canvas, LinearGradient, Paint, Shadow, Shape, Stroke, StrokeAlign, Text};

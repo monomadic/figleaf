@@ -37,6 +37,10 @@ required-features = ["wgpu"]
 name = "abner_onoff"
 required-features = ["wgpu", "text-coretext"]
 
+[[example]]
+name = "abner_gradients"
+required-features = ["wgpu", "text-coretext"]
+
 [[test]]
 name = "render"
 required-features = ["wgpu"]

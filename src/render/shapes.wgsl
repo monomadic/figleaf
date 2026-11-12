@@ -11,10 +11,17 @@ struct Vertex {
     @location(2) @interpolate(flat) b_rect: vec4f,
     @location(3) @interpolate(flat) b_radii: vec4f,
     @location(4) @interpolate(flat) color: vec4f,
-    // sigma, mode (0 band, 1 drop, 2 inner), ellipse, has b
+    // sigma, mode (0 band, 1 drop, 2 inner), ellipse, has a ramp
     @location(5) @interpolate(flat) params: vec4f,
     @location(6) @interpolate(flat) clip: vec4f,
     @location(7) @interpolate(flat) clip_radii: vec4f,
+    // Ramp: position = dot(pixel, axis.xy) + axis.z; eight stop offsets;
+    // eight stop colours, one packed RGBA8 per component.
+    @location(8) @interpolate(flat) axis: vec4f,
+    @location(9) @interpolate(flat) offsets_a: vec4f,
+    @location(10) @interpolate(flat) offsets_b: vec4f,
+    @location(11) @interpolate(flat) stops_a: vec4u,
+    @location(12) @interpolate(flat) stops_b: vec4u,
 }
 
 @vertex fn vs(@builtin(vertex_index) i: u32,
@@ -26,7 +33,12 @@ struct Vertex {
               @location(5) params: vec4f,
               @location(6) clip: vec4f,
               @location(7) quad: vec4f,
-              @location(8) clip_radii: vec4f) -> Vertex {
+              @location(8) clip_radii: vec4f,
+              @location(9) axis: vec4f,
+              @location(10) offsets_a: vec4f,
+              @location(11) offsets_b: vec4f,
+              @location(12) stops_a: vec4u,
+              @location(13) stops_b: vec4u) -> Vertex {
     let corners = array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(1,1),vec2f(0,0),vec2f(1,1),vec2f(0,1));
     let p = mix(quad.xy, quad.zw, corners[i]);
     var v: Vertex;
@@ -39,6 +51,11 @@ struct Vertex {
     v.params = params;
     v.clip = clip;
     v.clip_radii = clip_radii;
+    v.axis = axis;
+    v.offsets_a = offsets_a;
+    v.offsets_b = offsets_b;
+    v.stops_a = stops_a;
+    v.stops_b = stops_b;
     return v;
 }
 
@@ -98,6 +115,43 @@ fn blurred(d: f32, sigma: f32) -> f32 {
     return 0.5 - 0.5 * erf(d / (sigma * 1.41421356));
 }
 
+fn premultiplied(c: vec4f) -> vec4f { return vec4f(c.rgb * c.a, c.a); }
+
+fn to_linear(c: vec3f) -> vec3f {
+    return select(pow((c + 0.055) / 1.055, vec3f(2.4)), c / 12.92, c <= vec3f(0.04045));
+}
+
+// The ramp's colour averaged over the pixel's width along the axis, so a hard
+// stop that falls inside a pixel gets an antialiased edge. Between stops,
+// colour and alpha blend separately (straight alpha), as Figma blends them.
+fn ramp(v: Vertex, p: vec2f) -> vec4f {
+    var o = array<f32, 8>(v.offsets_a.x, v.offsets_a.y, v.offsets_a.z, v.offsets_a.w,
+                          v.offsets_b.x, v.offsets_b.y, v.offsets_b.z, v.offsets_b.w);
+    var c = array<vec4f, 8>(
+        unpack4x8unorm(v.stops_a.x), unpack4x8unorm(v.stops_a.y),
+        unpack4x8unorm(v.stops_a.z), unpack4x8unorm(v.stops_a.w),
+        unpack4x8unorm(v.stops_b.x), unpack4x8unorm(v.stops_b.y),
+        unpack4x8unorm(v.stops_b.z), unpack4x8unorm(v.stops_b.w));
+    let t = dot(p, v.axis.xy) + v.axis.z;
+    let width = max(length(v.axis.xy), 0.000001);
+    let lo = t - 0.5 * width;
+    let hi = t + 0.5 * width;
+    var sum = premultiplied(c[0]) * max(min(hi, o[0]) - lo, 0.0);
+    for (var i = 0; i < 7; i++) {
+        let left = max(lo, o[i]);
+        let right = min(hi, o[i + 1]);
+        if (right > left) {
+            let m = (0.5 * (left + right) - o[i]) / (o[i + 1] - o[i]);
+            sum += premultiplied(mix(c[i], c[i + 1], m)) * (right - left);
+        }
+    }
+    sum += premultiplied(c[7]) * max(hi - max(lo, o[7]), 0.0);
+    sum /= width;
+    var rgb = sum.rgb / max(sum.a, 0.000001);
+    if (view.size.z > 0.5) { rgb = to_linear(rgb); }
+    return vec4f(rgb, sum.a);
+}
+
 @fragment fn fs(v: Vertex) -> @location(0) vec4f {
     let p = v.position.xy;
     // The quad is already cut to the clip's box; this rounds its corners.
@@ -105,7 +159,8 @@ fn blurred(d: f32, sigma: f32) -> f32 {
     let ellipse = v.params.z > 0.5;
     let da = sd(p, v.a_rect, v.a_radii, ellipse);
     var b = 0.0;
-    if (v.params.w > 0.5) { b = cover(sd(p, v.b_rect, v.b_radii, ellipse)); }
+    // An absent `b` is an empty box, which covers nothing.
+    b = cover(sd(p, v.b_rect, v.b_radii, ellipse));
     var alpha = 0.0;
     if (v.params.y < 0.5) {
         alpha = cover(da) * (1.0 - b);
@@ -114,5 +169,10 @@ fn blurred(d: f32, sigma: f32) -> f32 {
     } else {
         alpha = b * (1.0 - blurred(da, v.params.x));
     }
-    return vec4f(v.color.rgb, figma_alpha(v.color.rgb, v.color.a * alpha * clipped));
+    var color = v.color;
+    if (v.params.w > 0.5) {
+        let r = ramp(v, p);
+        color = vec4f(r.rgb, r.a * v.color.a);
+    }
+    return vec4f(color.rgb, figma_alpha(color.rgb, color.a * alpha * clipped));
 }

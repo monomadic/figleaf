@@ -4,7 +4,8 @@
 mod support;
 
 use figleaf::{
-    Canvas, Rect, Shadow, Shape, StrokeAlign, Text, hex, hexa, render::Renderer, text::NoText,
+    Canvas, LinearGradient, Rect, Shadow, Shape, StrokeAlign, Text, hex, hexa, render::Renderer,
+    text::NoText,
 };
 use support::{Gpu, Image};
 
@@ -187,6 +188,84 @@ fn black_darkens_an_srgb_target_as_it_does_in_figma() {
     let i = gpu.render(&mut renderer, &c, [100, 60], 1., [1.; 4], &mut NoText);
     let [r, g, b, _] = i.pixel(20, 20);
     assert!(r.abs_diff(0x34) <= 1 && g.abs_diff(0xC7) <= 1 && b.abs_diff(0x59) <= 1);
+}
+
+#[test]
+fn gradients_run_along_their_axis_and_stack_over_fills() {
+    let near = |got: [u8; 4], want: [u8; 4]| {
+        assert!(
+            got.iter().zip(want).all(|(g, w)| g.abs_diff(w) <= 2),
+            "{got:?}"
+        );
+    };
+    let mut c = Canvas::new();
+    // Red to blue across 100 pixels.
+    c.shape(
+        Shape::rect(Rect::new(0., 0., 100., 10.)).gradient(
+            LinearGradient::horizontal()
+                .stop(0., hex(0xFF0000))
+                .stop(1., hex(0x0000FF)),
+        ),
+    );
+    // Opaque white to transparent black: colour and alpha blend separately,
+    // so half way is grey at 50% (64 once laid over nothing), not white at 50%.
+    c.shape(
+        Shape::rect(Rect::new(0., 10., 100., 10.)).gradient(
+            LinearGradient::between([0., 0.], [1., 0.])
+                .stop(0., hex(0xFFFFFF))
+                .stop(1., hexa(0x00000000)),
+        ),
+    );
+    // A hard stop on a pixel edge is crisp; inside a pixel it is shared.
+    let hard = LinearGradient::horizontal()
+        .stop(0.5, hex(0xFF0000))
+        .stop(0.5, hex(0x0000FF));
+    c.shape(Shape::rect(Rect::new(10., 20., 20., 10.)).gradient(hard.clone()));
+    c.shape(Shape::rect(Rect::new(50., 20., 21., 10.)).gradient(hard));
+    // Top to bottom, held at the end stops' colours outside their offsets.
+    c.shape(
+        Shape::rect(Rect::new(0., 30., 10., 20.)).gradient(
+            LinearGradient::vertical()
+                .stop(0.25, hex(0xFF0000))
+                .stop(0.75, hex(0x0000FF)),
+        ),
+    );
+    // A gradient at 50% over a solid fill of the same shape.
+    c.shape(
+        Shape::rect(Rect::new(20., 30., 10., 10.))
+            .fill(hex(0xFF0000))
+            .gradient(
+                LinearGradient::vertical()
+                    .stop(0., hex(0x0000FF))
+                    .opacity(0.5),
+            ),
+    );
+    let i = draw(&c);
+    near(i.pixel(0, 5), [254, 0, 1, 255]);
+    near(i.pixel(49, 5), [129, 0, 126, 255]);
+    near(i.pixel(99, 5), [1, 0, 254, 255]);
+    near(i.pixel(49, 15), [64, 64, 64, 129]);
+    assert_eq!((i.pixel(19, 25), i.pixel(20, 25)), (RED, BLUE));
+    assert_eq!((i.pixel(59, 25), i.pixel(61, 25)), (RED, BLUE));
+    near(i.pixel(60, 25), [128, 0, 128, 255]);
+    assert_eq!((i.pixel(5, 31), i.pixel(5, 48)), (RED, BLUE));
+    near(i.pixel(5, 40), [115, 0, 140, 255]);
+    near(i.pixel(25, 35), [128, 0, 128, 255]);
+
+    // On an sRGB target the stops still blend as encoded values.
+    let mut gpu = Gpu::new();
+    gpu.format = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.shape(
+        Shape::rect(Rect::new(0., 0., 100., 10.)).gradient(
+            LinearGradient::horizontal()
+                .stop(0., hex(0x000000))
+                .stop(1., hex(0xFFFFFF)),
+        ),
+    );
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [1.; 4], &mut NoText);
+    near(i.pixel(49, 5), [126, 126, 126, 255]);
 }
 
 #[test]

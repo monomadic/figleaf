@@ -60,14 +60,114 @@ impl Shadow {
     }
 }
 
-/// A rectangle or ellipse with a fill, a stroke and effects.
+/// The most stops a gradient can have.
+pub const MAX_STOPS: usize = 8;
+
+/// A gradient stop: Figma's position (0 to 1) and colour.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Stop {
+    pub offset: f32,
+    pub color: Color,
+}
+
+/// Where a linear gradient runs, relative to the shape's box.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Axis {
+    /// From `start` to `end`, each a fraction of the box (`[0, 0]` is its top
+    /// left, `[1, 1]` its bottom right), with bands square to that line.
+    Between { start: [f32; 2], end: [f32; 2] },
+    /// The first row `[a, b, tx]` of Figma's `gradientTransform`: the
+    /// position along the gradient is `a * u + b * v + tx`, where `u` and `v`
+    /// are fractions of the box. This is exact for any gradient Figma holds.
+    Transform([f32; 3]),
+}
+
+/// Figma's linear gradient paint. Stops blend the way Figma blends them:
+/// colour and alpha separately, not premultiplied.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LinearGradient {
+    pub axis: Axis,
+    /// One to [`MAX_STOPS`] stops. Two stops at one offset make a hard edge.
+    pub stops: Vec<Stop>,
+    /// The paint's own opacity, over the stops' alpha.
+    pub opacity: f32,
+}
+
+impl LinearGradient {
+    pub fn new(axis: Axis) -> Self {
+        Self {
+            axis,
+            stops: Vec::new(),
+            opacity: 1.,
+        }
+    }
+    pub fn between(start: [f32; 2], end: [f32; 2]) -> Self {
+        Self::new(Axis::Between { start, end })
+    }
+    /// Left to right across the box.
+    pub fn horizontal() -> Self {
+        Self::new(Axis::Transform([1., 0., 0.]))
+    }
+    /// Top to bottom down the box.
+    pub fn vertical() -> Self {
+        Self::new(Axis::Transform([0., 1., 0.]))
+    }
+    /// From the first row of Figma's `gradientTransform`.
+    pub fn transform(row: [f32; 3]) -> Self {
+        Self::new(Axis::Transform(row))
+    }
+    pub fn stop(mut self, offset: f32, color: Color) -> Self {
+        self.stops.push(Stop { offset, color });
+        self
+    }
+    pub fn opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    /// The gradient placed on a box: `t = x * axis[0] + y * axis[1] + axis[2]`.
+    fn ramp(&self, rect: Rect) -> Option<Ramp> {
+        let axis = match self.axis {
+            Axis::Transform([a, b, tx]) => {
+                let (ax, ay) = (a / rect.w, b / rect.h);
+                [ax, ay, tx - ax * rect.x - ay * rect.y]
+            }
+            Axis::Between { start, end } => {
+                let d = [(end[0] - start[0]) * rect.w, (end[1] - start[1]) * rect.h];
+                let len2 = d[0] * d[0] + d[1] * d[1];
+                let (ax, ay) = (d[0] / len2, d[1] / len2);
+                let from = [rect.x + start[0] * rect.w, rect.y + start[1] * rect.h];
+                [ax, ay, -ax * from[0] - ay * from[1]]
+            }
+        };
+        if !axis.iter().all(|v| v.is_finite()) {
+            return None;
+        }
+        let mut sorted = self.stops.clone();
+        sorted.sort_by(|a, b| a.offset.total_cmp(&b.offset));
+        let last = *sorted.last()?;
+        let mut stops = [last; MAX_STOPS];
+        stops[..sorted.len()].copy_from_slice(&sorted);
+        Some(Ramp { axis, stops })
+    }
+}
+
+/// One of a shape's fills.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Paint {
+    Solid(Color),
+    Linear(LinearGradient),
+}
+
+/// A rectangle or ellipse with fills, a stroke and effects.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Shape {
     pub rect: Rect,
     pub ellipse: bool,
     /// Top-left, top-right, bottom-right, bottom-left. Ignored by ellipses.
     pub radii: [f32; 4],
-    pub fill: Option<Color>,
+    /// Painted in order, as Figma lists them bottom to top.
+    pub fills: Vec<Paint>,
     pub stroke: Option<Stroke>,
     /// Painted in order: the first is furthest back.
     pub shadows: Vec<Shadow>,
@@ -84,7 +184,7 @@ impl Shape {
             rect,
             ellipse: false,
             radii: [0.; 4],
-            fill: None,
+            fills: Vec::new(),
             stroke: None,
             shadows: Vec::new(),
             opacity: 1.,
@@ -105,8 +205,14 @@ impl Shape {
         self.radii = radii;
         self
     }
+    /// Adds a solid fill over any the shape already has.
     pub fn fill(mut self, color: Color) -> Self {
-        self.fill = Some(color);
+        self.fills.push(Paint::Solid(color));
+        self
+    }
+    /// Adds a linear gradient fill over any the shape already has.
+    pub fn gradient(mut self, gradient: LinearGradient) -> Self {
+        self.fills.push(Paint::Linear(gradient));
         self
     }
     pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {
@@ -157,7 +263,23 @@ impl Shape {
         let mut numbers = self.radii.to_vec();
         numbers.extend(self.clip.map_or([0.; 4], |c| c.radii));
         numbers.push(self.opacity);
-        numbers.extend(self.fill.unwrap_or_default());
+        let mut bad_gradient = false;
+        for fill in &self.fills {
+            match fill {
+                Paint::Solid(color) => numbers.extend(color),
+                Paint::Linear(g) => {
+                    numbers.push(g.opacity);
+                    for s in &g.stops {
+                        numbers.push(s.offset);
+                        numbers.extend(s.color);
+                    }
+                    let visible = self.rect.w > 0. && self.rect.h > 0.;
+                    bad_gradient |= g.stops.is_empty()
+                        || g.stops.len() > MAX_STOPS
+                        || (visible && g.ramp(self.rect).is_none());
+                }
+            }
+        }
         if let Some(s) = self.stroke {
             numbers.push(s.width);
             numbers.extend(s.color);
@@ -176,6 +298,8 @@ impl Shape {
             || self.shadows.iter().any(|s| s.blur < 0.)
         {
             Some("negative radius, stroke width or blur")
+        } else if bad_gradient {
+            Some("gradient needs 1 to 8 stops and a start apart from its end")
         } else {
             None
         }
@@ -217,6 +341,7 @@ impl Shape {
                 color[2],
                 color[3] * self.opacity.clamp(0., 1.),
             ],
+            ramp: None,
             sigma,
             clip,
         };
@@ -226,13 +351,26 @@ impl Shape {
             let knockout = (!s.behind).then_some(silhouette);
             out.push(layer(Mode::Drop, a, knockout, s.color, s.blur / 2.));
         }
-        if let Some(color) = self.fill {
-            // Two antialiased edges that meet let the background through.
-            // Under an opaque stroke the fill can run on to the middle of
-            // the stroke's outer part, where it is hidden, and close the seam.
-            let opaque = self.stroke.is_some_and(|s| s.color[3] >= 1.);
-            let under = if opaque { outside / 2. } else { 0. };
-            out.push(layer(Mode::Band, self.outline(under), None, color, 0.));
+        // Two antialiased edges that meet let the background through.
+        // Under an opaque stroke the fill can run on to the middle of
+        // the stroke's outer part, where it is hidden, and close the seam.
+        let opaque = self.stroke.is_some_and(|s| s.color[3] >= 1.);
+        let under = self.outline(if opaque { outside / 2. } else { 0. });
+        for fill in &self.fills {
+            match fill {
+                Paint::Solid(color) => out.push(layer(Mode::Band, under, None, *color, 0.)),
+                Paint::Linear(g) => {
+                    // The gradient is placed on the shape's own box, whatever
+                    // the stroke adds.
+                    if let Some(ramp) = g.ramp(self.rect) {
+                        let tint = [1., 1., 1., g.opacity.clamp(0., 1.)];
+                        out.push(Layer {
+                            ramp: Some(ramp),
+                            ..layer(Mode::Band, under, None, tint, 0.)
+                        });
+                    }
+                }
+            }
         }
         if let Some(s) = self.stroke.filter(|s| s.width > 0.) {
             let hole = self.outline(-inside);
@@ -275,6 +413,16 @@ pub enum Mode {
     Inner,
 }
 
+/// A linear gradient placed in logical units: the position along it at
+/// `[x, y]` is `x * axis[0] + y * axis[1] + axis[2]`, held to the first stop's
+/// offset below and the last one's above.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ramp {
+    pub axis: [f32; 3],
+    /// In offset order. Unused places repeat the last stop.
+    pub stops: [Stop; MAX_STOPS],
+}
+
 /// One tinted coverage layer, in logical units.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Layer {
@@ -282,7 +430,10 @@ pub struct Layer {
     pub a: Outline,
     pub b: Option<Outline>,
     pub ellipse: bool,
+    /// The layer's colour. With a `ramp` the colour comes from the ramp and
+    /// only this alpha is used, as an opacity over it.
     pub color: Color,
+    pub ramp: Option<Ramp>,
     /// Gaussian standard deviation: half of Figma's blur value.
     pub sigma: f32,
     pub clip: Option<Outline>,
@@ -507,6 +658,53 @@ mod tests {
         assert_eq!(l[0].extent(), Rect::new(-14., -12., 48., 48.));
         assert_eq!(l[3].b.unwrap().rect, Rect::new(-1., -1., 22., 22.));
         assert_eq!(l[3].a.rect, Rect::new(-1., 0., 22., 22.));
+    }
+
+    #[test]
+    fn fills_stack_and_gradients_land_on_the_box() {
+        let r = Rect::new(10., 20., 40., 10.);
+        let s = Shape::rect(r)
+            .fill(hex(0xFF0000))
+            .gradient(
+                LinearGradient::horizontal()
+                    .stop(1., hex(0xFFFFFF))
+                    .stop(0., hex(0))
+                    .opacity(0.5),
+            )
+            .stroke(2., hex(0), StrokeAlign::Outside);
+        let l = layers(&s);
+        assert_eq!(l.len(), 3);
+        assert_eq!((l[0].ramp, l[0].color), (None, hex(0xFF0000)));
+        let ramp = l[1].ramp.unwrap();
+        // Position 0 at the box's left edge and 1 at its right, not the stroke's.
+        let t = |x: f32, y: f32| x * ramp.axis[0] + y * ramp.axis[1] + ramp.axis[2];
+        assert_eq!((t(10., 0.), t(50., 99.)), (0., 1.));
+        assert_eq!((l[1].color[3], l[1].a), (0.5, l[0].a));
+        // Stops come out sorted, and the spare places repeat the last one.
+        assert_eq!((ramp.stops[0].color, ramp.stops[1].offset), (hex(0), 1.));
+        assert_eq!(ramp.stops[7], ramp.stops[1]);
+
+        // Handles: top left to bottom right of a 40x10 box, square to the line.
+        let g = LinearGradient::between([0., 0.], [1., 1.]).stop(0., hex(0));
+        let ramp = layers(&Shape::rect(r).gradient(g))[0].ramp.unwrap();
+        let t = |x: f32, y: f32| x * ramp.axis[0] + y * ramp.axis[1] + ramp.axis[2];
+        assert!(t(10., 20.).abs() < 1e-5 && (t(50., 30.) - 1.).abs() < 1e-5);
+        // A point square to the line from its start is still at 0.
+        assert!(t(10. - 10., 20. + 40.).abs() < 1e-5);
+    }
+
+    #[test]
+    fn bad_gradients_are_problems() {
+        let r = Rect::new(0., 0., 10., 10.);
+        let none = Shape::rect(r).gradient(LinearGradient::vertical());
+        assert!(none.problem().is_some() && layers(&none).is_empty());
+        let mut many = LinearGradient::vertical();
+        for i in 0..9 {
+            many = many.stop(i as f32 / 8., hex(0));
+        }
+        assert!(Shape::rect(r).gradient(many).problem().is_some());
+        let flat = LinearGradient::between([0.5, 0.5], [0.5, 0.5]).stop(0., hex(0));
+        assert!(Shape::rect(r).gradient(flat).problem().is_some());
     }
 
     #[test]

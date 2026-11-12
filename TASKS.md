@@ -6,12 +6,14 @@ item unless the owner says otherwise.
 
 ## Where things stand (2026-11-12)
 
-Works: rectangles, rounded rectangles, ellipses, solid fills, strokes in all
-three alignments, drop and inner shadows, rectangular and rounded clips,
+Works: rectangles, rounded rectangles, ellipses, solid and linear-gradient
+fills (several per shape), strokes in all three alignments, drop and inner shadows, rectangular and rounded clips,
 single-line text with letter spacing and inner shadows through CoreText, the auto layout solver
 with a builder API, and a wgpu renderer that draws inside the host's pass.
 
-Checked beside Figma on three controls (task 1): rounded rectangles and pills,
+Checked beside Figma on three controls (task 1) and four timeline pieces
+(task 3): rounded rectangles and pills, per-corner radii, linear gradients
+with two, three and eight stops, stacked fills, paint opacity,
 inside and outside strokes (including 1.5 and 0.5 wide and translucent), an
 inner shadow on text, a drop shadow shown behind its shape and one
 hidden under it, a shadow cut by a rounded clipping frame, tracked text in two
@@ -23,7 +25,9 @@ Still assumptions, not yet seen beside Figma:
 
 - inner shadows on shapes, and that they paint over the stroke;
 - spread, and that it keeps square corners square;
-- centre strokes, ellipses that are not circles, per-corner radii, opacity.
+- centre strokes, ellipses that are not circles, shape opacity;
+- gradients at an angle (every one checked so far runs straight across or
+  straight down).
 
 Known differences from Figma:
 
@@ -113,9 +117,32 @@ More that it taught:
 Left to do: decide whether hosts depend on figleaf by path or by git, and
 whether a host should be able to rasterize figleaf text with its own glyphs.
 
-## 3. Gradients and multiple fills
+## 3. Gradients and multiple fills — linear done 2026-11-12
 
-Linear gradients first, with Figma's handle positions and stops.
+Linear gradients and stacked fills, checked on four pieces of Abner's timeline
+from the design system file, in [examples/abner_gradients.rs](examples/abner_gradients.rs):
+a [trim area](docs/abner-trim-area-compare.png) (14:147, largest difference
+2/255), a [trim grip](docs/abner-trim-grip-compare.png) (14:148, 4/255), and
+markers [4](docs/abner-marker-4-compare.png) and [5](docs/abner-marker-5-compare.png)
+(14:124, 14:128; within 1/255 on the flags, the largest differences are on the
+digits' edges).
+
+What it taught:
+
+- Figma blends stops with colour and alpha apart, not premultiplied: white at
+  9% fading to grey at 0% turns grey on the way.
+- Real designs use hard stops (two stops at one offset) to draw bars, eight
+  stops at a time, and Figma antialiases a hard stop that falls inside a
+  pixel. The shader averages the ramp over each pixel's width.
+- The first row of the Plugin API's `gradientTransform` is all a linear
+  gradient needs, so `LinearGradient::transform` takes it as it is.
+- Figma dithers gradients by about 1/255; we do not.
+- Per-corner radii match (the markers' tabs).
+
+Not done: radial, angular and diamond gradients, gradients on strokes and
+text, more than eight stops (reported as a problem, not dropped), and blend
+modes on a fill. On an sRGB surface a translucent gradient blends in linear
+light like any other translucent colour. Abner does not use these fills yet.
 
 ## 4. Layout wrapping
 

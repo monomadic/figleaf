@@ -60,6 +60,8 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | Rectangle, corner radius, per-corner radii | `Shape::rect(..).radius(..)` / `.radii([tl, tr, br, bl])` |
 | Ellipse | `Shape::ellipse(..)` |
 | Fill (solid) | `.fill(hex(0xRRGGBB))`, `hexa(0xRRGGBBAA)` |
+| Fill (linear gradient), paint opacity | `.gradient(LinearGradient::transform([a, b, tx]).stop(0., color).stop(1., color).opacity(0.5))` |
+| Several fills | call `.fill(..)` / `.gradient(..)` once per fill, bottom first |
 | Stroke, inside / center / outside | `.stroke(width, color, StrokeAlign::..)` |
 | Drop shadow X, Y, blur, spread | `.shadow(Shadow::drop(color, [x, y], blur).spread(s))` |
 | "Show behind transparent areas" | `.show_behind()` |
@@ -123,7 +125,8 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 ## Not supported yet
 
-Gradients, images, vectors, multiple fills, blurs, blend modes, clipped text
+Radial, angular and diamond gradients, gradients on strokes and text, more
+than eight gradient stops, images, vectors, blurs, blend modes, clipped text
 with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
 wrapping and grid, and for text: wrapping, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.

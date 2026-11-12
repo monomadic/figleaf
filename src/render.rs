@@ -19,7 +19,7 @@ use crate::{
 };
 use std::{collections::HashMap, ops::Range};
 
-const SHAPE_STRIDE: usize = 144;
+const SHAPE_STRIDE: usize = 224;
 const TEXT_STRIDE: usize = 48;
 
 /// What a `prepare` call did. An unchanged canvas uploads nothing and reports
@@ -210,7 +210,7 @@ impl Renderer {
             include_str!("render/shapes.wgsl"),
             format,
             SHAPE_STRIDE,
-            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4],
+            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4,9=>Float32x4,10=>Float32x4,11=>Float32x4,12=>Uint32x4,13=>Uint32x4],
         );
         let text_pipeline = pipeline(
             device,
@@ -343,7 +343,12 @@ impl Renderer {
                             Mode::Drop => 1.,
                             Mode::Inner => 2.,
                         };
-                        let color = self.color(l.color);
+                        // A ramp keeps its stops as Figma has them; the
+                        // shader blends them and then converts.
+                        let color = match l.ramp {
+                            Some(_) => l.color,
+                            None => self.color(l.color),
+                        };
                         self.shapes.push(&a_rect);
                         self.shapes.push(&a_radii);
                         self.shapes.push(&b_rect);
@@ -353,11 +358,23 @@ impl Renderer {
                             l.sigma * scale,
                             mode,
                             f32::from(u8::from(l.ellipse)),
-                            f32::from(u8::from(l.b.is_some())),
+                            f32::from(u8::from(l.ramp.is_some())),
                         ]);
                         self.shapes.push(&clip_rect);
                         self.shapes.push(&edges(quad, 1.));
                         self.shapes.push(&clip_radii);
+                        match l.ramp {
+                            Some(ramp) => {
+                                let [x, y, c] = ramp.axis;
+                                self.shapes.push(&[x / scale, y / scale, c, 0.]);
+                                self.shapes.push(&ramp.stops.map(|s| s.offset));
+                                for stop in ramp.stops {
+                                    let bytes = stop.color.map(|v| (v * 255.).round() as u8);
+                                    self.shapes.bytes.extend_from_slice(&bytes);
+                                }
+                            }
+                            None => self.shapes.bytes.extend_from_slice(&[0; 80]),
+                        }
                     }
                     let end = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
                     if end > first {
