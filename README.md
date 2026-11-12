@@ -37,6 +37,11 @@ Switchblade's tag pill, all twenty variants
 
 ![Figma beside figleaf: tag pills](docs/switchblade-tags-compare.png)
 
+Abner's button bar ([examples/abner_button_bar.rs](examples/abner_button_bar.rs)),
+Figma on the left:
+
+![Figma beside figleaf: button bar](docs/abner-button-bar-compare.png)
+
 Fills, strokes, clips and layout land on the same pixels; shadows are within
 4/255; curved edges are antialiased slightly differently; glyph edges differ
 because Figma does not rasterize text with CoreText. What has and has not

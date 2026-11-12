@@ -115,6 +115,26 @@ More that it taught:
 - A host can have several windows from other builds open. Capture by process,
   not by application name.
 
+Abner's button bar followed on 2026-11-12: the "Button Bar" component (node
+463:6046 of the Signal design system file) in
+[examples/abner_button_bar.rs](examples/abner_button_bar.rs), beside Figma's
+2x export ([docs/abner-button-bar-compare.png](docs/abner-button-bar-compare.png),
+mean difference 1.3/255, largest on glyph edges). In Abner the bar itself is
+drawn by figleaf on branch `figleaf-button-bar` (worktree
+`../abner-button-bar`, not merged), seen running in the crop editor
+([docs/abner-button-bar-in-app.png](docs/abner-button-bar-in-app.png)). The
+buttons in Figma's bar are placeholders, so Abner keeps its own.
+
+What it taught:
+
+- Figma strokes one side of a frame (the bar's bottom edge). figleaf strokes
+  all sides or none, so the edge is drawn as a 1 wide rectangle. Enough here;
+  a rounded corner on a stroked side would need more.
+- A stroke that takes room in the layout ("strokes included in layout") is
+  written as extra padding on that side.
+- The bar's fill is translucent. On Abner's sRGB surface it is written as the
+  opaque colour it makes on the panel behind it.
+
 Left to do: decide whether hosts depend on figleaf by path or by git, and
 whether a host should be able to rasterize figleaf text with its own glyphs.
 
