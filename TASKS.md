@@ -256,8 +256,20 @@ on both; app time under 0.1 ms on both). A temporary probe put figleaf's
 `prepare` at 6 to 12 microseconds a frame for ten shapes, 44 at worst, and
 zero bytes uploaded on every frame where the chips did not change.
 
-Left there: shapes in its blurred backdrop pass, the add well seen running (it
-shows only with ⌘ held), and a reference timing run (AC power, window in
+Chip widths were wrong until 2026-11-12: Switchblade kept room for the add
+well in every count chip, from a hidden layer the Figma component used to
+carry. On branch `tag-pill-widths` (worktree `../switchblade-pills`, not
+merged) a chip at rest is the Count form and only takes the Addable form,
+20 wider, while ⌘ is held
+([docs/switchblade-addable-in-app.png](docs/switchblade-addable-in-app.png)).
+Switchblade estimates label widths instead of measuring them, so its chips
+match Figma's widths to about a pixel or two, not exactly.
+
+The component's "Person / Count" variant now holds a bare add icon and is 92
+wide in Figma; the example still draws it without one, 76 wide, until the
+owner says which is meant.
+
+Left there: shapes in its blurred backdrop pass and a reference timing run (AC power, window in
 front, a real library), which was not done before the merge.
 
 Not checked beside Figma: the labels and counts of the review frame (other
