@@ -364,6 +364,26 @@ pub fn wrap(
     Ok(lines)
 }
 
+/// Where a caret can stand in one line of `text`: the distance from the start
+/// of the line to before each character, and then to the end, so there is one
+/// more offset than there are characters. A host's text field draws its caret
+/// at `offsets[n]` and a selection between two of them.
+///
+/// Each offset is the measured width of the text before it, so kerning and
+/// letter spacing are as drawn.
+pub fn caret_offsets(
+    backend: &mut dyn Backend,
+    text: &str,
+    style: Style,
+) -> Result<Vec<f32>, Error> {
+    let mut offsets = vec![0.];
+    for (i, c) in text.char_indices() {
+        let end = i + c.len_utf8();
+        offsets.push(backend.measure(&text[..end], style)?.advance as f32);
+    }
+    Ok(offsets)
+}
+
 /// A backend for hosts that draw no text: every request fails, so text items
 /// show up in the renderer's problems instead of vanishing quietly.
 pub struct NoText;
@@ -419,6 +439,22 @@ mod tests {
     }
 
     #[test]
+    fn carets_stand_before_each_character_and_at_the_end() {
+        let s = Style {
+            font: 0,
+            size: 12.,
+            line_height: 16.,
+            letter_spacing: 0.,
+        };
+        assert_eq!(caret_offsets(&mut Mono, "", s).unwrap(), [0.]);
+        assert_eq!(
+            caret_offsets(&mut Mono, "a é", s).unwrap(),
+            [0., 10., 20., 30.]
+        );
+        assert!(caret_offsets(&mut NoText, "a", s).is_err());
+    }
+
+    #[test]
     fn rejects_unimplemented_text_before_raster() {
         let s = Style {
             font: 0,
@@ -464,6 +500,11 @@ mod backend_tests {
             b.raster("source3", tracked, 100., 2.).unwrap().alpha,
             a.alpha
         );
+        // A caret after a space stands past the space.
+        let carets = caret_offsets(b, "so 3", s).unwrap();
+        assert_eq!(carets.len(), 5);
+        assert!(carets.windows(2).all(|w| w[1] > w[0]), "{carets:?}");
+        assert!((carets[4] - 24.).abs() < 0.01, "{carets:?}");
     }
     const FONT: &[u8] = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
     fn font(axes: &[Axis]) -> Option<FontSource<'_>> {

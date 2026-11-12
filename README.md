@@ -32,6 +32,11 @@ enlarged 3x:
 
 ![Figma beside figleaf: segmented control](docs/full-range-compare.png)
 
+Switchblade's tag pill, all twenty variants
+([examples/switchblade_tags.rs](examples/switchblade_tags.rs)), enlarged 2x:
+
+![Figma beside figleaf: tag pills](docs/switchblade-tags-compare.png)
+
 Fills, strokes, clips and layout land on the same pixels; shadows are within
 4/255; curved edges are antialiased slightly differently; glyph edges differ
 because Figma does not rasterize text with CoreText. What has and has not
@@ -66,11 +71,17 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | Drop shadow X, Y, blur, spread | `.shadow(Shadow::drop(color, [x, y], blur).spread(s))` |
 | "Show behind transparent areas" | `.show_behind()` |
 | Inner shadow | `.shadow(Shadow::inner(color, [x, y], blur))` |
+| A vector's straight stroke with round caps (icons) | `Shape::line(from, to, width).fill(color)` |
 | Clip content on a frame | `.clip(rect)` / `.clip_rounded(rect, radius)` |
 | Text, size / line height, alignment | `Text::new(..).size(13., 16.).align(..)` |
 | Letter spacing (pixels) | `.letter_spacing(0.7)` |
 | Fixed-width text box, line breaks | `.wrap()`; `text::wrap(..)` gives the lines, for the height |
 | Inner shadow on text | `.inner_shadow(color, [x, y], blur)` |
+| Drop shadow on text | `.drop_shadow(color, [x, y], blur)` |
+
+figleaf draws a text field's look but does not edit text. For the host's
+caret and selection, `text::caret_offsets(backend, string, style)` gives the
+distance from the start of the line to each place a caret can stand.
 
 Colours are straight-alpha encoded sRGB, the numbers Figma shows.
 

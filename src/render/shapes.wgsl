@@ -11,7 +11,8 @@ struct Vertex {
     @location(2) @interpolate(flat) b_rect: vec4f,
     @location(3) @interpolate(flat) b_radii: vec4f,
     @location(4) @interpolate(flat) color: vec4f,
-    // sigma, mode (0 band, 1 drop, 2 inner), ellipse, has a ramp
+    // sigma, mode (0 band, 1 drop, 2 inner), kind (0 box, 1 ellipse, 2 line),
+    // has a ramp
     @location(5) @interpolate(flat) params: vec4f,
     @location(6) @interpolate(flat) clip: vec4f,
     @location(7) @interpolate(flat) clip_radii: vec4f,
@@ -81,9 +82,18 @@ fn sd_ellipse(p: vec2f, r: vec4f) -> f32 {
     return k0 * (k0 - 1.0) / k1;
 }
 
-fn sd(p: vec2f, r: vec4f, radii: vec4f, ellipse: bool) -> f32 {
+// Distance to a round-ended line from r.xy to r.zw, `half` its width.
+fn sd_line(p: vec2f, r: vec4f, half: f32) -> f32 {
+    let pa = p - r.xy;
+    let ba = r.zw - r.xy;
+    let h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.000001), 0.0, 1.0);
+    return length(pa - ba * h) - half;
+}
+
+fn sd(p: vec2f, r: vec4f, radii: vec4f, kind: f32) -> f32 {
+    if (kind > 1.5) { return sd_line(p, r, radii.x); }
     if (any(r.zw <= r.xy)) { return 1000000.0; }
-    if (ellipse) { return sd_ellipse(p, r); }
+    if (kind > 0.5) { return sd_ellipse(p, r); }
     return sd_round(p, r, radii);
 }
 
@@ -156,11 +166,11 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     let p = v.position.xy;
     // The quad is already cut to the clip's box; this rounds its corners.
     let clipped = cover(sd_round(p, v.clip, v.clip_radii));
-    let ellipse = v.params.z > 0.5;
-    let da = sd(p, v.a_rect, v.a_radii, ellipse);
+    let kind = v.params.z;
+    let da = sd(p, v.a_rect, v.a_radii, kind);
     var b = 0.0;
-    // An absent `b` is an empty box, which covers nothing.
-    b = cover(sd(p, v.b_rect, v.b_radii, ellipse));
+    // An absent `b` is an empty box or a line of no width: it covers nothing.
+    b = cover(sd(p, v.b_rect, v.b_radii, kind));
     var alpha = 0.0;
     if (v.params.y < 0.5) {
         alpha = cover(da) * (1.0 - b);

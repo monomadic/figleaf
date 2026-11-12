@@ -380,3 +380,71 @@ fn wrapped_text_fills_its_lines_and_is_cached() {
     gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut backend);
     assert_eq!(renderer.problems().len(), 1);
 }
+
+#[test]
+fn a_line_has_round_ends_and_runs_either_way() {
+    let mut c = Canvas::new();
+    // Level, 10 thick: covers y 15..25 between the ends, and rounds past them.
+    c.shape(Shape::line([20., 20.], [60., 20.], 10.).fill(hex(0xFF0000)));
+    // A diagonal that runs up and to the left.
+    c.shape(Shape::line([90., 50.], [70., 30.], 4.).fill(hex(0x0000FF)));
+    let i = draw(&c);
+    assert_eq!(i.pixel(40, 15), RED);
+    assert_eq!(i.pixel(40, 24), RED);
+    assert_eq!(i.pixel(40, 14), CLEAR);
+    assert_eq!(i.pixel(40, 25), CLEAR);
+    // The round end reaches 5 past the end point on the axis, not at the corner.
+    assert_eq!(i.pixel(16, 20), RED);
+    assert_eq!(i.pixel(63, 19), RED);
+    assert_eq!(i.pixel(16, 15), CLEAR);
+    assert_eq!(i.pixel(65, 20), CLEAR);
+    assert_eq!(i.pixel(80, 40), BLUE);
+    assert_eq!(i.pixel(75, 35), BLUE);
+    assert_eq!(i.pixel(84, 36), CLEAR);
+    assert_eq!(i.pixel(66, 26), CLEAR);
+}
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn a_text_drop_shadow_falls_below_the_glyphs() {
+    use figleaf::text::{FontSource, coretext::CoreText};
+    let font = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: font,
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    let text = Text::new("HHHH", Rect::new(20., 10., 60., 20.))
+        .size(14., 20.)
+        .color(hex(0xFF0000));
+    let render = |renderer: &mut Renderer, backend: &mut CoreText, text: Text| {
+        let mut c = Canvas::new();
+        c.text(text);
+        let i = gpu.render(renderer, &c, [100, 60], 1., [0.; 4], backend);
+        assert!(renderer.problems().is_empty());
+        i
+    };
+    let plain = render(&mut renderer, &mut backend, text.clone());
+    let shadowed = render(
+        &mut renderer,
+        &mut backend,
+        text.drop_shadow(hex(0x0000FF), [0., 12.], 0.),
+    );
+    // Every glyph pixel is as it was; the same shape shows in blue 12 lower.
+    let mut below = 0;
+    for y in 0..48 {
+        for x in 0..100 {
+            let ink = plain.pixel(x, y);
+            if ink[3] == 255 {
+                assert_eq!(shadowed.pixel(x, y), ink);
+                if plain.pixel(x, y + 12)[3] == 0 {
+                    assert_eq!(shadowed.pixel(x, y + 12), BLUE);
+                    below += 1;
+                }
+            }
+        }
+    }
+    assert!(below > 4, "{below}");
+}

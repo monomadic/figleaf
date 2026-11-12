@@ -8,11 +8,11 @@ item unless the owner says otherwise.
 
 Works: rectangles, rounded rectangles, ellipses, solid and linear-gradient
 fills (several per shape), strokes in all three alignments, drop and inner shadows, rectangular and rounded clips,
-text with letter spacing, wrapping and inner shadows through CoreText, the auto layout solver
+round-capped lines, text with letter spacing, wrapping, inner and drop shadows through CoreText, the auto layout solver
 with wrapping and a builder API, and a wgpu renderer that draws inside the host's pass.
 
-Checked beside Figma on three controls (task 1) and four timeline pieces
-(task 3): rounded rectangles and pills, per-corner radii, linear gradients
+Checked beside Figma on three controls (task 1), four timeline pieces
+(task 3) and Switchblade's tag pills (task 6): rounded rectangles and pills, per-corner radii, linear gradients
 with two, three and eight stops, stacked fills, paint opacity,
 inside and outside strokes (including 1.5 and 0.5 wide and translucent), an
 inner shadow on text, a drop shadow shown behind its shape and one
@@ -23,7 +23,6 @@ design ([docs/switch.png](docs/switch.png)).
 
 Still assumptions, not yet seen beside Figma:
 
-- inner shadows on shapes, and that they paint over the stroke;
 - spread, and that it keeps square corners square;
 - centre strokes, ellipses that are not circles, shape opacity;
 - gradients at an angle (every one checked so far runs straight across or
@@ -36,6 +35,8 @@ Known differences from Figma:
 - shadow tails are a little stronger (up to 4/255);
 - a fill under a translucent outside stroke can show a faint seam on curves.
   Opaque strokes are handled.
+- text in a box at a half-pixel height (the tag's count, at y 6.5) sits one
+  physical pixel lower than Figma's.
 
 ## 1. One real control beside its Figma export — done 2026-11-12
 
@@ -191,6 +192,37 @@ What it taught:
 Still assumptions: a word wider than its box is cut where it stops fitting;
 breaks happen only at spaces, not after hyphens. Not done: paragraph spacing,
 truncation with an ellipsis, mixed styles in one text.
+
+For a host's own text field, `text::caret_offsets` gives where a caret can
+stand in a line (added 2026-11-12). Editing, focus and keys stay with the host.
+
+## 6. Switchblade's tag pill — done 2026-11-12
+
+The "Tag pill" component set (node 178:105 of the Switchblade Design System
+file): five tones in four forms, in
+[examples/switchblade_tags.rs](examples/switchblade_tags.rs), beside Figma's
+export of the [whole set](docs/switchblade-tags-compare.png) at 1x (mean
+difference 1.4/255) and two pills at 2x:
+[person, addable](docs/switchblade-tag-person-addable-compare.png) (2.9/255)
+and [heat 1, applied](docs/switchblade-tag-heat1-applied-compare.png)
+(2.7/255). Every pill solves to Figma's width; the largest differences are on
+glyph edges. The design is set in SF Pro, which the example reads from the
+system and does not bundle.
+
+What it taught:
+
+- Icons are vectors with a 1.5 centre stroke and round caps, so
+  `Shape::line` was added: one straight segment, drawn as a distance field
+  like everything else, with drop shadows. Curved paths are still not done.
+- The count carries a drop shadow in two tones, so text drop shadows were
+  added (the glyph mask, blurred on the CPU, drawn under the text).
+- An inner shadow on a shape paints over its outside stroke, and shows on a
+  frame whose fill is hidden, as assumed.
+- A minimum width on a hugging frame (the count disc, 18.67) solves as Figma
+  solves it.
+
+Not checked beside Figma: the labels and counts of the review frame (other
+strings and widths), hover and pressed states, which the file does not hold.
 
 ## Later, when a design needs it
 

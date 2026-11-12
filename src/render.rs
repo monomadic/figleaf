@@ -45,6 +45,8 @@ struct MaskKey {
     scale: u32,
     /// Inner shadow offset and blur; the colour is applied when drawing.
     shadow: Option<[u32; 3]>,
+    /// Drop shadow blur; the offset and colour are applied when drawing.
+    drop: Option<u32>,
 }
 
 /// A wrapped paragraph: its string, style and box width.
@@ -69,6 +71,9 @@ struct Mask {
     group: wgpu::BindGroup,
     /// Where the inner shadow falls on the glyphs, when the text has one.
     shadow: Option<wgpu::BindGroup>,
+    /// The blurred glyphs for a drop shadow: mask, its size, and how many
+    /// pixels it reaches beyond the text's own mask on every side.
+    drop: Option<(wgpu::BindGroup, [u32; 2], u32)>,
     size: [u32; 2],
     advance: f32,
     /// From the top of the line to the baseline, in logical units.
@@ -361,7 +366,7 @@ impl Renderer {
                             continue;
                         }
                         let (a_rect, a_radii) = outline(l.a);
-                        let (b_rect, b_radii) = l.b.map_or(([0.; 4], [0.; 4]), outline);
+                        let (b_rect, b_radii) = l.b.map_or(([0.; 4], [-1.; 4]), outline);
                         let mode = match l.mode {
                             Mode::Band => 0.,
                             Mode::Drop => 1.,
@@ -381,7 +386,11 @@ impl Renderer {
                         self.shapes.push(&[
                             l.sigma * scale,
                             mode,
-                            f32::from(u8::from(l.ellipse)),
+                            if l.line {
+                                2.
+                            } else {
+                                f32::from(u8::from(l.ellipse))
+                            },
                             f32::from(u8::from(l.ramp.is_some())),
                         ]);
                         self.shapes.push(&clip_rect);
@@ -412,9 +421,11 @@ impl Renderer {
                     let mut problem = None;
                     if t.rect.validate().is_err() || t.clip.is_some_and(|c| c.validate().is_err()) {
                         problem = Some("invalid rectangle");
-                    } else if t.inner_shadow.is_some_and(|(c, o, blur)| {
-                        !c.iter().chain(&o).all(|v| v.is_finite()) || !(0. ..=64.).contains(&blur)
-                    }) {
+                    } else if [t.inner_shadow, t.drop_shadow].iter().flatten().any(
+                        |(c, o, blur)| {
+                            !c.iter().chain(o).all(|v| v.is_finite()) || !(0. ..=64.).contains(blur)
+                        },
+                    ) {
                         problem = Some("invalid text shadow");
                     }
                     let lines = match problem {
@@ -453,6 +464,7 @@ impl Renderer {
                             shadow: t
                                 .inner_shadow
                                 .map(|(_, o, blur)| [o[0], o[1], blur].map(f32::to_bits)),
+                            drop: t.drop_shadow.map(|(.., blur)| blur.to_bits()),
                         };
                         if !self.masks.contains_key(&key) {
                             let mask = match raster(text, line, t.style(), scale) {
@@ -468,9 +480,16 @@ impl Renderer {
                                         report.uploaded_bytes += alpha.len() as u64;
                                         self.upload_mask(device, queue, size, &alpha)
                                     });
+                                    let drop = t.drop_shadow.map(|(.., blur)| {
+                                        let (alpha, size, pad) =
+                                            drop_shadow(&m.alpha, size, blur / 2. * scale);
+                                        report.uploaded_bytes += alpha.len() as u64;
+                                        (self.upload_mask(device, queue, size, &alpha), size, pad)
+                                    });
                                     Ok(Mask {
                                         id: self.next_mask,
                                         shadow,
+                                        drop,
                                         group: self.upload_mask(device, queue, size, &m.alpha),
                                         size: [m.width, m.height],
                                         advance: m.metrics.advance as f32,
@@ -502,8 +521,30 @@ impl Renderer {
                             origin[0] + mask.size[0] as f32,
                             origin[1] + mask.size[1] as f32,
                         ];
-                        let (id, group, shadow) =
-                            (mask.id, mask.group.clone(), mask.shadow.clone());
+                        let (id, group, shadow, drop) = (
+                            mask.id,
+                            mask.group.clone(),
+                            mask.shadow.clone(),
+                            mask.drop.clone(),
+                        );
+                        // The drop shadow is its own mask, drawn first.
+                        if let (Some((group, size, pad)), Some((color, offset, _))) =
+                            (drop, t.drop_shadow)
+                        {
+                            let at = [0, 1]
+                                .map(|i| origin[i] + (offset[i] * scale).round() - pad as f32);
+                            let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
+                            let color = self.color(color);
+                            self.texts.push(&[
+                                at[0],
+                                at[1],
+                                at[0] + size[0] as f32,
+                                at[1] + size[1] as f32,
+                            ]);
+                            self.texts.push(&edges(clip_px(t.clip), 1.));
+                            self.texts.push(&color);
+                            self.draws[index].push(Draw::Text(instance, group, id));
+                        }
                         let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
                         let color = self.color(t.color);
                         self.texts.push(&rect);
@@ -692,6 +733,60 @@ fn raster(
     Ok(mask)
 }
 
+/// Gaussian blur of a `w` by `h` field; beyond it counts as `edge`.
+fn blur(src: &[f32], w: usize, h: usize, sigma: f32, edge: f32) -> Vec<f32> {
+    let radius = (3. * sigma).ceil() as isize;
+    let kernel: Vec<f32> = (-radius..=radius)
+        .map(|i| (-((i * i) as f32) / (2. * sigma * sigma)).exp())
+        .collect();
+    let total: f32 = kernel.iter().sum();
+    let pass = |src: &[f32], horizontal: bool| -> Vec<f32> {
+        let mut out = vec![0.; src.len()];
+        for y in 0..h as isize {
+            for x in 0..w as isize {
+                let mut sum = 0.;
+                for (k, weight) in kernel.iter().enumerate() {
+                    let d = k as isize - radius;
+                    let (sx, sy) = if horizontal { (x + d, y) } else { (x, y + d) };
+                    let inside = sx >= 0 && sy >= 0 && sx < w as isize && sy < h as isize;
+                    let v = if inside {
+                        src[sy as usize * w + sx as usize]
+                    } else {
+                        edge
+                    };
+                    sum += weight * v;
+                }
+                out[y as usize * w + x as usize] = sum / total;
+            }
+        }
+        out
+    };
+    pass(&pass(src, true), false)
+}
+
+/// The glyphs blurred for a drop shadow, in a mask `pad` pixels larger on
+/// every side so the blur has room. Returns the mask, its size and `pad`.
+fn drop_shadow(alpha: &[u8], [w, h]: [u32; 2], sigma: f32) -> (Vec<u8>, [u32; 2], u32) {
+    let (w, h) = (w as usize, h as usize);
+    let pad = if sigma >= 0.25 {
+        (3. * sigma).ceil() as usize
+    } else {
+        0
+    };
+    let (pw, ph) = (w + 2 * pad, h + 2 * pad);
+    let mut field = vec![0f32; pw * ph];
+    for y in 0..h {
+        for x in 0..w {
+            field[(y + pad) * pw + x + pad] = f32::from(alpha[y * w + x]) / 255.;
+        }
+    }
+    if sigma >= 0.25 {
+        field = blur(&field, pw, ph, sigma, 0.);
+    }
+    let out = field.iter().map(|v| (v * 255.).round() as u8).collect();
+    (out, [pw as u32, ph as u32], pad as u32)
+}
+
 /// Coverage of an inner shadow on glyphs: inside the glyph, wherever the
 /// blurred, shifted outside of the glyph reaches. `sigma` and `offset` are in
 /// mask pixels; beyond the mask counts as outside.
@@ -700,34 +795,7 @@ fn inner_shadow(alpha: &[u8], [w, h]: [u32; 2], offset: [f32; 2], sigma: f32) ->
     // How much of each pixel is outside the glyph.
     let mut outside: Vec<f32> = alpha.iter().map(|a| 1. - f32::from(*a) / 255.).collect();
     if sigma >= 0.25 {
-        let radius = (3. * sigma).ceil() as isize;
-        let kernel: Vec<f32> = (-radius..=radius)
-            .map(|i| (-((i * i) as f32) / (2. * sigma * sigma)).exp())
-            .collect();
-        let total: f32 = kernel.iter().sum();
-        let pass = |src: &[f32], horizontal: bool| -> Vec<f32> {
-            let mut out = vec![0.; src.len()];
-            for y in 0..h as isize {
-                for x in 0..w as isize {
-                    let mut sum = 0.;
-                    for (k, weight) in kernel.iter().enumerate() {
-                        let d = k as isize - radius;
-                        let (sx, sy) = if horizontal { (x + d, y) } else { (x, y + d) };
-                        let inside = sx >= 0 && sy >= 0 && sx < w as isize && sy < h as isize;
-                        let v = if inside {
-                            src[sy as usize * w + sx as usize]
-                        } else {
-                            1.
-                        };
-                        sum += weight * v;
-                    }
-                    out[y as usize * w + x as usize] = sum / total;
-                }
-            }
-            out
-        };
-        let rows = pass(&outside, true);
-        outside = pass(&rows, false);
+        outside = blur(&outside, w, h, sigma, 1.);
     }
     let sample = |x: isize, y: isize| {
         if x >= 0 && y >= 0 && x < w as isize && y < h as isize {
@@ -774,5 +842,22 @@ mod tests {
         let soft = inner_shadow(&alpha, [10, 10], [0., 2.], 1.);
         let at = |x: usize, y: usize| soft[y * 10 + x];
         assert!(at(4, 2) > at(4, 4) && at(4, 4) > at(4, 6) && at(4, 1) == 0);
+    }
+
+    #[test]
+    fn a_drop_shadow_mask_grows_by_its_blur_and_keeps_the_ink() {
+        let alpha = vec![255u8; 16];
+        let (sharp, size, pad) = drop_shadow(&alpha, [4, 4], 0.);
+        assert_eq!((sharp, size, pad), (alpha.clone(), [4, 4], 0));
+        let (soft, size, pad) = drop_shadow(&alpha, [4, 4], 1.);
+        assert_eq!((size, pad), ([10, 10], 3));
+        let at = |x: usize, y: usize| soft[y * 10 + x];
+        assert!(at(5, 5) > at(3, 5) && at(3, 5) > at(1, 5) && at(1, 5) > 0);
+        // Blurring spreads the ink without losing much of it.
+        let total: u32 = soft.iter().map(|v| u32::from(*v)).sum();
+        assert!(
+            (total as f32 - 16. * 255.).abs() < 16. * 255. * 0.05,
+            "{total}"
+        );
     }
 }

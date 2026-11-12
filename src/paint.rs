@@ -159,11 +159,16 @@ pub enum Paint {
     Linear(LinearGradient),
 }
 
-/// A rectangle or ellipse with fills, a stroke and effects.
+/// A rectangle or ellipse with fills, a stroke and effects, or a
+/// [line](Self::line).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Shape {
+    /// The shape's box. For a line: from its start (`x`, `y`) to its end
+    /// (`x + w`, `y + h`), so `w` and `h` may be negative.
     pub rect: Rect,
     pub ellipse: bool,
+    /// The width of a straight line with round ends, when the shape is one.
+    pub line: Option<f32>,
     /// Top-left, top-right, bottom-right, bottom-left. Ignored by ellipses.
     pub radii: [f32; 4],
     /// Painted in order, as Figma lists them bottom to top.
@@ -183,6 +188,7 @@ impl Shape {
         Self {
             rect,
             ellipse: false,
+            line: None,
             radii: [0.; 4],
             fills: Vec::new(),
             stroke: None,
@@ -196,6 +202,21 @@ impl Shape {
         Self {
             ellipse: true,
             ..Self::rect(rect)
+        }
+    }
+    /// A straight line `width` thick with round ends: one segment of a Figma
+    /// vector with a centre stroke and round caps, such as an icon's. Its
+    /// colour is a solid [`fill`](Self::fill). It takes drop shadows and a
+    /// clip; a stroke, a gradient or an inner shadow on it is a problem.
+    pub fn line(from: [f32; 2], to: [f32; 2], width: f32) -> Self {
+        Self {
+            line: Some(width),
+            ..Self::rect(Rect::new(
+                from[0],
+                from[1],
+                to[0] - from[0],
+                to[1] - from[1],
+            ))
         }
     }
     pub fn radius(self, radius: f32) -> Self {
@@ -288,7 +309,18 @@ impl Shape {
             numbers.extend([s.blur, s.spread, s.offset[0], s.offset[1]]);
             numbers.extend(s.color);
         }
-        if self.rect.validate().is_err() || self.clip.is_some_and(|c| c.rect.validate().is_err()) {
+        numbers.extend(self.line);
+        // A line's box runs from its start to its end, either way round.
+        let rect = match self.line {
+            Some(_) => Rect::new(
+                self.rect.x,
+                self.rect.y,
+                self.rect.w.abs(),
+                self.rect.h.abs(),
+            ),
+            None => self.rect,
+        };
+        if rect.validate().is_err() || self.clip.is_some_and(|c| c.rect.validate().is_err()) {
             Some("invalid rectangle")
         } else if !numbers.iter().all(|v| v.is_finite()) {
             Some("non-finite shape value")
@@ -296,8 +328,15 @@ impl Shape {
             || self.clip.is_some_and(|c| c.radii.iter().any(|r| *r < 0.))
             || self.stroke.is_some_and(|s| s.width < 0.)
             || self.shadows.iter().any(|s| s.blur < 0.)
+            || self.line.is_some_and(|w| w < 0.)
         {
             Some("negative radius, stroke width or blur")
+        } else if self.line.is_some()
+            && (self.stroke.is_some()
+                || self.shadows.iter().any(|s| s.inner)
+                || self.fills.iter().any(|f| !matches!(f, Paint::Solid(_))))
+        {
+            Some("a line takes solid fills and drop shadows only")
         } else if bad_gradient {
             Some("gradient needs 1 to 8 stops and a start apart from its end")
         } else {
@@ -335,6 +374,7 @@ impl Shape {
             a,
             b,
             ellipse: self.ellipse,
+            line: self.line.is_some(),
             color: [
                 color[0],
                 color[1],
@@ -345,6 +385,29 @@ impl Shape {
             sigma,
             clip,
         };
+        if let Some(width) = self.line {
+            // The segment itself, with half its width in the radii.
+            let segment = |grow: f32, by: [f32; 2]| Outline {
+                rect: self.rect.translate(by),
+                radii: [(width / 2. + grow).max(0.); 4],
+            };
+            for s in &self.shadows {
+                let knockout = (!s.behind).then_some(segment(0., [0.; 2]));
+                let a = segment(s.spread, s.offset);
+                out.push(layer(Mode::Drop, a, knockout, s.color, s.blur / 2.));
+            }
+            for fill in &self.fills {
+                if let Paint::Solid(color) = fill {
+                    out.push(layer(Mode::Band, segment(0., [0.; 2]), None, *color, 0.));
+                }
+            }
+            let mut i = 0;
+            out.retain(|l| {
+                i += 1;
+                i <= start || l.color[3] > 0.
+            });
+            return;
+        }
         for s in self.shadows.iter().filter(|s| !s.inner) {
             let mut a = self.outline(outside + s.spread);
             a.rect = a.rect.translate(s.offset);
@@ -396,7 +459,9 @@ impl Shape {
     }
 }
 
-/// A rounded rectangle, or the ellipse inscribed in `rect`.
+/// A rounded rectangle, or the ellipse inscribed in `rect`. In a
+/// [line](Layer::line) layer: the segment from (`x`, `y`) to (`x + w`,
+/// `y + h`), with half its width in `radii[0]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Outline {
     pub rect: Rect,
@@ -430,6 +495,8 @@ pub struct Layer {
     pub a: Outline,
     pub b: Option<Outline>,
     pub ellipse: bool,
+    /// `a` and `b` are round-ended line segments, not boxes.
+    pub line: bool,
     /// The layer's colour. With a `ramp` the colour comes from the ramp and
     /// only this alpha is used, as an opacity over it.
     pub color: Color,
@@ -442,10 +509,18 @@ pub struct Layer {
 impl Layer {
     /// Everything the layer can touch, before clipping.
     pub fn extent(&self) -> Rect {
+        let a = match self.line {
+            true => {
+                let r = self.a.rect;
+                Rect::new(r.x.min(r.x + r.w), r.y.min(r.y + r.h), r.w.abs(), r.h.abs())
+                    .inflate(self.a.radii[0])
+            }
+            false => self.a.rect,
+        };
         match (self.mode, self.b) {
             (Mode::Inner, Some(b)) => b.rect,
-            (Mode::Drop, _) => self.a.rect.inflate(3. * self.sigma),
-            _ => self.a.rect,
+            (Mode::Drop, _) => a.inflate(3. * self.sigma),
+            _ => a,
         }
     }
 }
@@ -477,6 +552,9 @@ pub struct Text {
     /// Figma's inner shadow effect on a text layer: colour, X and Y, blur.
     /// Spread is not supported on text.
     pub inner_shadow: Option<(Color, [f32; 2], f32)>,
+    /// Figma's drop shadow effect on a text layer: colour, X and Y, blur.
+    /// The offset lands on whole physical pixels.
+    pub drop_shadow: Option<(Color, [f32; 2], f32)>,
     /// Break lines to fit the box's width, and at `\n` in the string.
     pub wrap: bool,
     pub clip: Option<Rect>,
@@ -496,6 +574,7 @@ impl Text {
             align: Align::Start,
             vertical_align: Align::Start,
             inner_shadow: None,
+            drop_shadow: None,
             wrap: false,
             clip: None,
         }
@@ -511,6 +590,10 @@ impl Text {
     }
     pub fn inner_shadow(mut self, color: Color, offset: [f32; 2], blur: f32) -> Self {
         self.inner_shadow = Some((color, offset, blur));
+        self
+    }
+    pub fn drop_shadow(mut self, color: Color, offset: [f32; 2], blur: f32) -> Self {
+        self.drop_shadow = Some((color, offset, blur));
         self
     }
     /// Figma's fixed-width text box: lines break at spaces to fit the box's
@@ -723,6 +806,27 @@ mod tests {
         assert!(Shape::rect(r).gradient(many).problem().is_some());
         let flat = LinearGradient::between([0.5, 0.5], [0.5, 0.5]).stop(0., hex(0));
         assert!(Shape::rect(r).gradient(flat).problem().is_some());
+    }
+
+    #[test]
+    fn a_line_is_a_segment_with_its_shadow_behind() {
+        let s = Shape::line([7., 0.], [0., 7.], 1.5)
+            .fill(hex(0xFFFFFF))
+            .shadow(Shadow::drop(hex(0), [0., 1.], 2.));
+        let l = layers(&s);
+        assert_eq!(l.len(), 2);
+        assert!(l.iter().all(|l| l.line));
+        assert_eq!(
+            (l[1].a.rect, l[1].a.radii[0]),
+            (Rect::new(7., 0., -7., 7.), 0.75)
+        );
+        assert_eq!(l[1].extent(), Rect::new(-0.75, -0.75, 8.5, 8.5));
+        // The shadow is the segment moved down, hidden under the line itself.
+        assert_eq!(l[0].a.rect, Rect::new(7., 1., -7., 7.));
+        assert_eq!((l[0].mode, l[0].b), (Mode::Drop, Some(l[1].a)));
+        assert_eq!(l[0].extent(), Rect::new(-3.75, -2.75, 14.5, 14.5));
+        let stroked = s.stroke(1., hex(0), StrokeAlign::Center);
+        assert!(stroked.problem().is_some() && layers(&stroked).is_empty());
     }
 
     #[test]
