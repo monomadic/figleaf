@@ -221,8 +221,8 @@ What it taught:
 - A minimum width on a hugging frame (the count disc, 18.67) solves as Figma
   solves it.
 
-In Switchblade itself, as an experiment on branch `figleaf-tags` (worktree
-`../switchblade-figleaf`, not merged): the chips of the tag popup draw their
+In Switchblade itself, merged into its `master` on 2026-11-12 (it depends on
+figleaf by path, `../figleaf`, with only the `wgpu` feature): the chips of the tag popup draw their
 capsule, wells and add icon through figleaf, seen running
 ([docs/switchblade-in-app.png](docs/switchblade-in-app.png)), and so do the
 filter bar's applied pills with their remove well and cross
@@ -238,7 +238,7 @@ zero bytes uploaded on every frame where the chips did not change.
 
 Left there: shapes in its blurred backdrop pass, the add well seen running (it
 shows only with ⌘ held), and a reference timing run (AC power, window in
-front, a real library) before it is merged.
+front, a real library), which was not done before the merge.
 
 Not checked beside Figma: the labels and counts of the review frame (other
 strings and widths), hover and pressed states, which the file does not hold.
