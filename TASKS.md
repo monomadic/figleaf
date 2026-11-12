@@ -258,8 +258,7 @@ zero bytes uploaded on every frame where the chips did not change.
 
 Chip widths were wrong until 2026-11-12: Switchblade kept room for the add
 well in every count chip, from a hidden layer the Figma component used to
-carry. On branch `tag-pill-widths` (worktree `../switchblade-pills`, not
-merged) a chip at rest is the Count form and only takes the Addable form,
+carry. Since the fix (merged into Switchblade's `master` the same day) a chip at rest is the Count form and only takes the Addable form,
 20 wider, while ⌘ is held
 ([docs/switchblade-addable-in-app.png](docs/switchblade-addable-in-app.png)).
 Switchblade estimates label widths instead of measuring them, so its chips
