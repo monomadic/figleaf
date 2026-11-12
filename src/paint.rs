@@ -458,7 +458,8 @@ pub enum Align {
     End,
 }
 
-/// One line of text in a box: Figma's text layer with a fixed line height.
+/// Text in a box: Figma's text layer with a fixed line height. One line,
+/// unless it [wraps](Self::wrap).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Text {
     pub string: String,
@@ -476,6 +477,8 @@ pub struct Text {
     /// Figma's inner shadow effect on a text layer: colour, X and Y, blur.
     /// Spread is not supported on text.
     pub inner_shadow: Option<(Color, [f32; 2], f32)>,
+    /// Break lines to fit the box's width, and at `\n` in the string.
+    pub wrap: bool,
     pub clip: Option<Rect>,
 }
 
@@ -493,6 +496,7 @@ impl Text {
             align: Align::Start,
             vertical_align: Align::Start,
             inner_shadow: None,
+            wrap: false,
             clip: None,
         }
     }
@@ -507,6 +511,13 @@ impl Text {
     }
     pub fn inner_shadow(mut self, color: Color, offset: [f32; 2], blur: f32) -> Self {
         self.inner_shadow = Some((color, offset, blur));
+        self
+    }
+    /// Figma's fixed-width text box: lines break at spaces to fit the box's
+    /// width, and at every `\n`. The block of lines is placed in the box by
+    /// the vertical alignment, and each line by the horizontal one.
+    pub fn wrap(mut self) -> Self {
+        self.wrap = true;
         self
     }
     pub fn letter_spacing(mut self, pixels: f32) -> Self {
@@ -535,6 +546,11 @@ impl Text {
     }
     /// Top-left of a line `advance` wide, in logical units.
     pub fn origin(&self, advance: f32) -> [f32; 2] {
+        self.line_origin(advance, 0, 1)
+    }
+    /// Top-left of line `index` of `count`, `advance` wide.
+    pub fn line_origin(&self, advance: f32, index: usize, count: usize) -> [f32; 2] {
+        let block = self.line_height * count as f32;
         let place = |align, spare: f32| match align {
             Align::Start => 0.,
             Align::Center => spare / 2.,
@@ -542,7 +558,9 @@ impl Text {
         };
         [
             self.rect.x + place(self.align, self.rect.w - advance),
-            self.rect.y + place(self.vertical_align, self.rect.h - self.line_height),
+            self.rect.y
+                + place(self.vertical_align, self.rect.h - block)
+                + self.line_height * index as f32,
         ]
     }
 }
@@ -722,6 +740,11 @@ mod tests {
         assert_eq!(t.origin(20.), [10., 10.]);
         let t = t.align(Align::Center, Align::Center);
         assert_eq!(t.origin(20.), [50., 22.]);
-        assert_eq!(t.align(Align::End, Align::End).origin(20.), [90., 34.]);
+        assert_eq!(
+            t.clone().align(Align::End, Align::End).origin(20.),
+            [90., 34.]
+        );
+        // Two lines of 16 are centred as a block of 32 in the 40-tall box.
+        assert_eq!(t.line_origin(20., 1, 2), [50., 30.]);
     }
 }

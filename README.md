@@ -69,6 +69,7 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | Clip content on a frame | `.clip(rect)` / `.clip_rounded(rect, radius)` |
 | Text, size / line height, alignment | `Text::new(..).size(13., 16.).align(..)` |
 | Letter spacing (pixels) | `.letter_spacing(0.7)` |
+| Fixed-width text box, line breaks | `.wrap()`; `text::wrap(..)` gives the lines, for the height |
 | Inner shadow on text | `.inner_shadow(color, [x, y], blur)` |
 
 Colours are straight-alpha encoded sRGB, the numbers Figma shows.
@@ -128,7 +129,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 Radial, angular and diamond gradients, gradients on strokes and text, more
 than eight gradient stops, images, vectors, blurs, blend modes, clipped text
 with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
-grid, baseline alignment and space-between for wrapped lines, and for text: wrapping, percentage letter spacing, mixed styles,
+grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
 ## Where it came from

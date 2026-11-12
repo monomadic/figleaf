@@ -8,7 +8,7 @@ item unless the owner says otherwise.
 
 Works: rectangles, rounded rectangles, ellipses, solid and linear-gradient
 fills (several per shape), strokes in all three alignments, drop and inner shadows, rectangular and rounded clips,
-single-line text with letter spacing and inner shadows through CoreText, the auto layout solver
+text with letter spacing, wrapping and inner shadows through CoreText, the auto layout solver
 with wrapping and a builder API, and a wgpu renderer that draws inside the host's pass.
 
 Checked beside Figma on three controls (task 1) and four timeline pieces
@@ -167,8 +167,30 @@ design needs them.
 
 ## 5. Text
 
-Letter spacing, then wrapping in a fixed-width box, then a backend that is not
-tied to macOS.
+Letter spacing: done with task 1. Wrapping in a fixed-width box: done
+2026-11-12. Left: a backend that is not tied to macOS.
+
+Wrapping was checked on two help texts from the Abner Timeline Edit file, in
+[examples/abner_help_text.rs](examples/abner_help_text.rs): a
+[card](docs/abner-help-card-compare.png) whose paragraph wraps in a 304-wide
+box (frame 88:183, mean difference 1.3/255) and
+[two texts](docs/abner-help-lines-compare.png), one with a line break in it
+(frame 88:275, mean 1.9/255). Lines break where Figma breaks them.
+
+What it taught:
+
+- Wrapping sits above the backend: `text::wrap` measures words with whatever
+  backend the host has and each line is drawn as its own single-line mask, so
+  a new backend still only needs to shape one line.
+- Figma puts the baseline on a whole logical pixel. At 11 / 17 our lines sat
+  one physical pixel low until the renderer did the same; this also brought
+  marker 5 closer (mean 3.7 to 2.5). The other comparisons did not move.
+- Figma's export of a lone text layer is cropped to its ink, so placement has
+  to be checked on an export of the frame around it.
+
+Still assumptions: a word wider than its box is cut where it stops fitting;
+breaks happen only at spaces, not after hyphens. Not done: paragraph spacing,
+truncation with an ellipsis, mixed styles in one text.
 
 ## Later, when a design needs it
 

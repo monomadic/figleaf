@@ -328,3 +328,55 @@ fn text_lands_in_its_box_in_its_colour() {
     );
     assert!(y0 >= 20 && y1 < 40, "{y0} {y1}");
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn wrapped_text_fills_its_lines_and_is_cached() {
+    use figleaf::text::{FontSource, coretext::CoreText};
+    let font = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: font,
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    // Glyphs are 6 wide at size 10: "HHHH HHHH" is 54 and does not fit 40.
+    let text = Text::new("HHHH HHHH\nHH", Rect::new(10., 0., 40., 60.))
+        .size(10., 20.)
+        .color(hex(0xFF0000))
+        .wrap();
+    let mut c = Canvas::new();
+    c.text(text.clone());
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    let ink = |x0: u32, x1: u32, line: u32| {
+        (line * 20..line * 20 + 20)
+            .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+            .any(|(x, y)| i.pixel(x, y)[3] > 128)
+    };
+    // Three lines: four glyphs, four glyphs, two glyphs; nothing past them.
+    assert!(ink(10, 34, 0) && ink(10, 34, 1) && ink(10, 22, 2));
+    assert!(!ink(35, 100, 0) && !ink(35, 100, 1) && !ink(23, 100, 2));
+
+    // Unchanged, nothing is measured, rasterized or uploaded again.
+    let again = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &c,
+            [100, 60],
+            1.,
+            &mut figleaf::text::NoText,
+        )
+        .unwrap();
+    assert_eq!((again.changed, again.uploaded_bytes), (false, 0));
+
+    // Without wrapping, a line break is reported, not dropped quietly.
+    let mut single = text;
+    single.wrap = false;
+    c.clear();
+    c.text(single);
+    gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut backend);
+    assert_eq!(renderer.problems().len(), 1);
+}

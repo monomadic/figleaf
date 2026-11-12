@@ -1,6 +1,6 @@
-//! Explicit-font, grayscale, single-line Latin text, borrowed from figui. No
-//! system fallback, wrapping, rich text, letter spacing, bidi or emoji. A
-//! backend turns a string into a bounded alpha mask; the renderer tints it.
+//! Explicit-font, grayscale Latin text, borrowed from figui. No system
+//! fallback, rich text, bidi or emoji. A backend turns one line into a bounded
+//! alpha mask; the renderer tints it. [`wrap`] breaks a paragraph into lines.
 //! Fonts and their variable axes are caller-supplied; nothing here names a font.
 use crate::Error;
 
@@ -287,6 +287,83 @@ pub mod coretext {
     }
 }
 
+/// One line of a wrapped paragraph and its width.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Line {
+    pub text: String,
+    pub advance: f32,
+}
+
+/// Breaks `text` into lines no wider than `width`, as Figma's fixed-width text
+/// box does: at spaces, and at every `\n`. The spaces at a break belong to
+/// neither line. A word wider than the box is cut where it stops fitting.
+///
+/// A host that lays text out calls this to learn the height:
+/// `lines.len() as f32 * style.line_height`.
+pub fn wrap(
+    backend: &mut dyn Backend,
+    text: &str,
+    style: Style,
+    width: f32,
+) -> Result<Vec<Line>, Error> {
+    if !width.is_finite() || width <= 0. {
+        return Err(Error("unsupported text request"));
+    }
+    let mut advance = |s: &str| -> Result<f32, Error> {
+        if s.is_empty() {
+            return Ok(0.);
+        }
+        Ok(backend.measure(s, style)?.advance as f32)
+    };
+    let mut lines = Vec::new();
+    for paragraph in text.split('\n') {
+        let mut rest = paragraph;
+        loop {
+            // The longest run of whole words that fits.
+            let mut fit: Option<(usize, f32)> = None;
+            let mut ends: Vec<usize> = rest
+                .char_indices()
+                .filter(|&(i, c)| c == ' ' && !rest[..i].ends_with(' '))
+                .map(|(i, _)| i)
+                .collect();
+            ends.push(rest.len());
+            for end in ends {
+                let wide = advance(rest[..end].trim_end_matches(' '))?;
+                if wide > width + 0.001 {
+                    break;
+                }
+                fit = Some((end, wide));
+            }
+            let (end, wide) = match fit {
+                Some(fit) => fit,
+                // Not even the first word fits: keep the characters that do,
+                // and at least one.
+                None => {
+                    let mut cut = rest.chars().next().map_or(0, char::len_utf8);
+                    let mut wide = advance(&rest[..cut])?;
+                    for (i, c) in rest.char_indices().skip(1) {
+                        let next = advance(&rest[..i + c.len_utf8()])?;
+                        if next > width + 0.001 {
+                            break;
+                        }
+                        (cut, wide) = (i + c.len_utf8(), next);
+                    }
+                    (cut, wide)
+                }
+            };
+            lines.push(Line {
+                text: rest[..end].trim_end_matches(' ').to_string(),
+                advance: wide,
+            });
+            rest = rest[end..].trim_start_matches(' ');
+            if rest.is_empty() {
+                break;
+            }
+        }
+    }
+    Ok(lines)
+}
+
 /// A backend for hosts that draw no text: every request fails, so text items
 /// show up in the renderer's problems instead of vanishing quietly.
 pub struct NoText;
@@ -299,6 +376,48 @@ impl Backend for NoText {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Every character is 10 wide.
+    struct Mono;
+    impl Backend for Mono {
+        fn raster(&mut self, _: &str, _: Style, _: f32, _: f32) -> Result<Mask, Error> {
+            Err(Error("measure only"))
+        }
+        fn measure(&mut self, text: &str, _: Style) -> Result<Metrics, Error> {
+            Ok(Metrics {
+                advance: text.chars().count() as f64 * 10.,
+                ..Default::default()
+            })
+        }
+    }
+
+    #[test]
+    fn paragraphs_break_at_spaces_line_breaks_and_inside_long_words() {
+        let s = Style {
+            font: 0,
+            size: 12.,
+            line_height: 16.,
+            letter_spacing: 0.,
+        };
+        let lines = |text: &str, width: f32| -> Vec<(String, f32)> {
+            wrap(&mut Mono, text, s, width)
+                .unwrap()
+                .into_iter()
+                .map(|l| (l.text, l.advance))
+                .collect()
+        };
+        let l = |t: &str| (t.to_string(), t.len() as f32 * 10.);
+        assert_eq!(lines("one two three", 70.), [l("one two"), l("three")]);
+        // The space at the break hangs: "one two" fits 70 exactly.
+        assert_eq!(lines("one two  three", 75.), [l("one two"), l("three")]);
+        assert_eq!(lines("one\n\ntwo", 500.), [l("one"), l(""), l("two")]);
+        assert_eq!(
+            lines("a abcdefgh b", 30.),
+            [l("a"), l("abc"), l("def"), l("gh"), l("b")]
+        );
+        assert_eq!(lines("wide", 5.), [l("w"), l("i"), l("d"), l("e")]);
+        assert!(wrap(&mut Mono, "a", s, 0.).is_err());
+    }
+
     #[test]
     fn rejects_unimplemented_text_before_raster() {
         let s = Style {

@@ -41,13 +41,27 @@ pub struct Problem {
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct MaskKey {
     string: String,
-    font: usize,
-    size: u32,
-    line_height: u32,
-    letter_spacing: u32,
+    style: [u32; 4],
     scale: u32,
     /// Inner shadow offset and blur; the colour is applied when drawing.
     shadow: Option<[u32; 3]>,
+}
+
+/// A wrapped paragraph: its string, style and box width.
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct WrapKey {
+    string: String,
+    style: [u32; 4],
+    width: u32,
+}
+
+fn style_bits(s: text::Style) -> [u32; 4] {
+    [
+        s.font as u32,
+        s.size.to_bits(),
+        s.line_height.to_bits(),
+        s.letter_spacing.to_bits(),
+    ]
 }
 
 struct Mask {
@@ -57,6 +71,8 @@ struct Mask {
     shadow: Option<wgpu::BindGroup>,
     size: [u32; 2],
     advance: f32,
+    /// From the top of the line to the baseline, in logical units.
+    baseline: f32,
 }
 
 struct MaskSlot {
@@ -64,8 +80,9 @@ struct MaskSlot {
     used: bool,
 }
 
-/// What one canvas item draws: a run of shape instances, or one text
-/// instance with its mask (and the mask's identity, for change detection).
+/// One thing a canvas item draws: a run of shape instances, or a line of text
+/// as one instance with its mask (and the mask's identity, for change
+/// detection).
 enum Draw {
     Shapes(Range<u32>),
     Text(u32, wgpu::BindGroup, u64),
@@ -133,8 +150,11 @@ pub struct Renderer {
     texts: Instances,
     masks: HashMap<MaskKey, MaskSlot>,
     next_mask: u64,
-    /// One entry per canvas item; `None` for items that draw nothing.
-    draws: Vec<Option<Draw>>,
+    /// One entry per canvas item: empty for items that draw nothing, and one
+    /// draw per line for text.
+    draws: Vec<Vec<Draw>>,
+    /// Line breaks of wrapped text, kept while the text stays on the canvas.
+    wraps: HashMap<WrapKey, (Result<Vec<String>, &'static str>, bool)>,
     order: Vec<u64>,
     problems: Vec<Problem>,
     layers: Vec<Layer>,
@@ -246,6 +266,7 @@ impl Renderer {
             masks: HashMap::new(),
             next_mask: 0,
             draws: Vec::new(),
+            wraps: HashMap::new(),
             order: Vec::new(),
             problems: Vec::new(),
             layers: Vec::new(),
@@ -304,8 +325,11 @@ impl Renderer {
         for slot in self.masks.values_mut() {
             slot.used = false;
         }
+        for slot in self.wraps.values_mut() {
+            slot.1 = false;
+        }
         for (index, item) in canvas.items().iter().enumerate() {
-            self.draws.push(None);
+            self.draws.push(Vec::new());
             match item {
                 Item::Shape(shape) => {
                     if let Some(reason) = shape.problem() {
@@ -378,116 +402,153 @@ impl Renderer {
                     }
                     let end = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
                     if end > first {
-                        self.draws[index] = Some(Draw::Shapes(first..end));
+                        self.draws[index].push(Draw::Shapes(first..end));
                     }
                 }
                 Item::Text(t) => {
                     if t.string.is_empty() || t.color[3] <= 0. {
                         continue;
                     }
+                    let mut problem = None;
                     if t.rect.validate().is_err() || t.clip.is_some_and(|c| c.validate().is_err()) {
-                        self.problems.push(Problem {
-                            item: index,
-                            reason: "invalid rectangle",
-                        });
-                        continue;
-                    }
-                    let key = MaskKey {
-                        string: t.string.clone(),
-                        font: t.font,
-                        size: t.size.to_bits(),
-                        line_height: t.line_height.to_bits(),
-                        letter_spacing: t.letter_spacing.to_bits(),
-                        scale: scale.to_bits(),
-                        shadow: t
-                            .inner_shadow
-                            .map(|(_, o, blur)| [o[0], o[1], blur].map(f32::to_bits)),
-                    };
-                    if t.inner_shadow.is_some_and(|(c, o, blur)| {
+                        problem = Some("invalid rectangle");
+                    } else if t.inner_shadow.is_some_and(|(c, o, blur)| {
                         !c.iter().chain(&o).all(|v| v.is_finite()) || !(0. ..=64.).contains(&blur)
                     }) {
-                        self.problems.push(Problem {
-                            item: index,
-                            reason: "invalid text shadow",
-                        });
-                        continue;
+                        problem = Some("invalid text shadow");
                     }
-                    if !self.masks.contains_key(&key) {
-                        let mask = match raster(text, &t.string, t.style(), scale) {
-                            Ok(m) => {
-                                report.textures_created += 1;
-                                report.uploaded_bytes += m.alpha.len() as u64;
-                                self.next_mask += 1;
-                                let size = [m.width, m.height];
-                                let shadow = t.inner_shadow.map(|(_, offset, blur)| {
-                                    let offset = offset.map(|v| v * scale);
-                                    let alpha =
-                                        inner_shadow(&m.alpha, size, offset, blur / 2. * scale);
-                                    report.uploaded_bytes += alpha.len() as u64;
-                                    self.upload_mask(device, queue, size, &alpha)
-                                });
-                                Ok(Mask {
-                                    id: self.next_mask,
-                                    shadow,
-                                    group: self.upload_mask(device, queue, size, &m.alpha),
-                                    size: [m.width, m.height],
-                                    advance: m.metrics.advance as f32,
-                                })
-                            }
-                            Err(e) => Err(e.0),
-                        };
-                        self.masks
-                            .insert(key.clone(), MaskSlot { mask, used: true });
-                    }
-                    let slot = self.masks.get_mut(&key).unwrap();
-                    slot.used = true;
-                    let mask = match &slot.mask {
-                        Ok(mask) => mask,
-                        Err(reason) => {
-                            self.problems.push(Problem {
-                                item: index,
-                                reason,
+                    let lines = match problem {
+                        Some(_) => Vec::new(),
+                        None if !t.wrap => vec![t.string.clone()],
+                        None => {
+                            let key = WrapKey {
+                                string: t.string.clone(),
+                                style: style_bits(t.style()),
+                                width: t.rect.w.to_bits(),
+                            };
+                            let slot = self.wraps.entry(key).or_insert_with(|| {
+                                let lines = text::wrap(text, &t.string, t.style(), t.rect.w)
+                                    .map(|lines| lines.into_iter().map(|l| l.text).collect())
+                                    .map_err(|e| e.0);
+                                (lines, true)
                             });
-                            continue;
+                            slot.1 = true;
+                            match &slot.0 {
+                                Ok(lines) => lines.clone(),
+                                Err(reason) => {
+                                    problem = Some(reason);
+                                    Vec::new()
+                                }
+                            }
                         }
                     };
-                    let origin = t.origin(mask.advance).map(|v| (v * scale).round());
-                    let rect = [
-                        origin[0],
-                        origin[1],
-                        origin[0] + mask.size[0] as f32,
-                        origin[1] + mask.size[1] as f32,
-                    ];
-                    let (id, group, shadow) = (mask.id, mask.group.clone(), mask.shadow.clone());
-                    let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
-                    let color = self.color(t.color);
-                    self.texts.push(&rect);
-                    self.texts.push(&edges(clip_px(t.clip), 1.));
-                    self.texts.push(&color);
-                    self.draws[index] = Some(match (shadow, t.inner_shadow) {
-                        (Some(shadow), Some((shadow_color, ..))) => {
-                            let color = self.color(shadow_color);
-                            self.texts.push(&rect);
-                            self.texts.push(&edges(clip_px(t.clip), 1.));
-                            self.texts.push(&color);
-                            Draw::ShadowedText(instance, group, id, shadow)
+                    for (n, line) in lines.iter().enumerate() {
+                        if line.is_empty() {
+                            continue;
                         }
-                        _ => Draw::Text(instance, group, id),
-                    });
+                        let key = MaskKey {
+                            string: line.clone(),
+                            style: style_bits(t.style()),
+                            scale: scale.to_bits(),
+                            shadow: t
+                                .inner_shadow
+                                .map(|(_, o, blur)| [o[0], o[1], blur].map(f32::to_bits)),
+                        };
+                        if !self.masks.contains_key(&key) {
+                            let mask = match raster(text, line, t.style(), scale) {
+                                Ok(m) => {
+                                    report.textures_created += 1;
+                                    report.uploaded_bytes += m.alpha.len() as u64;
+                                    self.next_mask += 1;
+                                    let size = [m.width, m.height];
+                                    let shadow = t.inner_shadow.map(|(_, offset, blur)| {
+                                        let offset = offset.map(|v| v * scale);
+                                        let alpha =
+                                            inner_shadow(&m.alpha, size, offset, blur / 2. * scale);
+                                        report.uploaded_bytes += alpha.len() as u64;
+                                        self.upload_mask(device, queue, size, &alpha)
+                                    });
+                                    Ok(Mask {
+                                        id: self.next_mask,
+                                        shadow,
+                                        group: self.upload_mask(device, queue, size, &m.alpha),
+                                        size: [m.width, m.height],
+                                        advance: m.metrics.advance as f32,
+                                        baseline: m.metrics.baseline as f32,
+                                    })
+                                }
+                                Err(e) => Err(e.0),
+                            };
+                            self.masks
+                                .insert(key.clone(), MaskSlot { mask, used: true });
+                        }
+                        let slot = self.masks.get_mut(&key).unwrap();
+                        slot.used = true;
+                        let mask = match &slot.mask {
+                            Ok(mask) => mask,
+                            Err(reason) => {
+                                problem = Some(reason);
+                                break;
+                            }
+                        };
+                        let mut origin = t.line_origin(mask.advance, n, lines.len());
+                        // Figma sets the baseline on a whole logical pixel.
+                        let baseline = origin[1] + mask.baseline;
+                        origin[1] += baseline.round() - baseline;
+                        let origin = origin.map(|v| (v * scale).round());
+                        let rect = [
+                            origin[0],
+                            origin[1],
+                            origin[0] + mask.size[0] as f32,
+                            origin[1] + mask.size[1] as f32,
+                        ];
+                        let (id, group, shadow) =
+                            (mask.id, mask.group.clone(), mask.shadow.clone());
+                        let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
+                        let color = self.color(t.color);
+                        self.texts.push(&rect);
+                        self.texts.push(&edges(clip_px(t.clip), 1.));
+                        self.texts.push(&color);
+                        let draw = match (shadow, t.inner_shadow) {
+                            (Some(shadow), Some((shadow_color, ..))) => {
+                                let color = self.color(shadow_color);
+                                self.texts.push(&rect);
+                                self.texts.push(&edges(clip_px(t.clip), 1.));
+                                self.texts.push(&color);
+                                Draw::ShadowedText(instance, group, id, shadow)
+                            }
+                            _ => Draw::Text(instance, group, id),
+                        };
+                        self.draws[index].push(draw);
+                    }
+                    // A text with a line that can't be drawn is left out whole.
+                    if let Some(reason) = problem {
+                        self.draws[index].clear();
+                        self.problems.push(Problem {
+                            item: index,
+                            reason,
+                        });
+                    }
                 }
             }
         }
         let order: Vec<u64> = self
             .draws
             .iter()
-            .flat_map(|d| match d {
-                None => [0, 0, 0],
-                Some(Draw::Shapes(r)) => [1, u64::from(r.start), u64::from(r.end)],
-                Some(Draw::Text(instance, _, id)) => [2, u64::from(*instance), *id],
-                Some(Draw::ShadowedText(instance, _, id, _)) => [3, u64::from(*instance), *id],
+            .enumerate()
+            .flat_map(|(item, draws)| {
+                draws.iter().map(move |d| match d {
+                    Draw::Shapes(r) => [item as u64, 1, u64::from(r.start), u64::from(r.end)],
+                    Draw::Text(instance, _, id) => [item as u64, 2, u64::from(*instance), *id],
+                    Draw::ShadowedText(instance, _, id, _) => {
+                        [item as u64, 3, u64::from(*instance), *id]
+                    }
+                })
             })
+            .flatten()
             .collect();
         self.masks.retain(|_, slot| slot.used);
+        self.wraps.retain(|_, slot| slot.1);
 
         for uploaded in [
             self.shapes.upload(device, queue),
