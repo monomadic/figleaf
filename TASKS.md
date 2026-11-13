@@ -262,6 +262,12 @@ each tone's own well stroke, inner shadow, end padding and cross shadow, and
 the fill's own alpha. Seen running with a hot, a cold and a person pill
 ([docs/switchblade-applied-tones-in-app.png](docs/switchblade-applied-tones-in-app.png)).
 
+Popup chips follow the component's later edit since 2026-11-13 (Switchblade
+branch `figma-popup-chips`): on a heat tone the add well is a faint outline
+around a faint dark plus with no fill, the count disc is 15 tall, and its
+stroke and inner shadow follow the tone. Seen running with Command held
+([docs/switchblade-chips-addable-in-app.png](docs/switchblade-chips-addable-in-app.png)).
+
 Chip widths were wrong until 2026-11-12: Switchblade kept room for the add
 well in every count chip, from a hidden layer the Figma component used to
 carry. Since the fix (merged into Switchblade's `master` the same day) a chip at rest is the Count form and only takes the Addable form,
