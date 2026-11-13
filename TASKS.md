@@ -278,8 +278,7 @@ the example and Switchblade draw it without one (76 wide) and the export in
 file still differs.
 
 Switchblade's filter panel (Figma "Filter panel", 180:114) draws its
-shapes with figleaf on the branch `figleaf-filter-panel` (2026-11-13, not
-merged): the glass with its outline and drop shadow as one shape, the field
+shapes with figleaf (merged into its `master` on 2026-11-13): the glass with its outline and drop shadow as one shape, the field
 and picker outlines, the divider, the option cells, the summary capsules,
 and the minus, plus and chevron as round-capped lines. Its layout follows
 the component too (the owner's call, 2026-11-13): 323 tall expanded, 36px
