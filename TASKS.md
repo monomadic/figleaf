@@ -281,12 +281,11 @@ Switchblade's filter panel (Figma "Filter panel", 180:114) draws its
 shapes with figleaf on the branch `figleaf-filter-panel` (2026-11-13, not
 merged): the glass with its outline and drop shadow as one shape, the field
 and picker outlines, the divider, the option cells, the summary capsules,
-and the minus, plus and chevron as round-capped lines. The expanded panel
-and the empty capsule were seen running; the minimized bar was not. The
-panel keeps Switchblade's own geometry, which follows an earlier drawing and
-differs from the component (332 tall against 323, pickers 283x38 and 249x36
-against 276x36 and 246x36, no "AND" label). Which one is right is the
-owner's call.
+and the minus, plus and chevron as round-capped lines. Its layout follows
+the component too (the owner's call, 2026-11-13): 323 tall expanded, 36px
+pickers, an 86px empty capsule, and a minimized bar that hugs its row and
+names its rule. All three states were seen running beside the Figma export.
+Not seen: hover, a selected option, the "+N" overflow and the size tween.
 
 Left there: shapes in its blurred backdrop pass and a reference timing run (AC power, window in
 front, a real library), which was not done before the merge.
