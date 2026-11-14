@@ -67,3 +67,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "vector_paths"
 required-features = ["wgpu"]
+
+[[example]]
+name = "affine"
+required-features = ["wgpu"]

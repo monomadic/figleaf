@@ -21,7 +21,7 @@ use crate::{
 use std::{collections::HashMap, ops::Range};
 
 const SHAPE_STRIDE: usize = 256;
-const TEXT_STRIDE: usize = 48;
+const TEXT_STRIDE: usize = 112;
 
 /// What a `prepare` call did. An unchanged canvas uploads nothing and reports
 /// `changed: false`, so the host can skip the redraw.
@@ -157,6 +157,7 @@ pub struct Renderer {
     shapes: Instances,
     texts: Instances,
     path_edges: Instances,
+    transforms: Instances,
     path_group: wgpu::BindGroup,
     masks: HashMap<MaskKey, MaskSlot>,
     next_mask: u64,
@@ -247,7 +248,7 @@ impl Renderer {
             include_str!("render/text.wgsl"),
             format,
             TEXT_STRIDE,
-            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4],
+            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4],
         );
         let view = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("figleaf viewport"),
@@ -264,9 +265,16 @@ impl Renderer {
             }],
         });
         let path_edges = Instances::new(device, "figleaf vector edges", 32);
-        let path_group = Self::path_group(device, &shape_pipeline, &path_edges.buffer);
+        let transforms = Instances::new(device, "figleaf transforms", 64);
+        let path_group = Self::path_group(
+            device,
+            &shape_pipeline,
+            &path_edges.buffer,
+            &transforms.buffer,
+        );
         Self {
             path_edges,
+            transforms,
             path_group,
             linear: format.is_srgb(),
             shape_pipeline,
@@ -333,6 +341,7 @@ impl Renderer {
         self.shapes.bytes.clear();
         self.texts.bytes.clear();
         self.path_edges.bytes.clear();
+        self.transforms.bytes.clear();
         self.draws.clear();
         self.problems.clear();
         for slot in self.masks.values_mut() {
@@ -355,7 +364,12 @@ impl Renderer {
                     let first = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
                     let mut path_range = None;
                     if let Some(paths) = &shape.vector_paths {
-                        let result = path::flatten(paths, [shape.rect.x, shape.rect.y], scale);
+                        let result = path::flatten_transformed(
+                            paths,
+                            [shape.rect.x, shape.rect.y],
+                            scale,
+                            shape.transform,
+                        );
                         let edges = match result {
                             Ok(edges) => edges,
                             Err(e) => {
@@ -380,9 +394,11 @@ impl Renderer {
                         if edges.is_empty() {
                             continue;
                         }
-                        let bounds = path::bounds(paths)
-                            .unwrap()
-                            .translate([shape.rect.x, shape.rect.y]);
+                        let bounds = shape.transform.bounds(
+                            path::bounds(paths)
+                                .unwrap()
+                                .translate([shape.rect.x, shape.rect.y]),
+                        );
                         let visible = Rect::new(
                             bounds.x * scale,
                             bounds.y * scale,
@@ -390,7 +406,9 @@ impl Renderer {
                             bounds.h * scale,
                         )
                         .inflate(1.)
-                        .intersect(clip_px(shape.clip.map(|c| c.rect)));
+                        .intersect(clip_px(
+                            shape.clip.map(|c| shape.clip_transform.bounds(c.rect)),
+                        ));
                         let work = f64::from(visible.w.ceil())
                             * f64::from(visible.h.ceil())
                             * edges.len() as f64
@@ -416,8 +434,52 @@ impl Renderer {
                     }
                     let mut layers = Vec::new();
                     shape.layers(&mut layers);
+                    let inverse = shape.transform.pixels(scale, scale).inverse();
+                    let clip_inverse = shape.clip_transform.pixels(scale, scale).inverse();
+                    let (inverse, clip_inverse) = match (inverse, clip_inverse) {
+                        (Ok(a), Ok(b))
+                            if layers.iter().all(|l| {
+                                l.extent().validate().is_ok()
+                                    && l.clip.is_none_or(|c| {
+                                        l.clip_transform.bounds(c.rect).validate().is_ok()
+                                    })
+                            }) =>
+                        {
+                            (a, b)
+                        }
+                        _ => {
+                            self.problems.push(Problem {
+                                item: index,
+                                reason: "invalid transformed geometry",
+                            });
+                            continue;
+                        }
+                    };
+                    let transform_index = self.transforms.bytes.len() / 64;
+                    if (self.transforms.bytes.len() + 64).next_power_of_two()
+                        > device.limits().max_storage_buffer_binding_size as usize
+                    {
+                        self.problems.push(Problem {
+                            item: index,
+                            reason: "transform buffer limit exceeded",
+                        });
+                        continue;
+                    }
+                    for m in [inverse, clip_inverse] {
+                        let linear_identity = m.0[0][0] == 1.
+                            && m.0[0][1] == 0.
+                            && m.0[1][0] == 0.
+                            && m.0[1][1] == 1.;
+                        self.transforms.push(&[
+                            m.0[0][0],
+                            m.0[0][1],
+                            m.0[0][2],
+                            f32::from(!linear_identity),
+                        ]);
+                        self.transforms.push(&[m.0[1][0], m.0[1][1], m.0[1][2], 0.]);
+                    }
                     for l in layers {
-                        let clip = clip_px(l.clip.map(|c| c.rect));
+                        let clip = clip_px(l.clip.map(|c| l.clip_transform.bounds(c.rect)));
                         // The clip's own outline, for its antialiased edge.
                         const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];
                         let (clip_rect, clip_radii) = l.clip.map_or((OPEN, [0.; 4]), outline);
@@ -469,14 +531,24 @@ impl Renderer {
                         match l.ramp {
                             Some(ramp) => {
                                 let [x, y, c] = ramp.axis;
-                                self.shapes.push(&[x / scale, y / scale, c, 0.]);
+                                let a = x / scale;
+                                let b = y / scale;
+                                self.shapes.push(&[
+                                    a * inverse.0[0][0] + b * inverse.0[1][0],
+                                    a * inverse.0[0][1] + b * inverse.0[1][1],
+                                    c + a * inverse.0[0][2] + b * inverse.0[1][2],
+                                    transform_index as f32,
+                                ]);
                                 self.shapes.push(&ramp.stops.map(|s| s.offset));
                                 for stop in ramp.stops {
                                     let bytes = stop.color.map(|v| (v * 255.).round() as u8);
                                     self.shapes.bytes.extend_from_slice(&bytes);
                                 }
                             }
-                            None => self.shapes.bytes.extend_from_slice(&[0; 80]),
+                            None => {
+                                self.shapes.push(&[0., 0., 0., transform_index as f32]);
+                                self.shapes.bytes.extend_from_slice(&[0; 64]);
+                            }
                         }
                         self.shapes.push(&l.a.radii_y.map(|v| v * scale));
                         self.shapes
@@ -488,11 +560,45 @@ impl Renderer {
                     }
                 }
                 Item::Text(t) => {
+                    if let Err(e) = t
+                        .transform
+                        .inverse()
+                        .and_then(|_| t.clip_transform.inverse())
+                    {
+                        self.problems.push(Problem {
+                            item: index,
+                            reason: e.0,
+                        });
+                        continue;
+                    }
+                    let raster_scale = (scale * t.transform.max_scale()).max(scale).max(0.5);
+                    let forward = t.transform.pixels(raster_scale, scale);
+                    let clip_inverse = match t.clip_transform.pixels(raster_scale, scale).inverse()
+                    {
+                        Ok(m) => m,
+                        Err(e) => {
+                            self.problems.push(Problem {
+                                item: index,
+                                reason: e.0,
+                            });
+                            continue;
+                        }
+                    };
+                    let text_transforms =
+                        [forward, clip_inverse].map(|m| m.0.map(|r| [r[0], r[1], r[2], 0.]));
+                    let text_clip = t
+                        .clip
+                        .map_or([-1e7, -1e7, 1e7, 1e7], |r| edges(r, raster_scale));
                     if t.string.is_empty() || t.color[3] <= 0. {
                         continue;
                     }
                     let mut problem = None;
-                    if t.rect.validate().is_err() || t.clip.is_some_and(|c| c.validate().is_err()) {
+                    if t.rect.validate().is_err()
+                        || t.transform.bounds(t.rect).validate().is_err()
+                        || t.clip.is_some_and(|c| {
+                            c.validate().is_err() || t.clip_transform.bounds(c).validate().is_err()
+                        })
+                    {
                         problem = Some("invalid rectangle");
                     } else if [t.inner_shadow, t.drop_shadow].iter().flatten().any(
                         |(c, o, blur)| {
@@ -533,29 +639,33 @@ impl Renderer {
                         let key = MaskKey {
                             string: line.clone(),
                             style: style_bits(t.style()),
-                            scale: scale.to_bits(),
+                            scale: raster_scale.to_bits(),
                             shadow: t
                                 .inner_shadow
                                 .map(|(_, o, blur)| [o[0], o[1], blur].map(f32::to_bits)),
                             drop: t.drop_shadow.map(|(.., blur)| blur.to_bits()),
                         };
                         if !self.masks.contains_key(&key) {
-                            let mask = match raster(text, line, t.style(), scale) {
+                            let mask = match raster(text, line, t.style(), raster_scale) {
                                 Ok(m) => {
                                     report.textures_created += 1;
                                     report.uploaded_bytes += m.alpha.len() as u64;
                                     self.next_mask += 1;
                                     let size = [m.width, m.height];
                                     let shadow = t.inner_shadow.map(|(_, offset, blur)| {
-                                        let offset = offset.map(|v| v * scale);
-                                        let alpha =
-                                            inner_shadow(&m.alpha, size, offset, blur / 2. * scale);
+                                        let offset = offset.map(|v| v * raster_scale);
+                                        let alpha = inner_shadow(
+                                            &m.alpha,
+                                            size,
+                                            offset,
+                                            blur / 2. * raster_scale,
+                                        );
                                         report.uploaded_bytes += alpha.len() as u64;
                                         self.upload_mask(device, queue, size, &alpha)
                                     });
                                     let drop = t.drop_shadow.map(|(.., blur)| {
                                         let (alpha, size, pad) =
-                                            drop_shadow(&m.alpha, size, blur / 2. * scale);
+                                            drop_shadow(&m.alpha, size, blur / 2. * raster_scale);
                                         report.uploaded_bytes += alpha.len() as u64;
                                         (self.upload_mask(device, queue, size, &alpha), size, pad)
                                     });
@@ -587,7 +697,7 @@ impl Renderer {
                         // Figma sets the baseline on a whole logical pixel.
                         let baseline = origin[1] + mask.baseline;
                         origin[1] += baseline.round() - baseline;
-                        let origin = origin.map(|v| (v * scale).round());
+                        let origin = origin.map(|v| (v * raster_scale).round());
                         let rect = [
                             origin[0],
                             origin[1],
@@ -604,8 +714,9 @@ impl Renderer {
                         if let (Some((group, size, pad)), Some((color, offset, _))) =
                             (drop, t.drop_shadow)
                         {
-                            let at = [0, 1]
-                                .map(|i| origin[i] + (offset[i] * scale).round() - pad as f32);
+                            let at = [0, 1].map(|i| {
+                                origin[i] + (offset[i] * raster_scale).round() - pad as f32
+                            });
                             let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
                             let color = self.color(color);
                             self.texts.push(&[
@@ -614,21 +725,36 @@ impl Renderer {
                                 at[0] + size[0] as f32,
                                 at[1] + size[1] as f32,
                             ]);
-                            self.texts.push(&edges(clip_px(t.clip), 1.));
+                            self.texts.push(&text_clip);
                             self.texts.push(&color);
+                            for rows in text_transforms {
+                                for row in rows {
+                                    self.texts.push(&row);
+                                }
+                            }
                             self.draws[index].push(Draw::Text(instance, group, id));
                         }
                         let instance = (self.texts.bytes.len() / TEXT_STRIDE) as u32;
                         let color = self.color(t.color);
                         self.texts.push(&rect);
-                        self.texts.push(&edges(clip_px(t.clip), 1.));
+                        self.texts.push(&text_clip);
                         self.texts.push(&color);
+                        for rows in text_transforms {
+                            for row in rows {
+                                self.texts.push(&row);
+                            }
+                        }
                         let draw = match (shadow, t.inner_shadow) {
                             (Some(shadow), Some((shadow_color, ..))) => {
                                 let color = self.color(shadow_color);
                                 self.texts.push(&rect);
-                                self.texts.push(&edges(clip_px(t.clip), 1.));
+                                self.texts.push(&text_clip);
                                 self.texts.push(&color);
+                                for rows in text_transforms {
+                                    for row in rows {
+                                        self.texts.push(&row);
+                                    }
+                                }
                                 Draw::ShadowedText(instance, group, id, shadow)
                             }
                             _ => Draw::Text(instance, group, id),
@@ -664,14 +790,21 @@ impl Renderer {
         self.masks.retain(|_, slot| slot.used);
         self.wraps.retain(|_, slot| slot.1);
 
+        let transform_capacity = self.transforms.capacity;
+        let transforms_uploaded = self.transforms.upload(device, queue);
         let capacity = self.path_edges.capacity;
         let paths_uploaded = self.path_edges.upload(device, queue);
-        if capacity != self.path_edges.capacity {
-            self.path_group =
-                Self::path_group(device, &self.shape_pipeline, &self.path_edges.buffer);
+        if capacity != self.path_edges.capacity || transform_capacity != self.transforms.capacity {
+            self.path_group = Self::path_group(
+                device,
+                &self.shape_pipeline,
+                &self.path_edges.buffer,
+                &self.transforms.buffer,
+            );
         }
         for uploaded in [
             paths_uploaded,
+            transforms_uploaded,
             self.shapes.upload(device, queue),
             self.texts.upload(device, queue),
         ]
@@ -690,14 +823,21 @@ impl Renderer {
         device: &wgpu::Device,
         pipeline: &wgpu::RenderPipeline,
         buffer: &wgpu::Buffer,
+        transforms: &wgpu::Buffer,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("figleaf vector edges"),
             layout: &pipeline.get_bind_group_layout(1),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: transforms.as_entire_binding(),
+                },
+            ],
         })
     }
 

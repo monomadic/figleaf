@@ -15,7 +15,7 @@ function text(props = {}) {
 }
 function fixture() {
   return node({ type:'FRAME', name:'Frame', relativeTransform:[[1,0,500],[0,1,200]], clipsContent:true, fills:[], strokes:[solid], strokeBottomWeight:1, children:[
-    node({name:'Pill', relativeTransform:[[1,0,3],[0,1,4]], width:30, height:20, topLeftRadius:8,topRightRadius:8,bottomLeftRadius:8,bottomRightRadius:8, fills:[solid,{type:'GRADIENT_LINEAR', opacity:0.5, gradientTransform:[[1,0,0],[0,1,0]], gradientStops:[{position:0,color:{r:0,g:0,b:1,a:1}},{position:1,color:{r:0,g:1,b:0,a:0}}]}], effects:[{type:'DROP_SHADOW',color:{r:0,g:0,b:0,a:0.2},offset:{x:0,y:2},radius:4,spread:0}]}),
+    node({name:'Pill', relativeTransform:[[-1,0.25,33],[0,1.5,4]], width:30, height:20, topLeftRadius:8,topRightRadius:8,bottomLeftRadius:8,bottomRightRadius:8, fills:[solid,{type:'GRADIENT_LINEAR', opacity:0.5, gradientTransform:[[1,0,0],[0,1,0]], gradientStops:[{position:0,color:{r:0,g:0,b:1,a:1}},{position:1,color:{r:0,g:1,b:0,a:0}}]}], effects:[{type:'DROP_SHADOW',color:{r:0,g:0,b:0,a:0.2},offset:{x:0,y:2},radius:4,spread:0}]}),
     text({relativeTransform:[[1,0,35],[0,1,4]],width:60,height:20}),
     node({type:'VECTOR',name:'Curved path',fillGeometry:[{windingRule:'EVENODD',data:'M0 0 Q5 -5 10 0 C15 5 15 15 10 20 L0 20 Z M2 4 L8 4 L8 10 L2 10 Z'}],vectorPaths:[{windingRule:'NONE',data:'M10 20 L15 25 L20 20'}]}),
     node({name:'Dot',type:'ELLIPSE',width:8,height:8,relativeTransform:[[1,0,90],[0,1,30]]}),
@@ -27,7 +27,7 @@ test('deterministic complete hierarchy and Rust compilation', () => {
   assert.deepEqual(result.errors, []);
   assert.equal(result.code, exportHierarchy([fixture()]).code);
   assert.match(result.code, /strokes\(\[0.0, 0.0, 1.0, 0.0\]/);
-  assert.match(result.code, /Rect::new\(3.0, 4.0, 30.0, 20.0\)/);
+  assert.match(result.code, /Rect::new\(0.0, 0.0, 30.0, 20.0\)/);
   assert.match(result.code, /fonts\[0\]: Inter \/ Regular/);
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'figleaf-plugin-test-'));
   try {
@@ -47,7 +47,7 @@ test('unsupported features never produce partial Rust', () => {
   const cases = [
     node({opacity:0.5}), node({isMask:true}), node({cornerSmoothing:0.6}), node({blendMode:'MULTIPLY'}),
     node({fills:[{type:'IMAGE'}]}), node({fills:[{...solid,blendMode:'SCREEN'}]}),
-    node({relativeTransform:[[0,-1,0],[1,0,0]]}),
+    node({relativeTransform:[[0,0,0],[1,0,0]]}),
     node({strokes:[solid,solid]}), node({strokes:[solid],dashPattern:[1,2]}),
     node({strokes:[solid],strokeJoin:'BEVEL'}),
     node({fills:[{type:'GRADIENT_RADIAL'}]}),
@@ -62,7 +62,7 @@ test('unsupported features never produce partial Rust', () => {
 });
 test('clips are intersected or rejected, never overwritten', () => {
   const r = exportHierarchy([node({type:'FRAME',clipsContent:true,width:50,height:50,children:[node({type:'FRAME',width:50,height:50,relativeTransform:[[1,0,20],[0,1,20]],clipsContent:true,children:[node()]})]})]);
-  assert.deepEqual(r.errors,[]); assert.match(r.code,/clip_rounded\(Rect::new\(20.0, 20.0, 30.0, 30.0\), 0.0\)/);
+  assert.deepEqual(r.errors,[]); assert.match(r.code,/clip_transformed\(Rect::new\(20.0, 20.0, 30.0, 30.0\), 0.0, Transform::new/);
   const round = node({type:'FRAME',clipsContent:true,topLeftRadius:8,topRightRadius:8,bottomLeftRadius:8,bottomRightRadius:8,children:[text()]});
   assert.equal(exportHierarchy([round]).code,null);
   round.children=[node({...round,children:[node()],relativeTransform:[[1,0,20],[0,1,20]]})];
@@ -140,4 +140,25 @@ test('Figma person icon fixture exports cubic contours and retains both holes', 
   const r=exportHierarchy([n]);assert.deepEqual(r.errors,[]);
   assert.equal((r.code.match(/\.move_to\(/g)||[]).length,3);
   assert.equal((r.code.match(/\.cubic_to\(/g)||[]).length,10);
+});
+
+test('affine hierarchy composes local geometry and preserves root linear transform', () => {
+  const r = exportHierarchy([node({type:'FRAME',fills:[],relativeTransform:[[0,-1,500],[1,0,200]], children:[
+    node({relativeTransform:[[-2,0.5,10],[0,3,20]],width:20,height:10}),
+    text({relativeTransform:[[1,0,4],[0,1,8]]})
+  ]})]);
+  assert.deepEqual(r.errors,[]);
+  assert.match(r.code,/Transform::new\(\[\[0.0, -3.0, -20.0\], \[-2.0, 0.5, 10.0\]\]\)/);
+  assert.match(r.code,/Transform::new\(\[\[0.0, -1.0, -8.0\], \[1.0, 0.0, 4.0\]\]\)/);
+  const bad=exportHierarchy([node({relativeTransform:[[1,1,0],[1,1+1e-10,0]]})]);
+  assert.equal(bad.code,null);
+  assert.match(bad.errors[0].message,/singular/);
+});
+
+test('crossing transformed clips fail closed', () => {
+  const r=exportHierarchy([node({type:'FRAME',clipsContent:true,children:[
+    node({type:'FRAME',clipsContent:true,relativeTransform:[[1,0.5,0],[0,1,0]],children:[node()]})
+  ]})]);
+  assert.equal(r.code,null);
+  assert.ok(r.errors.some(e=>/transformed clips/.test(e.message)));
 });

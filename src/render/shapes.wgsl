@@ -5,6 +5,13 @@ struct View { size: vec4f }
 @group(0) @binding(0) var<uniform> view: View;
 struct PathEdge { points: vec4f, flags: vec4f }
 @group(1) @binding(0) var<storage, read> path_edges: array<PathEdge>;
+struct Transforms { shape_x:vec4f, shape_y:vec4f, clip_x:vec4f, clip_y:vec4f }
+@group(1) @binding(1) var<storage, read> transforms: array<Transforms>;
+fn mapped(p:vec2f, x:vec4f, y:vec4f) -> vec2f { return vec2f(dot(x.xy,p)+x.z,dot(y.xy,p)+y.z); }
+fn pixel_width(d:f32, transformed:f32) -> f32 {
+    let width=max(length(vec2f(dpdx(d),dpdy(d))),0.000001);
+    return select(1.0,width,transformed>0.5);
+}
 
 // Regions are unioned per sample. Each region's winding spans every subpath,
 // preserving holes and self-intersections without darkening overlapping fills.
@@ -174,8 +181,8 @@ fn erf(x: f32) -> f32 {
 // Coverage of a shape blurred by a Gaussian, from the distance to its edge.
 // Exact for a straight edge; near corners and for shapes smaller than the blur
 // it is an approximation.
-fn blurred(d: f32, sigma: f32) -> f32 {
-    if (sigma < 0.25) { return cover(d); }
+fn blurred(d: f32, sigma: f32, pixel: f32) -> f32 {
+    if (sigma < 0.25 * pixel) { return cover(d / pixel); }
     return 0.5 - 0.5 * erf(d / (sigma * 1.41421356));
 }
 
@@ -219,21 +226,28 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
 @fragment fn fs(v: Vertex) -> @location(0) vec4f {
     let p = v.position.xy;
     // The quad is already cut to the clip's box; this rounds its corners.
-    let clipped = cover(sd_round(p, v.clip, v.clip_radii));
+    let transform = transforms[u32(v.axis.w)];
+    let local = mapped(p,transform.shape_x,transform.shape_y);
+    let clip_point = mapped(p,transform.clip_x,transform.clip_y);
+    let dc = sd_round(clip_point,v.clip,v.clip_radii);
+    let clipped = cover(dc / pixel_width(dc,transform.clip_x.w));
     let kind = v.params.z;
-    let da = sd(p, v.a_rect, v.a_radii, v.a_radii_y, kind);
+    let da = sd(local, v.a_rect, v.a_radii, v.a_radii_y, kind);
     var b = 0.0;
     // An absent `b` is an empty box or a line of no width: it covers nothing.
-    b = cover(sd(p, v.b_rect, v.b_radii, v.b_radii_y, kind));
+    let db = sd(local, v.b_rect, v.b_radii, v.b_radii_y, kind);
+    let aw = pixel_width(da,transform.shape_x.w);
+    let bw = pixel_width(db,transform.shape_x.w);
+    b = cover(db / bw);
     var alpha = 0.0;
     if (kind > 2.5) {
         alpha = path_coverage(p, v.b_rect);
     } else if (v.params.y < 0.5) {
-        alpha = max(cover(da) - b, 0.0);
+        alpha = max(cover(da / aw) - b, 0.0);
     } else if (v.params.y < 1.5) {
-        alpha = blurred(da, v.params.x) * (1.0 - b);
+        alpha = blurred(da, v.params.x, aw) * (1.0 - b);
     } else {
-        alpha = b * (1.0 - blurred(da, v.params.x));
+        alpha = b * (1.0 - blurred(da, v.params.x, aw));
     }
     var color = v.color;
     if (v.params.w > 0.5) {

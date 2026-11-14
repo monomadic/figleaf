@@ -121,19 +121,32 @@ pub(crate) struct Edge {
 // Renderer-independent subdivision also allows default-build tests to verify
 // geometry. Distance to the *segment*, not the infinite chord, catches cusps
 // and collinear curves that double back beyond their endpoints.
-#[cfg(any(feature = "wgpu", test))]
+#[cfg(test)]
 pub(crate) fn flatten(
     paths: &[VectorPath],
     origin: [f32; 2],
     scale: f32,
 ) -> Result<Vec<Edge>, Error> {
+    flatten_transformed(paths, origin, scale, crate::Transform::IDENTITY)
+}
+
+#[cfg(any(feature = "wgpu", test))]
+pub(crate) fn flatten_transformed(
+    paths: &[VectorPath],
+    origin: [f32; 2],
+    scale: f32,
+    transform: crate::Transform,
+) -> Result<Vec<Edge>, Error> {
+    transform.inverse()?;
     bounds(paths)?;
     if !scale.is_finite() || scale <= 0. {
         return Err(Error("invalid vector scale"));
     }
     let mut edges = Vec::new();
     let point = |p: [f32; 2]| -> Result<[f32; 2], Error> {
-        let p = [(p[0] + origin[0]) * scale, (p[1] + origin[1]) * scale];
+        let p = transform
+            .point([p[0] + origin[0], p[1] + origin[1]])
+            .map(|v| v * scale);
         if p.iter().any(|v| !v.is_finite() || v.abs() > 1e7) {
             return Err(Error("vector exceeds physical coordinate limit"));
         }

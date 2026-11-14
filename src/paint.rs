@@ -4,7 +4,7 @@
 //! A [`Shape`] lowers to [`Layer`]s: plain coverage problems a renderer can draw
 //! without knowing what a stroke alignment or a spread is. The wgpu renderer
 //! draws them; a host with another renderer can draw them itself.
-use crate::{Color, Rect, VectorPath, path, text};
+use crate::{Color, Rect, Transform, VectorPath, path, text};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StrokeAlign {
@@ -163,6 +163,9 @@ pub enum Paint {
 /// [line](Self::line), or filled [vector paths](Self::vector).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Shape {
+    /// Local geometry/effects to canvas; clips have an independent transform.
+    pub transform: Transform,
+    pub clip_transform: Transform,
     /// The shape's box. For a line: from its start (`x`, `y`) to its end
     /// (`x + w`, `y + h`), so `w` and `h` may be negative.
     pub rect: Rect,
@@ -191,6 +194,8 @@ impl Shape {
     pub fn rect(rect: Rect) -> Self {
         Self {
             rect,
+            transform: Transform::IDENTITY,
+            clip_transform: Transform::IDENTITY,
             vector_paths: None,
             ellipse: false,
             line: None,
@@ -231,6 +236,16 @@ impl Shape {
                 to[1] - from[1],
             ))
         }
+    }
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.transform = transform;
+        self
+    }
+    /// Clip coordinates belong to this independent ancestor transform.
+    pub fn clip_transformed(mut self, rect: Rect, radius: f32, transform: Transform) -> Self {
+        self = self.clip_rounded(rect, radius);
+        self.clip_transform = transform;
+        self
     }
     pub fn radius(self, radius: f32) -> Self {
         self.radii([radius; 4])
@@ -278,6 +293,7 @@ impl Shape {
     }
     /// Clips to a rounded rectangle, as a frame with a corner radius does.
     pub fn clip_rounded(mut self, rect: Rect, radius: f32) -> Self {
+        self.clip_transform = Transform::IDENTITY;
         self.clip = Some(Outline {
             rect,
             radii: [radius; 4],
@@ -336,6 +352,13 @@ impl Shape {
 
     /// Why the shape can't be drawn, if it can't.
     pub fn problem(&self) -> Option<&'static str> {
+        if let Err(e) = self
+            .transform
+            .inverse()
+            .and_then(|_| self.clip_transform.inverse())
+        {
+            return Some(e.0);
+        }
         if let Some(paths) = &self.vector_paths {
             if self.ellipse
                 || self.line.is_some()
@@ -456,6 +479,8 @@ impl Shape {
         });
         let layer = |mode, a, b, color: Color, sigma| Layer {
             mode,
+            transform: self.transform,
+            clip_transform: self.clip_transform,
             vector_paths: self.vector_paths.as_deref(),
             vector_origin: [self.rect.x, self.rect.y],
             a,
@@ -586,6 +611,8 @@ pub struct Ramp {
 /// One tinted coverage layer, in logical units.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Layer<'a> {
+    pub transform: Transform,
+    pub clip_transform: Transform,
     /// When present, union these filled regions instead of the `a`/`b` outlines.
     /// The paths borrow the source shape and are positioned by `vector_origin`.
     pub vector_paths: Option<&'a [VectorPath]>,
@@ -608,6 +635,9 @@ pub struct Layer<'a> {
 impl Layer<'_> {
     /// Everything the layer can touch, before clipping.
     pub fn extent(&self) -> Rect {
+        self.transform.bounds(self.local_extent())
+    }
+    fn local_extent(&self) -> Rect {
         if let Some(paths) = self.vector_paths {
             return path::bounds(paths)
                 .unwrap_or_default()
@@ -641,6 +671,8 @@ pub enum Align {
 /// unless it [wraps](Self::wrap).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Text {
+    pub transform: Transform,
+    pub clip_transform: Transform,
     pub string: String,
     /// The line is `line_height` tall and placed in this box by the alignments.
     pub rect: Rect,
@@ -668,6 +700,8 @@ impl Text {
     /// Black 12/16 text in font 0, top left in `rect`.
     pub fn new(string: impl Into<String>, rect: Rect) -> Self {
         Self {
+            transform: Transform::IDENTITY,
+            clip_transform: Transform::IDENTITY,
             string: string.into(),
             rect,
             font: 0,
@@ -719,7 +753,17 @@ impl Text {
         (self.align, self.vertical_align) = (horizontal, vertical);
         self
     }
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.transform = transform;
+        self
+    }
+    pub fn clip_transformed(mut self, clip: Rect, transform: Transform) -> Self {
+        self.clip = Some(clip);
+        self.clip_transform = transform;
+        self
+    }
     pub fn clip(mut self, clip: Rect) -> Self {
+        self.clip_transform = Transform::IDENTITY;
         self.clip = Some(clip);
         self
     }

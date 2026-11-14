@@ -21,10 +21,13 @@ Rust output; do not merely remove an exporter error.
    mean 0.82/255 at 4×). Its variable color was resolved only for the fixture;
    the live exporter still rejects bindings. Other curve/winding cases are
    synthetic. Strokes (task 3), effects and per-region paints remain errors.
-2. **Affine transforms.** Rotation, reflection, nonuniform scale, and skew;
-   compose nested transforms and apply them consistently to geometry, strokes,
-   fills, clips, and effects. Translation and rotation of a plain line already
-   export; arbitrary transformed shapes do not.
+2. **Affine transforms — done 2026-11-15.** Rotation, reflection, nonuniform
+   scale and skew; composed plugin matrices and local geometry, borders,
+   gradients, clips, supported effects and text. Singular matrices fail closed.
+   Rotation/reflection/skew reviewed beside Figma ([comparison](docs/affine-compare.png),
+   mean 0.36/255, edge maximum 78/255). Other cases have synthetic tests.
+   Crossing transformed clip intersections and rounded text clips remain task 7;
+   transformed path strokes/effects remain unsupported as before.
 3. **Complete path strokes.** Butt/square/round caps, miter/bevel/round joins,
    miter limits, and inside/center/outside alignment on supported paths. Cover
    open ends, closed contours, acute corners, and thick strokes. Individual
@@ -40,7 +43,7 @@ Rust output; do not merely remove an exporter error.
    contours and holes, including nested boolean nodes. Preserve the actual
    resulting geometry; no bounding-box or raster stand-ins.
 7. **Complete clipping.** Per-corner rounded clips, intersecting nested rounded
-   clips, transformed clips, arbitrary path clips, and rounded/path clipping of
+   clips, intersecting transformed clips, arbitrary path clips, and rounded/path clipping of
    text. Preserve every ancestor clip within the exported hierarchy. Plain
    rectangular intersections and a single circular-corner shape clip work now.
 8. **Corner smoothing.** Figma's smoothed corners on rectangles, frames, and

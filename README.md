@@ -104,6 +104,30 @@ renders synthetic rounded cases. Abner's button-bar example now uses a real
 bottom border and was reviewed beside its saved Figma export; unequal rounded
 border widths have synthetic validation only. No new dependencies were added.
 
+## Affine transforms
+
+`Shape::transform` and `Text::transform` take Figma's two matrix rows:
+`Transform::new([[a, c, tx], [b, d, ty]])`. Geometry, borders, gradients and
+supported effects stay in local coordinates. `parent.compose(child)` applies
+the child first, then the parent. Rotation, reflection, nonuniform scale and
+skew work on primitives, filled paths and text; singular/non-finite matrices
+are reported in `Renderer::problems`.
+
+Plain `.clip(...)` remains in canvas coordinates. Use
+`Shape::clip_transformed(rect, radius, ancestor_transform)` or
+`Text::clip_transformed(rect, ancestor_transform)` for an ancestor's local clip.
+The plugin composes nested matrices and omits only the selection root's
+translation. Crossing independently transformed clips and rounded text clips
+still fail closed; complete clip intersections are a separate task.
+
+Run `cargo run --example affine --features wgpu` for rotation/reflection/skew
+beside Figma ([comparison](docs/affine-compare.png)): mean difference 0.36/255,
+maximum 78/255 at an edge. Nonuniform scale, transformed text/effects, nested
+composition and cache behavior have synthetic tests. Text rasterizes at the
+maximum magnification, within the existing backend limits (including 4× scale),
+and samples its transformed mask with bilinear filtering. No new dependencies;
+GPU storage adds 64 bytes per shape and 64 per text instance.
+
 ## Vector paths
 
 `Shape::vector(rect, paths)` paints local-coordinate `VectorPath` regions with
@@ -114,7 +138,7 @@ unfilled network branches. Open filled contours close implicitly. Regions are
 unioned before each fill, so overlaps do not accumulate opacity.
 
 The plugin reads Figma's resolved `fillGeometry` plus unfilled `vectorPaths`.
-Path strokes, effects, transforms, and per-region paint overrides remain hard
+Path strokes, effects, and per-region paint overrides remain hard
 errors. Run `cargo run --example vector_paths --features wgpu` for the person
 icon from [Switchblade's design](https://www.figma.com/design/p01oYypZrTOjxe4Pi2Ytxe?node-id=336-1230).
 Its bound color was explicitly resolved for the fixture, not enabled in the

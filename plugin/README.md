@@ -30,10 +30,11 @@ fallbacks, vector flattening, border rectangles, or partial code are emitted.
 An agent can consume the displayed code just as a person can; this plugin does
 not install an agent connection or write to a consumer's project.
 
-Supported: translation-only rectangles, frames/components/instances/groups,
+Supported: affine-transformed rectangles, frames/components/instances/groups,
 full ellipses, filled vector paths, round-capped straight lines, solid and linear-gradient fills
 (up to eight stops), solid uniform/individual borders, and shape shadows.
-Rectangular clips can intersect; one rounded clip is supported for shapes.
+Nested transforms compose; the root translation is omitted but its linear matrix is retained.
+Rectangular clips sharing axes can intersect; one rounded clip is supported for shapes.
 Simple Latin text needs one solid fill, one style, explicit line height, and
 caller-supplied font indices. Code comments identify each required family/style;
 the host must supply the exact font and variable-font configuration. Normal
@@ -46,10 +47,10 @@ before filling; differing per-region paints are rejected. The limits are 256
 regions and 4,096 commands; scale-dependent renderer limits also apply.
 
 Errors include vector strokes/effects/paint overrides, images, masks, layer opacity, blend modes, corner
-smoothing, rotation/scale/skew (except rotation of a line), unsupported gradients,
+smoothing, singular transforms, unsupported gradients,
 multiple/dashed/gradient strokes, non-miter joins, blur, container effects,
 variable bindings, Display P3 documents, mixed/automatic-height/decorated/list
-text, rounded text clipping, and intersecting rounded clips. Unequal corner radii
+text, rounded text clipping, and intersecting rounded or independently transformed clips. Unequal corner radii
 are supported on shapes, but not clipping frames. The size limit is 5,000 nodes
 and 128 levels. New Figma features may need additional validation rules.
 

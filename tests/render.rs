@@ -687,3 +687,121 @@ fn self_intersections_and_unfilled_network_branches_keep_their_meaning() {
     assert_eq!(i.pixel(30, 45), RED);
     assert_eq!(i.pixel(15, 30), CLEAR);
 }
+
+#[test]
+fn affine_geometry_clips_gradients_and_cache() {
+    use figleaf::Transform;
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    // Rotates the local horizontal ramp down the screen, stretching it 2x.
+    let m = Transform::new([[0., -1., 40.], [2., 0., 10.]]);
+    c.shape(
+        Shape::rect(Rect::new(0., 0., 20., 20.))
+            .gradient(
+                LinearGradient::horizontal()
+                    .stop(0., hex(0xff0000))
+                    .stop(1., hex(0x0000ff)),
+            )
+            .transform(m)
+            .clip_transformed(Rect::new(0., 0., 10., 20.), 0., m),
+    );
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty());
+    assert!(i.pixel(30, 12)[0] > 220);
+    assert!(i.pixel(30, 28)[2] > 100);
+    assert_eq!(i.pixel(30, 31), CLEAR);
+    assert_eq!(i.pixel(41, 12), CLEAR);
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    c.clear();
+    c.shape(
+        Shape::rect(Rect::new(0., 0., 10., 10.))
+            .fill(hex(0xff0000))
+            .transform(Transform::new([[-2., 1., 40.], [0., 2., 10.]])),
+    );
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(35, 20), RED);
+    assert_eq!(i.pixel(20, 20), CLEAR);
+    c.shape(
+        Shape::rect(Rect::new(0., 0., 10., 10.))
+            .fill(hex(0))
+            .transform(Transform::new([[0.; 3], [0.; 3]])),
+    );
+    renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(renderer.problems().len(), 1);
+    assert_eq!(renderer.problems()[0].item, 1);
+}
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn rotation_carries_strokes_shadows_vectors_and_text() {
+    use figleaf::{
+        Transform, VectorPath, WindingRule,
+        text::{FontSource, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    let mut images = Vec::new();
+    for transform in [
+        Transform::IDENTITY,
+        Transform::new([[0., -1., 100.], [1., 0., 0.]]),
+    ] {
+        c.clear();
+        c.shape(
+            Shape::rect(Rect::new(10., 10., 30., 20.))
+                .radius(5.)
+                .fill(hex(0xff0000))
+                .stroke(2., hex(0x0000ff), StrokeAlign::Outside)
+                .shadow(Shadow::drop(hexa(0x00000080), [3., 5.], 4.))
+                .transform(transform),
+        );
+        c.shape(
+            Shape::vector(
+                Rect::new(50., 10., 30., 30.),
+                vec![
+                    VectorPath::new(WindingRule::NonZero)
+                        .move_to([0., 0.])
+                        .quadratic_to([30., 0.], [30., 30.])
+                        .line_to([0., 30.])
+                        .close(),
+                ],
+            )
+            .fill(hex(0x00ff00))
+            .transform(transform),
+        );
+        c.text(
+            Text::new("Test", Rect::new(10., 55., 60., 25.))
+                .size(14., 20.)
+                .color(hex(0x0000ff))
+                .drop_shadow(hexa(0x00000080), [2., 3.], 2.)
+                .transform(transform)
+                .clip_transformed(Rect::new(10., 55., 40., 25.), transform),
+        );
+        images.push(gpu.render(&mut renderer, &c, [100, 100], 1., [0.; 4], &mut backend));
+        assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    }
+    let mut total = 0u64;
+    for y in 0..100 {
+        for x in 0..100 {
+            for (a, b) in images[0]
+                .pixel(x, y)
+                .into_iter()
+                .zip(images[1].pixel(99 - y, x))
+            {
+                total += a.abs_diff(b) as u64;
+            }
+        }
+    }
+    assert!(total < 5000, "rotation changed pixels by {total}");
+}

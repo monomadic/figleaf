@@ -31,9 +31,34 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
     if (!Array.isArray(list)) throw Error('Mixed paints or effects are unsupported.');
     return list.filter(p => p.visible !== false);
   };
+  const identity = [[1,0,0],[0,1,0]];
+  const matrix = m => `Transform::new([${m.map(array).join(', ')}])`;
+  function inverse(m) {
+    if (!Array.isArray(m) || m.length !== 2 || m.some(r => !Array.isArray(r) || r.length !== 3)) throw Error('Invalid affine transform.');
+    const [[a,c,x],[b,d,y]] = m.map(r => r.map(v => { number(v); return Math.fround(v); }));
+    const det = a*d-b*c;
+    if (!Number.isFinite(det) || det === 0) throw Error('Non-finite or singular transform.');
+    const result = [[d/det,-c/det,(c*y-d*x)/det],[-b/det,a/det,(b*x-a*y)/det]];
+    result.flat().forEach(number);
+    return result;
+  }
+  const compose = (parent,child) => parent.map(r => [r[0]*child[0][0]+r[1]*child[1][0],r[0]*child[0][1]+r[1]*child[1][1],r[0]*child[0][2]+r[1]*child[1][2]+r[2]]);
+  const point = (m,p) => m.map(r=>r[0]*p[0]+r[1]*p[1]+r[2]);
+  const bounds = (m,r) => {
+    const points = [[r[0],r[1]],[r[0]+r[2],r[1]],[r[0],r[1]+r[3]],[r[0]+r[2],r[1]+r[3]]].map(p=>point(m,p));
+    const lo=[0,1].map(i=>Math.min(...points.map(p=>p[i]))), hi=[0,1].map(i=>Math.max(...points.map(p=>p[i])));
+    return [lo[0],lo[1],hi[0]-lo[0],hi[1]-lo[1]];
+  };
   const contains = (a, b) => a[0] <= b[0] && a[1] <= b[1] && a[0]+a[2] >= b[0]+b[2] && a[1]+a[3] >= b[1]+b[3];
   const combineClip = (a, b) => {
     if (!a) return b;
+    const relative = compose(inverse(a.transform), b.transform);
+    if (relative[0][0] !== 1 || relative[0][1] !== 0 || relative[1][0] !== 0 || relative[1][1] !== 1) {
+      if (!a.radius && contains(a.rect, bounds(relative,b.rect))) return b;
+      if (!b.radius && contains(b.rect, bounds(compose(inverse(b.transform),a.transform),a.rect))) return a;
+      throw Error('Intersecting independently transformed clips are unsupported.');
+    }
+    b = { ...b, rect: [b.rect[0]+relative[0][2],b.rect[1]+relative[1][2],b.rect[2],b.rect[3]], transform: a.transform };
     if (a.radius || b.radius) {
       // A rectangular ancestor containing the entire rounded clip is redundant.
       if (!a.radius && contains(a.rect, b.rect)) return b;
@@ -41,7 +66,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       throw Error('Intersecting rounded clips are unsupported.');
     }
     const x = Math.max(a.rect[0], b.rect[0]), y = Math.max(a.rect[1], b.rect[1]);
-    return { rect: [x, y, Math.max(0, Math.min(a.rect[0]+a.rect[2], b.rect[0]+b.rect[2])-x), Math.max(0, Math.min(a.rect[1]+a.rect[3], b.rect[1]+b.rect[3])-y)], radius: 0 };
+    return { rect: [x, y, Math.max(0, Math.min(a.rect[0]+a.rect[2], b.rect[0]+b.rect[2])-x), Math.max(0, Math.min(a.rect[1]+a.rect[3], b.rect[1]+b.rect[3])-y)], radius: 0, transform: a.transform };
   };
   // Figma's documented absolute path command subset. Use resolved fillGeometry
   // so branched networks retain every filled region and hole. Never reconstruct
@@ -83,14 +108,14 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
     return `vec![${paths.join(',\n        ')}]`;
   }
   let count = 0;
-  function visit(n, path, offset, clip, root = false, depth = 0) {
+  function visit(n, path, parentTransform, clip, root = false, depth = 0) {
     if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
     // Invisible layers have no output, including their descendants.
     if (n.visible === false) return;
     const before = errors.length;
     const reject = message => fail(n, path, message);
     let childClip = clip;
-    let position = offset;
+    let world = parentTransform;
     try {
       const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR'];
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
@@ -101,10 +126,11 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (n.cornerSmoothing) reject('Corner smoothing is unsupported.');
       const transform = n.relativeTransform;
       if (!transform) throw Error('Missing relative transform.');
-      const [a, c, tx] = transform[0], [b, d, ty] = transform[1];
-      if (n.type !== 'LINE' && (a !== 1 || b !== 0 || c !== 0 || d !== 1)) reject('Rotation, reflection, scale, and skew are unsupported.');
-      position = root ? [0, 0] : [offset[0] + tx, offset[1] + ty];
-      const box = [...position, n.width, n.height];
+      inverse(transform);
+      const local = root ? transform.map(r=>[r[0],r[1],0]) : transform;
+      world = compose(parentTransform,local);
+      inverse(world);
+      const box = [0, 0, n.width, n.height];
       box.forEach(number);
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
       if (n.type === 'GROUP' && visible(n.effects || []).length) reject('Group effects require compositing and are unsupported.');
@@ -171,12 +197,11 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
           expression = `Text::new(${string(text)}, ${rect(box)}).font(fonts[${font}]).size(${number(n.fontSize)}, ${number(height)}).letter_spacing(${number(tracking)}).color(${color(fills[0].color, fills[0].opacity)})`;
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
-          if (clip) expression += `.clip(${rect(clip.rect)})`;
+          if (clip) expression += `.clip_transformed(${rect(clip.rect)}, ${matrix(clip.transform)})`;
         }
       } else if (n.type === 'LINE') {
         if (fills.length || strokes.length !== 1 || n.strokeCap !== 'ROUND' || effects.length) reject('Lines require one solid round-capped stroke, no fills, and no effects.');
-        if (Math.abs(a*a+b*b-1) > 1e-6 || Math.abs(c*c+d*d-1)>1e-6 || Math.abs(a*c+b*d)>1e-6) reject('Scaled or skewed lines are unsupported.');
-        if (errors.length === before) expression = `Shape::line(${array(position)}, ${array([position[0]+a*n.width,position[1]+b*n.width])}, ${number(n.strokeWeight)}).fill(${color(strokes[0].color,strokes[0].opacity)})`;
+        if (errors.length === before) expression = `Shape::line([0.0, 0.0], ${array([n.width,0])}, ${number(n.strokeWeight)}).fill(${color(strokes[0].color,strokes[0].opacity)})`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
         if (n.type === 'VECTOR') {
           if (strokes.length) reject('Vector path strokes are unsupported (geometry task 3).');
@@ -206,29 +231,30 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
       }
-      if (expression && n.type !== 'TEXT' && clip) expression += `.clip_rounded(${rect(clip.rect)}, ${number(clip.radius)})`;
+      if (expression) expression += `.transform(${matrix(world)})`;
+      if (expression && n.type !== 'TEXT' && clip) expression += `.clip_transformed(${rect(clip.rect)}, ${number(clip.radius)}, ${matrix(clip.transform)})`;
       if (expression && errors.length === before) {
         lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    canvas.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
         if (!radii.every(r => r === radii[0])) reject('Clipping with unequal corner radii is unsupported.');
-        childClip = combineClip(clip, { rect: box, radius: radii[0] });
+        childClip = combineClip(clip, { rect: box, radius: radii[0], transform: world });
       }
     } catch (e) { reject(e.message); }
     let children = n.children || [];
     if (n.itemReverseZIndex) children = [...children].reverse();
-    for (const child of children) visit(child, path + ' / ' + child.name, position, childClip, false, depth + 1);
+    for (const child of children) visit(child, path + ' / ' + child.name, world, childClip, false, depth + 1);
   }
-  try { visit(selection[0], selection[0].name, [0,0], null, true); }
+  try { visit(selection[0], selection[0].name, identity, null, true); }
   catch (e) { fail(selection[0], selection[0].name, e.message); }
   if (errors.length) return { code: null, errors };
   const preamble = [
     '// Generated by figleaf. Current dimensions and resolved values; no responsive layout or interactions.',
-    '// Local origin is the selected root. Ancestors outside the selection are not included.',
+    '// Root placement is omitted; its rotation/scale and all descendant transforms are preserved.',
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };
