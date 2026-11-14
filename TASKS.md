@@ -4,6 +4,19 @@ figleaf is useful when a real app draws a real Figma-designed control through
 it and the result looks right beside the Figma export. Work on the first unmet
 item unless the owner says otherwise.
 
+## Plugin and individual borders — 2026-11-15
+
+Added the read-only [Rust exporter](plugin/README.md): static selected geometry,
+copyable code, all-or-nothing diagnostics, no runtime filesystem/network access.
+Generated Rust compiles; synthetic plugin/UI tests pass. Figma Desktop import
+and live execution remain unverified (local browser preview was policy-blocked).
+
+`Shape::strokes` supports top/right/bottom/left widths in all three alignments,
+with joined rounded contours. The button-bar example uses a real bottom stroke
+and was viewed beside its saved Figma export. Unequal rounded cases were rendered
+and reviewed, but only against synthetic expectations. GPU tests cover missing
+sides, coverage, invalid widths, and unchanged-canvas uploads.
+
 ## Where things stand (2026-11-12)
 
 Works: rectangles, rounded rectangles, ellipses, solid and linear-gradient
@@ -127,9 +140,9 @@ buttons in Figma's bar are placeholders, so Abner keeps its own.
 
 What it taught:
 
-- Figma strokes one side of a frame (the bar's bottom edge). figleaf strokes
-  all sides or none, so the edge is drawn as a 1 wide rectangle. Enough here;
-  a rounded corner on a stroked side would need more.
+- Figma strokes one side of a frame (the bar's bottom edge). The original
+  example used a 1 wide rectangle. Replaced with
+  `Shape::strokes` on 2026-11-15; individual borders are now native paint.
 - A stroke that takes room in the layout ("strokes included in layout") is
   written as extra padding on that side.
 - The bar's fill is translucent. On Abner's sRGB surface it is written as the

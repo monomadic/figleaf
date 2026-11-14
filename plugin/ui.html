@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<style>
+  :root { font: 12px/1.5 system-ui, sans-serif; color: var(--figma-color-text, #222); background: var(--figma-color-bg, #fff); }
+  body { margin: 20px; display: flex; flex-direction: column; height: calc(100vh - 40px); gap: 12px; }
+  h1 { font-size: 18px; margin: 0; } p { margin: 0; } .muted { color: var(--figma-color-text-secondary, #666); }
+  .toolbar { display: flex; gap: 8px; align-items: center; }
+  button { border: 1px solid var(--figma-color-border, #bbb); border-radius: 5px; padding: 8px 12px; background: var(--figma-color-bg, #fff); color: inherit; cursor: pointer; }
+  #generate { background: #1769e0; color: white; border-color: #1769e0; }
+  button:disabled { opacity: .45; cursor: default; }
+  textarea { flex: 1; min-height: 100px; resize: none; background: var(--figma-color-bg-secondary, #f5f5f5); color: inherit; border: 1px solid var(--figma-color-border, #ccc); padding: 12px; font: 12px/1.6 ui-monospace, monospace; tab-size: 4; }
+  #errors { overflow: auto; flex: 1; } #errors[hidden], textarea[hidden] { display: none; }
+  li { margin-bottom: 12px; } .error { color: var(--figma-color-text-danger, #b42318); }
+</style>
+<h1>figleaf → Rust</h1>
+<p class="muted">Export the selected hierarchy at its current dimensions. Resolved values only; no responsive layout or interactions. This plugin only displays code.</p>
+<p id="selection">Select one frame, component, or shape.</p>
+<div class="toolbar"><button id="generate" disabled>Generate Rust</button><button id="copy" disabled>Copy code</button></div>
+<p id="status" role="status" aria-live="polite">Select exactly one hierarchy root.</p>
+<textarea id="code" aria-label="Generated Rust code" readonly spellcheck="false" placeholder="Generated Rust will appear here."></textarea>
+<div id="errors" hidden><ul id="error-list"></ul></div>
+<script>
+  const output = document.getElementById('code');
+  const generate = document.getElementById('generate');
+  const copy = document.getElementById('copy');
+  const status = document.getElementById('status');
+  const errors = document.getElementById('errors');
+  let revision = -1;
+  generate.onclick = () => { copy.disabled = true; output.value = ''; status.textContent = 'Validating hierarchy…'; parent.postMessage({ pluginMessage: { type: 'generate' } }, '*'); };
+  copy.onclick = async () => {
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(output.value);
+      else { output.focus(); output.select(); if (!document.execCommand('copy')) throw Error(); }
+      status.textContent = 'Copied Rust code.';
+    } catch { output.focus(); output.select(); status.textContent = 'Press ⌘C / Ctrl+C to copy the selected code.'; }
+  };
+  window.onmessage = event => {
+    const m = event.data.pluginMessage;
+    if (!m) return;
+    if (m.type === 'invalidated') {
+      revision = m.revision; output.value = ''; copy.disabled = true; errors.hidden = true; output.hidden = false;
+      generate.disabled = m.selection.length !== 1;
+      document.getElementById('selection').textContent = m.selection.length === 1 ? m.selection[0] : `${m.selection.length} roots selected`;
+      status.className = ''; status.textContent = m.selection.length === 1 ? 'Ready. Generate Rust for the current selection.' : 'Select exactly one hierarchy root.';
+    }
+    if (m.type === 'result' && m.revision === revision) {
+      const failed = m.errors.length > 0;
+      output.value = failed ? '' : m.code; output.hidden = failed; errors.hidden = !failed; copy.disabled = failed;
+      status.className = failed ? 'error' : '';
+      status.textContent = failed ? `${m.errors.length} unsupported feature(s). No Rust was generated.` : `Generated Rust for ${m.nodeCount} nodes. Review font requirements in the code comments.`;
+      const list = document.getElementById('error-list'); list.replaceChildren();
+      for (const e of m.errors) { const li = document.createElement('li'), name = document.createElement('strong'), detail = document.createElement('div'); name.textContent = e.path; detail.textContent = e.message; li.append(name, detail); list.append(li); }
+    }
+  };
+  parent.postMessage({ pluginMessage: { type: 'ready' } }, '*');
+</script>
+</html>

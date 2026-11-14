@@ -174,6 +174,8 @@ pub struct Shape {
     /// Painted in order, as Figma lists them bottom to top.
     pub fills: Vec<Paint>,
     pub stroke: Option<Stroke>,
+    /// Individual top, right, bottom, left widths, overriding `stroke.width`.
+    pub stroke_weights: Option<[f32; 4]>,
     /// Painted in order: the first is furthest back.
     pub shadows: Vec<Shadow>,
     /// Multiplies every layer. Unlike Figma's layer opacity it does not flatten
@@ -192,6 +194,7 @@ impl Shape {
             radii: [0.; 4],
             fills: Vec::new(),
             stroke: None,
+            stroke_weights: None,
             shadows: Vec::new(),
             opacity: 1.,
             clip: None,
@@ -237,11 +240,19 @@ impl Shape {
         self
     }
     pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {
+        self.stroke_weights = None;
         self.stroke = Some(Stroke {
             width,
             color,
             align,
         });
+        self
+    }
+    /// Individual frame/rectangle borders, in top, right, bottom, left order.
+    /// Adjacent borders join through elliptical inner/outer corner contours.
+    pub fn strokes(mut self, widths: [f32; 4], color: Color, align: StrokeAlign) -> Self {
+        self = self.stroke(0., color, align);
+        self.stroke_weights = Some(widths);
         self
     }
     pub fn shadow(mut self, shadow: Shadow) -> Self {
@@ -260,6 +271,7 @@ impl Shape {
         self.clip = Some(Outline {
             rect,
             radii: [radius; 4],
+            radii_y: [radius; 4],
         });
         self
     }
@@ -276,14 +288,49 @@ impl Shape {
                 0.
             }
         });
-        Outline { rect, radii }
+        Outline {
+            rect,
+            radii,
+            radii_y: radii,
+        }
+    }
+
+    fn outline_sides(&self, grow: [f32; 4]) -> Outline {
+        if grow.iter().all(|v| *v == grow[0]) {
+            return self.outline(grow[0]);
+        }
+        let [top, right, bottom, left] = grow;
+        let rect = Rect::new(
+            self.rect.x - left,
+            self.rect.y - top,
+            (self.rect.w + left + right).max(0.),
+            (self.rect.h + top + bottom).max(0.),
+        );
+        let base = self.radii.map(|r| r.min(self.rect.w.min(self.rect.h) / 2.));
+        let xs = [left, right, right, left];
+        let ys = [top, top, bottom, bottom];
+        let mut radii = [0.; 4];
+        let mut radii_y = [0.; 4];
+        for i in 0..4 {
+            if base[i] > 0. {
+                radii[i] = (base[i] + xs[i]).clamp(0., rect.w / 2.);
+                radii_y[i] = (base[i] + ys[i]).clamp(0., rect.h / 2.);
+            }
+        }
+        Outline {
+            rect,
+            radii,
+            radii_y,
+        }
     }
 
     /// Why the shape can't be drawn, if it can't.
     pub fn problem(&self) -> Option<&'static str> {
         let mut numbers = self.radii.to_vec();
         numbers.extend(self.clip.map_or([0.; 4], |c| c.radii));
+        numbers.extend(self.clip.map_or([0.; 4], |c| c.radii_y));
         numbers.push(self.opacity);
+        numbers.extend(self.stroke_weights.into_iter().flatten());
         let mut bad_gradient = false;
         for fill in &self.fills {
             match fill {
@@ -327,6 +374,9 @@ impl Shape {
         } else if self.radii.iter().any(|r| *r < 0.)
             || self.clip.is_some_and(|c| c.radii.iter().any(|r| *r < 0.))
             || self.stroke.is_some_and(|s| s.width < 0.)
+            || self
+                .stroke_weights
+                .is_some_and(|ws| ws.iter().any(|w| *w < 0.))
             || self.shadows.iter().any(|s| s.blur < 0.)
             || self.line.is_some_and(|w| w < 0.)
         {
@@ -337,6 +387,12 @@ impl Shape {
                 || self.fills.iter().any(|f| !matches!(f, Paint::Solid(_))))
         {
             Some("a line takes solid fills and drop shadows only")
+        } else if self.stroke_weights.is_some()
+            && (self.ellipse || self.line.is_some() || self.stroke.is_none())
+        {
+            Some("individual strokes require a rectangle and a stroke")
+        } else if self.clip.is_some_and(|c| c.radii != c.radii_y) {
+            Some("clip corners must be circular")
         } else if bad_gradient {
             Some("gradient needs 1 to 8 stops and a start apart from its end")
         } else {
@@ -351,22 +407,24 @@ impl Shape {
             return;
         }
         // How far the stroke reaches outside and inside the shape's edge.
-        let (outside, inside) = match self.stroke {
-            Some(s) if s.width > 0. => match s.align {
-                StrokeAlign::Inside => (0., s.width),
-                StrokeAlign::Center => (s.width / 2., s.width / 2.),
-                StrokeAlign::Outside => (s.width, 0.),
-            },
-            _ => (0., 0.),
+        let widths = self
+            .stroke
+            .map_or([0.; 4], |s| self.stroke_weights.unwrap_or([s.width; 4]));
+        let (outside, inside) = match self.stroke.map(|s| s.align) {
+            Some(StrokeAlign::Inside) => ([0.; 4], widths),
+            Some(StrokeAlign::Center) => (widths.map(|w| w / 2.), widths.map(|w| w / 2.)),
+            Some(StrokeAlign::Outside) => (widths, [0.; 4]),
+            None => ([0.; 4], [0.; 4]),
         };
         // Effects follow the fill and the stroke together.
-        let silhouette = self.outline(outside);
+        let silhouette = self.outline_sides(outside);
         let start = out.len();
         let clip = self.clip.map(|c| {
             let limit = c.rect.w.min(c.rect.h) / 2.;
             Outline {
                 rect: c.rect,
                 radii: c.radii.map(|r| r.min(limit)),
+                radii_y: c.radii_y.map(|r| r.min(limit)),
             }
         });
         let layer = |mode, a, b, color: Color, sigma| Layer {
@@ -390,6 +448,7 @@ impl Shape {
             let segment = |grow: f32, by: [f32; 2]| Outline {
                 rect: self.rect.translate(by),
                 radii: [(width / 2. + grow).max(0.); 4],
+                radii_y: [(width / 2. + grow).max(0.); 4],
             };
             for s in &self.shadows {
                 let knockout = (!s.behind).then_some(segment(0., [0.; 2]));
@@ -409,7 +468,7 @@ impl Shape {
             return;
         }
         for s in self.shadows.iter().filter(|s| !s.inner) {
-            let mut a = self.outline(outside + s.spread);
+            let mut a = self.outline_sides(outside.map(|w| w + s.spread));
             a.rect = a.rect.translate(s.offset);
             let knockout = (!s.behind).then_some(silhouette);
             out.push(layer(Mode::Drop, a, knockout, s.color, s.blur / 2.));
@@ -418,7 +477,11 @@ impl Shape {
         // Under an opaque stroke the fill can run on to the middle of
         // the stroke's outer part, where it is hidden, and close the seam.
         let opaque = self.stroke.is_some_and(|s| s.color[3] >= 1.);
-        let under = self.outline(if opaque { outside / 2. } else { 0. });
+        let under = self.outline_sides(if opaque {
+            outside.map(|w| w / 2.)
+        } else {
+            [0.; 4]
+        });
         for fill in &self.fills {
             match fill {
                 Paint::Solid(color) => out.push(layer(Mode::Band, under, None, *color, 0.)),
@@ -435,13 +498,13 @@ impl Shape {
                 }
             }
         }
-        if let Some(s) = self.stroke.filter(|s| s.width > 0.) {
-            let hole = self.outline(-inside);
+        if let Some(s) = self.stroke.filter(|_| widths.iter().any(|w| *w > 0.)) {
+            let hole = self.outline_sides(inside.map(|w| -w));
             let hole = (hole.rect.w > 0. && hole.rect.h > 0.).then_some(hole);
             out.push(layer(Mode::Band, silhouette, hole, s.color, 0.));
         }
         for s in self.shadows.iter().filter(|s| s.inner) {
-            let mut a = self.outline(outside - s.spread);
+            let mut a = self.outline_sides(outside.map(|w| w - s.spread));
             a.rect = a.rect.translate(s.offset);
             out.push(layer(
                 Mode::Inner,
@@ -465,7 +528,10 @@ impl Shape {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Outline {
     pub rect: Rect,
+    /// Horizontal corner radii: top-left, top-right, bottom-right, bottom-left.
     pub radii: [f32; 4],
+    /// Vertical corner radii; equal to `radii` for circular corners.
+    pub radii_y: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -685,6 +751,32 @@ impl Canvas {
 mod tests {
     use super::*;
     use crate::hex;
+
+    #[test]
+    fn individual_widths_preserve_uniform_strokes_and_reject_invalid_uses() {
+        let shape = Shape::rect(Rect::new(10., 20., 60., 40.)).radius(12.);
+        for align in [
+            StrokeAlign::Inside,
+            StrokeAlign::Center,
+            StrokeAlign::Outside,
+        ] {
+            assert_eq!(
+                layers(&shape.clone().stroke(3., hex(0xFF0000), align)),
+                layers(&shape.clone().strokes([3.; 4], hex(0xFF0000), align)),
+            );
+        }
+        let invalid = shape
+            .clone()
+            .strokes([0., f32::NAN, 1., 0.], hex(0), StrokeAlign::Inside);
+        assert!(invalid.problem().is_some());
+        assert!(layers(&invalid).is_empty());
+        let mut ellipse = shape.strokes([1., 2., 3., 4.], hex(0), StrokeAlign::Inside);
+        ellipse.ellipse = true;
+        assert_eq!(
+            ellipse.problem(),
+            Some("individual strokes require a rectangle and a stroke")
+        );
+    }
 
     fn layers(s: &Shape) -> Vec<Layer> {
         let mut out = Vec::new();

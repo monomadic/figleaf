@@ -448,3 +448,61 @@ fn a_text_drop_shadow_falls_below_the_glyphs() {
     }
     assert!(below > 4, "{below}");
 }
+
+#[test]
+fn individual_frame_borders_join_without_seams_or_phantom_sides() {
+    let mut c = Canvas::new();
+    c.shape(
+        Shape::rect(Rect::new(10., 10., 30., 30.))
+            .radius(10.)
+            .strokes([0., 0., 4., 0.], hex(0xFF0000), StrokeAlign::Inside),
+    );
+    c.shape(Shape::rect(Rect::new(55., 10., 30., 30.)).strokes(
+        [2., 4., 6., 0.],
+        hex(0x0000FF),
+        StrokeAlign::Outside,
+    ));
+    let i = draw(&c);
+    assert_eq!(i.pixel(25, 38), RED);
+    assert_eq!(i.pixel(25, 35), CLEAR);
+    assert_eq!(i.pixel(10, 25), CLEAR);
+    assert_eq!(i.pixel(25, 10), CLEAR);
+    // Rounded top corners must not leave an antialias fringe when their
+    // border widths are zero: outer and inner coverage cancel exactly.
+    for y in 8..20 {
+        for x in 8..42 {
+            assert_eq!(i.pixel(x, y), CLEAR, "{x},{y}");
+        }
+    }
+    assert_eq!(i.pixel(70, 9), BLUE);
+    assert_eq!(i.pixel(87, 25), BLUE);
+    assert_eq!(i.pixel(70, 44), BLUE);
+    assert_eq!(i.pixel(54, 25), CLEAR);
+    assert_eq!(i.pixel(70, 25), CLEAR);
+}
+
+#[test]
+fn individual_border_changes_upload_once_and_invalid_widths_are_reported() {
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    let mut c = Canvas::new();
+    let shape = Shape::rect(Rect::new(10., 10., 30., 30.))
+        .radius(8.)
+        .strokes([2., 4., 6., 8.], hex(0xFF0000), StrokeAlign::Center);
+    c.shape(shape.clone());
+    let a = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(a.changed);
+    let b = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!b.changed);
+    assert_eq!(b.uploaded_bytes, 0);
+    c.clear();
+    c.shape(shape.strokes([2., 4., -1., 8.], hex(0xFF0000), StrokeAlign::Center));
+    renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(renderer.problems().len(), 1);
+}

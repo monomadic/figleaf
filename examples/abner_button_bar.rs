@@ -45,10 +45,9 @@ fn button_bar(c: &mut Canvas, width: f32, labels: &[&str], pressed: usize) {
         Shape::rect(bar)
             .radii([4., 4., 0., 0.])
             .fill(hexa(0x6B6B6A87))
+            .strokes([0., 0., 1., 0.], hex(0x585454), StrokeAlign::Inside)
             .shadow(Shadow::inner(hexa(0x0000004A), [0., 2.], 2.9)),
     );
-    // The bottom stroke: 585454, 1 wide, inside.
-    c.shape(Shape::rect(Rect::new(bar.x, bar.y + bar.h - 1., bar.w, 1.)).fill(hex(0x585454)));
 
     for (n, (label, id)) in labels.iter().zip(buttons).enumerate() {
         let r = solved[id];

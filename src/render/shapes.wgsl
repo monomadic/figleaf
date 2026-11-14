@@ -23,6 +23,8 @@ struct Vertex {
     @location(10) @interpolate(flat) offsets_b: vec4f,
     @location(11) @interpolate(flat) stops_a: vec4u,
     @location(12) @interpolate(flat) stops_b: vec4u,
+    @location(13) @interpolate(flat) a_radii_y: vec4f,
+    @location(14) @interpolate(flat) b_radii_y: vec4f,
 }
 
 @vertex fn vs(@builtin(vertex_index) i: u32,
@@ -39,7 +41,9 @@ struct Vertex {
               @location(10) offsets_a: vec4f,
               @location(11) offsets_b: vec4f,
               @location(12) stops_a: vec4u,
-              @location(13) stops_b: vec4u) -> Vertex {
+              @location(13) stops_b: vec4u,
+              @location(14) a_radii_y: vec4f,
+              @location(15) b_radii_y: vec4f) -> Vertex {
     let corners = array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(1,1),vec2f(0,0),vec2f(1,1),vec2f(0,1));
     let p = mix(quad.xy, quad.zw, corners[i]);
     var v: Vertex;
@@ -57,6 +61,8 @@ struct Vertex {
     v.offsets_b = offsets_b;
     v.stops_a = stops_a;
     v.stops_b = stops_b;
+    v.a_radii_y = a_radii_y;
+    v.b_radii_y = b_radii_y;
     return v;
 }
 
@@ -90,11 +96,27 @@ fn sd_line(p: vec2f, r: vec4f, half: f32) -> f32 {
     return length(pa - ba * h) - half;
 }
 
-fn sd(p: vec2f, r: vec4f, radii: vec4f, kind: f32) -> f32 {
+fn sd(p: vec2f, r: vec4f, radii: vec4f, ry: vec4f, kind: f32) -> f32 {
     if (kind > 1.5) { return sd_line(p, r, radii.x); }
     if (any(r.zw <= r.xy)) { return 1000000.0; }
     if (kind > 0.5) { return sd_ellipse(p, r); }
-    return sd_round(p, r, radii);
+    if (all(radii == ry)) { return sd_round(p, r, radii); }
+    let center = 0.5 * (r.xy + r.zw);
+    let right = p.x > center.x;
+    let bottom = p.y > center.y;
+    let rx = select(select(radii.x, radii.w, bottom), select(radii.y, radii.z, bottom), right);
+    let radius_y = select(select(ry.x, ry.w, bottom), select(ry.y, ry.z, bottom), right);
+    let radius = vec2f(rx, radius_y);
+    let q = abs(p - center) - 0.5 * (r.zw - r.xy) + radius;
+    if (rx <= 0.0 || radius_y <= 0.0) {
+        return sd_round(p, r, vec4f(0));
+    }
+    if (q.x > 0.0 && q.y > 0.0) {
+        let k0 = length(q / radius);
+        let k1 = length(q / (radius * radius));
+        return k0 * (k0 - 1.0) / max(k1, 0.000001);
+    }
+    return max(q.x - rx, q.y - radius_y);
 }
 
 // On a target that stores linear light (an sRGB format; `view.size.z` is 1)
@@ -167,13 +189,13 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     // The quad is already cut to the clip's box; this rounds its corners.
     let clipped = cover(sd_round(p, v.clip, v.clip_radii));
     let kind = v.params.z;
-    let da = sd(p, v.a_rect, v.a_radii, kind);
+    let da = sd(p, v.a_rect, v.a_radii, v.a_radii_y, kind);
     var b = 0.0;
     // An absent `b` is an empty box or a line of no width: it covers nothing.
-    b = cover(sd(p, v.b_rect, v.b_radii, kind));
+    b = cover(sd(p, v.b_rect, v.b_radii, v.b_radii_y, kind));
     var alpha = 0.0;
     if (v.params.y < 0.5) {
-        alpha = cover(da) * (1.0 - b);
+        alpha = max(cover(da) - b, 0.0);
     } else if (v.params.y < 1.5) {
         alpha = blurred(da, v.params.x) * (1.0 - b);
     } else {

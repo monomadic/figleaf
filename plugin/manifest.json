@@ -1,0 +1,9 @@
+{
+  "name": "figleaf — Rust",
+  "id": "figleaf-rust-export",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
+}

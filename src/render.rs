@@ -19,7 +19,7 @@ use crate::{
 };
 use std::{collections::HashMap, ops::Range};
 
-const SHAPE_STRIDE: usize = 224;
+const SHAPE_STRIDE: usize = 256;
 const TEXT_STRIDE: usize = 48;
 
 /// What a `prepare` call did. An unchanged canvas uploads nothing and reports
@@ -235,7 +235,7 @@ impl Renderer {
             include_str!("render/shapes.wgsl"),
             format,
             SHAPE_STRIDE,
-            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4,9=>Float32x4,10=>Float32x4,11=>Float32x4,12=>Uint32x4,13=>Uint32x4],
+            &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4,9=>Float32x4,10=>Float32x4,11=>Float32x4,12=>Uint32x4,13=>Uint32x4,14=>Float32x4,15=>Float32x4],
         );
         let text_pipeline = pipeline(
             device,
@@ -408,6 +408,9 @@ impl Renderer {
                             }
                             None => self.shapes.bytes.extend_from_slice(&[0; 80]),
                         }
+                        self.shapes.push(&l.a.radii_y.map(|v| v * scale));
+                        self.shapes
+                            .push(&l.b.map_or([0.; 4], |b| b.radii_y.map(|v| v * scale)));
                     }
                     let end = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
                     if end > first {

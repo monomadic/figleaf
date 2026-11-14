@@ -47,6 +47,13 @@ Fills, strokes, clips and layout land on the same pixels; shadows are within
 because Figma does not rasterize text with CoreText. What has and has not
 been checked is in [TASKS.md](TASKS.md).
 
+## Figma plugin
+
+[figleaf → Rust](plugin/README.md) displays copyable Rust for a selected hierarchy.
+Import [plugin/manifest.json](plugin/manifest.json) in Figma Desktop's Development
+menu. Unsupported features block all output. The plugin has no filesystem or
+network access; it exports the current geometry, not responsive layout behavior.
+
 ## Paint
 
 ```rust
@@ -73,6 +80,7 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | Fill (linear gradient), paint opacity | `.gradient(LinearGradient::transform([a, b, tx]).stop(0., color).stop(1., color).opacity(0.5))` |
 | Several fills | call `.fill(..)` / `.gradient(..)` once per fill, bottom first |
 | Stroke, inside / center / outside | `.stroke(width, color, StrokeAlign::..)` |
+| Individual frame borders, top / right / bottom / left | `.strokes([top, right, bottom, left], color, StrokeAlign::..)` |
 | Drop shadow X, Y, blur, spread | `.shadow(Shadow::drop(color, [x, y], blur).spread(s))` |
 | "Show behind transparent areas" | `.show_behind()` |
 | Inner shadow | `.shadow(Shadow::inner(color, [x, y], blur))` |
@@ -89,6 +97,12 @@ caret and selection, `text::caret_offsets(backend, string, style)` gives the
 distance from the start of the line to each place a caret can stand.
 
 Colours are straight-alpha encoded sRGB, the numbers Figma shows.
+
+Individual borders use one continuous ring with elliptical corner contours,
+including zero-width sides. `cargo run --example frame_borders --features wgpu`
+renders synthetic rounded cases. Abner's button-bar example now uses a real
+bottom border and was reviewed beside its saved Figma export; unequal rounded
+border widths have synthetic validation only. No new dependencies were added.
 
 ## Layout
 
