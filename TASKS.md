@@ -4,6 +4,63 @@ figleaf is useful when a real app draws a real Figma-designed control through
 it and the result looks right beside the Figma export. Work on the first unmet
 item unless the owner says otherwise.
 
+## Geometry priorities — 2026-11-15
+
+This queue takes precedence over the older numbered progress notes below.
+Work top to bottom, ordered by reusable foundations and usefulness for native
+UI controls. Extend both the paint API/renderer and the plugin's validation and
+Rust output; do not merely remove an exporter error.
+
+1. **General vector paths.** Open/closed contours, straight segments, quadratic
+   and cubic Béziers, multiple subpaths, holes, and nonzero/even-odd fill rules.
+   Support Figma vector networks without dropping branches or holes. This
+   unlocks real icons and shapes such as the person icon's shoulder lens.
+2. **Affine transforms.** Rotation, reflection, nonuniform scale, and skew;
+   compose nested transforms and apply them consistently to geometry, strokes,
+   fills, clips, and effects. Translation and rotation of a plain line already
+   export; arbitrary transformed shapes do not.
+3. **Complete path strokes.** Butt/square/round caps, miter/bevel/round joins,
+   miter limits, and inside/center/outside alignment on supported paths. Cover
+   open ends, closed contours, acute corners, and thick strokes. Individual
+   rectangle/frame borders already exist; verify unequal rounded widths beside
+   Figma before treating that existing implementation as visually validated.
+4. **Dashed strokes and endpoint decorations.** Dash/gap patterns around curves
+   and closed contours, cap behavior at dash ends, and Figma's arrow endpoints.
+   Build on path stroking rather than substituting independent rectangles.
+5. **Remaining geometric primitives.** Ellipse arcs, sectors and rings (start,
+   end, inner radius), polygons, and stars, including supported corner rounding.
+   Lower them through shared path geometry while retaining Figma's parameters.
+6. **Boolean geometry.** Union, subtract, intersect, and exclude with correct
+   contours and holes, including nested boolean nodes. Preserve the actual
+   resulting geometry; no bounding-box or raster stand-ins.
+7. **Complete clipping.** Per-corner rounded clips, intersecting nested rounded
+   clips, transformed clips, arbitrary path clips, and rounded/path clipping of
+   text. Preserve every ancestor clip within the exported hierarchy. Plain
+   rectangular intersections and a single circular-corner shape clip work now.
+8. **Corner smoothing.** Figma's smoothed corners on rectangles, frames, and
+   supported rounded paths; carry the geometry through borders, clips, and
+   shadows. Ordinary circular corner radii already work.
+9. **Masks.** Geometric/vector masks first, then alpha and luminance masks with
+   correct sibling scope and nested intersections. Keep compositing in the
+   paint/render layer; do not introduce a scene or widget runtime.
+10. **Variable-width and brush strokes.** Represent supported profiles/brush
+    geometry explicitly, including transformed outlines. Keep unsupported brush
+    types as hard errors rather than silently treating them as constant-width
+    strokes.
+
+For each item: compile generated Rust, test invalid/degenerate geometry and
+unchanged-canvas uploads, run an example, and look at its render beside a Figma
+export. Until supported end to end, retain layer-specific hard errors and emit
+no partial Rust. No plugin filesystem writes, raster fallbacks, or host edits.
+
+Paint and layout gaps are separate from this geometry queue. After geometry,
+prioritize: multiple/gradient strokes and remaining gradient types/stop counts;
+image and pattern fills; flattened opacity, blend modes and container effects;
+layer/background blur; remaining text styling/shaping; responsive layout export
+and solver gaps; variable resolution, wide-gamut color, and multisampled targets.
+These remain unsupported where documented; listing them does not authorize a
+file importer, input handling, or a runtime.
+
 ## Plugin and individual borders — 2026-11-15
 
 Added the read-only [Rust exporter](plugin/README.md): static selected geometry,
@@ -317,11 +374,6 @@ front, a real library), which was not done before the merge.
 
 Not checked beside Figma: the labels and counts of the review frame (other
 strings and widths), hover and pressed states, which the file does not hold.
-
-## Later, when a design needs it
-
-Rounded clips, flattened layer opacity, images, vectors, corner smoothing,
-layer and background blur, blend modes, multisampled targets.
 
 ## Not doing
 
