@@ -4,7 +4,7 @@
 //! A [`Shape`] lowers to [`Layer`]s: plain coverage problems a renderer can draw
 //! without knowing what a stroke alignment or a spread is. The wgpu renderer
 //! draws them; a host with another renderer can draw them itself.
-use crate::{Color, Rect, text};
+use crate::{Color, Rect, VectorPath, path, text};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StrokeAlign {
@@ -159,13 +159,15 @@ pub enum Paint {
     Linear(LinearGradient),
 }
 
-/// A rectangle or ellipse with fills, a stroke and effects, or a
-/// [line](Self::line).
+/// A rectangle or ellipse with fills, a stroke and effects, a
+/// [line](Self::line), or filled [vector paths](Self::vector).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Shape {
     /// The shape's box. For a line: from its start (`x`, `y`) to its end
     /// (`x + w`, `y + h`), so `w` and `h` may be negative.
     pub rect: Rect,
+    /// Filled vector regions in local coordinates, unioned before painting.
+    pub vector_paths: Option<Vec<VectorPath>>,
     pub ellipse: bool,
     /// The width of a straight line with round ends, when the shape is one.
     pub line: Option<f32>,
@@ -189,6 +191,7 @@ impl Shape {
     pub fn rect(rect: Rect) -> Self {
         Self {
             rect,
+            vector_paths: None,
             ellipse: false,
             line: None,
             radii: [0.; 4],
@@ -198,6 +201,13 @@ impl Shape {
             shadows: Vec::new(),
             opacity: 1.,
             clip: None,
+        }
+    }
+    /// Filled paths, positioned at `rect.x/y`; `rect.w/h` anchor gradients.
+    pub fn vector(rect: Rect, paths: Vec<VectorPath>) -> Self {
+        Self {
+            vector_paths: Some(paths),
+            ..Self::rect(rect)
         }
     }
     /// The ellipse inscribed in `rect`.
@@ -326,6 +336,22 @@ impl Shape {
 
     /// Why the shape can't be drawn, if it can't.
     pub fn problem(&self) -> Option<&'static str> {
+        if let Some(paths) = &self.vector_paths {
+            if self.ellipse
+                || self.line.is_some()
+                || self.radii != [0.; 4]
+                || self.stroke.is_some()
+                || self.stroke_weights.is_some()
+                || !self.shadows.is_empty()
+            {
+                return Some(
+                    "vector paths take fills and clips only; strokes, corner radii and effects are unsupported",
+                );
+            }
+            if let Err(e) = path::bounds(paths) {
+                return Some(e.0);
+            }
+        }
         let mut numbers = self.radii.to_vec();
         numbers.extend(self.clip.map_or([0.; 4], |c| c.radii));
         numbers.extend(self.clip.map_or([0.; 4], |c| c.radii_y));
@@ -341,7 +367,8 @@ impl Shape {
                         numbers.push(s.offset);
                         numbers.extend(s.color);
                     }
-                    let visible = self.rect.w > 0. && self.rect.h > 0.;
+                    let visible =
+                        self.vector_paths.is_some() || (self.rect.w > 0. && self.rect.h > 0.);
                     bad_gradient |= g.stops.is_empty()
                         || g.stops.len() > MAX_STOPS
                         || (visible && g.ramp(self.rect).is_none());
@@ -402,7 +429,7 @@ impl Shape {
 
     /// The shape as coverage layers, back to front: drop shadows, fill,
     /// stroke, inner shadows. Nothing for a shape with a [`problem`](Self::problem).
-    pub fn layers(&self, out: &mut Vec<Layer>) {
+    pub fn layers<'a>(&'a self, out: &mut Vec<Layer<'a>>) {
         if self.problem().is_some() {
             return;
         }
@@ -429,6 +456,8 @@ impl Shape {
         });
         let layer = |mode, a, b, color: Color, sigma| Layer {
             mode,
+            vector_paths: self.vector_paths.as_deref(),
+            vector_origin: [self.rect.x, self.rect.y],
             a,
             b,
             ellipse: self.ellipse,
@@ -556,7 +585,11 @@ pub struct Ramp {
 
 /// One tinted coverage layer, in logical units.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Layer {
+pub struct Layer<'a> {
+    /// When present, union these filled regions instead of the `a`/`b` outlines.
+    /// The paths borrow the source shape and are positioned by `vector_origin`.
+    pub vector_paths: Option<&'a [VectorPath]>,
+    pub vector_origin: [f32; 2],
     pub mode: Mode,
     pub a: Outline,
     pub b: Option<Outline>,
@@ -572,9 +605,14 @@ pub struct Layer {
     pub clip: Option<Outline>,
 }
 
-impl Layer {
+impl Layer<'_> {
     /// Everything the layer can touch, before clipping.
     pub fn extent(&self) -> Rect {
+        if let Some(paths) = self.vector_paths {
+            return path::bounds(paths)
+                .unwrap_or_default()
+                .translate(self.vector_origin);
+        }
         let a = match self.line {
             true => {
                 let r = self.a.rect;
@@ -778,7 +816,7 @@ mod tests {
         );
     }
 
-    fn layers(s: &Shape) -> Vec<Layer> {
+    fn layers(s: &Shape) -> Vec<Layer<'_>> {
         let mut out = Vec::new();
         s.layers(&mut out);
         out
@@ -788,7 +826,8 @@ mod tests {
     fn stroke_alignment_sets_the_ring() {
         let base = Shape::rect(Rect::new(10., 10., 40., 20.)).radius(6.);
         let ring = |align| {
-            let l = layers(&base.clone().stroke(2., hex(0), align));
+            let shape = base.clone().stroke(2., hex(0), align);
+            let l = layers(&shape);
             (l[0].a, l[0].b.unwrap())
         };
         let (outer, hole) = ring(StrokeAlign::Inside);
@@ -814,16 +853,19 @@ mod tests {
     #[test]
     fn square_corners_stay_square_and_thick_strokes_lose_the_hole() {
         let s = Shape::rect(Rect::new(0., 0., 10., 10.));
-        let l = layers(&s.clone().stroke(2., hex(0), StrokeAlign::Outside));
+        let outside = s.clone().stroke(2., hex(0), StrokeAlign::Outside);
+        let l = layers(&outside);
         assert_eq!(l[0].a.radii, [0.; 4]);
-        let l = layers(&s.stroke(5., hex(0), StrokeAlign::Inside));
+        let inside = s.stroke(5., hex(0), StrokeAlign::Inside);
+        let l = layers(&inside);
         assert_eq!(l[0].b, None);
     }
 
     #[test]
     fn oversized_radii_make_a_pill() {
         let s = Shape::rect(Rect::new(0., 0., 44., 24.)).radius(999.);
-        let l = layers(&s.fill(hex(0)));
+        let shape = s.fill(hex(0));
+        let l = layers(&shape);
         assert_eq!(l[0].a.radii, [12.; 4]);
     }
 

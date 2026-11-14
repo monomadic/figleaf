@@ -11,6 +11,7 @@
 mod geom;
 pub mod layout;
 pub mod paint;
+pub mod path;
 pub mod text;
 
 #[cfg(feature = "wgpu")]
@@ -18,3 +19,5 @@ pub mod render;
 
 pub use geom::{Color, Error, Rect, hex, hexa};
 pub use paint::{Canvas, LinearGradient, Paint, Shadow, Shape, Stroke, StrokeAlign, Text};
+
+pub use path::{VectorPath, WindingRule};

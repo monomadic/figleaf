@@ -104,6 +104,34 @@ renders synthetic rounded cases. Abner's button-bar example now uses a real
 bottom border and was reviewed beside its saved Figma export; unequal rounded
 border widths have synthetic validation only. No new dependencies were added.
 
+## Vector paths
+
+`Shape::vector(rect, paths)` paints local-coordinate `VectorPath` regions with
+solid/linear-gradient fills and the existing rectangular/rounded clips. Paths
+have `move_to`, `line_to`, `quadratic_to`, `cubic_to`, and `close` builders.
+`WindingRule::NonZero` and `EvenOdd` preserve holes; `None` preserves explicitly
+unfilled network branches. Open filled contours close implicitly. Regions are
+unioned before each fill, so overlaps do not accumulate opacity.
+
+The plugin reads Figma's resolved `fillGeometry` plus unfilled `vectorPaths`.
+Path strokes, effects, transforms, and per-region paint overrides remain hard
+errors. Run `cargo run --example vector_paths --features wgpu` for the person
+icon from [Switchblade's design](https://www.figma.com/design/p01oYypZrTOjxe4Pi2Ytxe?node-id=336-1230).
+Its bound color was explicitly resolved for the fixture, not enabled in the
+plugin. Figma's 4× export is left, generated Rust's render right:
+
+![Person vector comparison](docs/vector-person-compare.png)
+
+Reviewed at 4×: mean channel difference 0.82/255, maximum 29/255 at an edge.
+Other winding/curve cases have synthetic tests. No new dependencies: the CPU
+subdivides curves to 0.125 physical-pixel tolerance and the GPU uses 4×4 coverage
+samples. This is intended for small UI vectors, not large illustrations. Limits
+are 256 regions, 4,096 commands, 8,192 subdivided edges per shape, and 32 MiB of
+scene edge storage (or the device limit). A shape exceeding 512 million estimated
+edge/sample checks is reported in `Renderer::problems`, as are invalid paths
+and unsupported styles. Unchanged geometry uploads nothing. `Layer` now borrows
+its source vector paths; hosts consuming layers must retain the source shapes.
+
 ## Layout
 
 ```rust
@@ -157,7 +185,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Radial, angular and diamond gradients, gradients on strokes and text, more
-than eight gradient stops, images, vectors, blurs, blend modes, clipped text
+than eight gradient stops, images, vector strokes/effects, blurs, blend modes, clipped text
 with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.

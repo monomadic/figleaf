@@ -506,3 +506,184 @@ fn individual_border_changes_upload_once_and_invalid_widths_are_reported() {
         .unwrap();
     assert_eq!(renderer.problems().len(), 1);
 }
+
+fn vector_square(
+    path: figleaf::VectorPath,
+    lo: f32,
+    hi: f32,
+    reverse: bool,
+) -> figleaf::VectorPath {
+    let points = if reverse {
+        [[lo, lo], [lo, hi], [hi, hi], [hi, lo]]
+    } else {
+        [[lo, lo], [hi, lo], [hi, hi], [lo, hi]]
+    };
+    path.move_to(points[0])
+        .line_to(points[1])
+        .line_to(points[2])
+        .line_to(points[3])
+        .close()
+}
+
+#[test]
+fn vector_winding_holes_and_regions_do_not_drop_or_double_paint() {
+    use figleaf::{VectorPath, WindingRule};
+    for (rule, reverse, hole) in [
+        (WindingRule::EvenOdd, false, true),
+        (WindingRule::NonZero, false, false),
+        (WindingRule::NonZero, true, true),
+    ] {
+        let path = vector_square(
+            vector_square(VectorPath::new(rule), 0., 40., false),
+            10.,
+            30.,
+            reverse,
+        );
+        let mut c = Canvas::new();
+        c.shape(Shape::vector(Rect::new(10., 10., 40., 40.), vec![path]).fill(hex(0xFF0000)));
+        let i = draw(&c);
+        assert_eq!(i.pixel(15, 15), RED);
+        assert_eq!(i.pixel(30, 30), if hole { CLEAR } else { RED });
+    }
+    let a = vector_square(VectorPath::new(WindingRule::NonZero), 0., 30., false);
+    let b = vector_square(VectorPath::new(WindingRule::EvenOdd), 10., 40., false);
+    let mut c = Canvas::new();
+    c.shape(Shape::vector(Rect::new(10., 10., 40., 40.), vec![a, b]).fill(hexa(0xFF000080)));
+    let i = draw(&c);
+    assert_eq!(i.pixel(15, 15)[3], 128);
+    assert_eq!(i.pixel(30, 30)[3], 128); // overlap is a union, not 75% alpha
+    assert_eq!(i.pixel(45, 45)[3], 128);
+}
+
+#[test]
+fn vector_curves_open_contours_clips_and_gradients_render() {
+    use figleaf::{VectorPath, WindingRule};
+    let lens = VectorPath::new(WindingRule::NonZero)
+        .move_to([0., 20.])
+        .quadratic_to([20., -20.], [40., 20.])
+        .cubic_to([30., 40.], [10., 40.], [0., 20.]);
+    let mut c = Canvas::new();
+    c.shape(
+        Shape::vector(Rect::new(10., 10., 40., 40.), vec![lens])
+            .gradient(
+                LinearGradient::horizontal()
+                    .stop(0., hex(0xFF0000))
+                    .stop(1., hex(0x0000FF)),
+            )
+            .clip(Rect::new(10., 10., 25., 40.)),
+    );
+    let i = draw(&c);
+    assert_eq!(i.pixel(10, 10), CLEAR);
+    let p = i.pixel(25, 30);
+    assert_eq!(p[3], 255);
+    assert!(p[0] > p[2] && p[2] > 0);
+    assert_eq!(i.pixel(40, 30), CLEAR);
+    // Open triangle closes for fill; a line with no area stays invisible.
+    c.clear();
+    c.shape(
+        Shape::vector(
+            Rect::new(0., 0., 40., 40.),
+            vec![
+                VectorPath::new(WindingRule::EvenOdd)
+                    .move_to([10., 10.])
+                    .line_to([40., 10.])
+                    .line_to([10., 40.]),
+            ],
+        )
+        .fill(hex(0xFF0000)),
+    );
+    let i = draw(&c);
+    assert_eq!(i.pixel(15, 15), RED);
+    assert_eq!(i.pixel(35, 35), CLEAR);
+}
+
+#[test]
+fn vector_cache_tracks_geometry_scale_and_problems() {
+    use figleaf::{VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    let mut c = Canvas::new();
+    let path = vector_square(VectorPath::new(WindingRule::NonZero), 0., 20., false);
+    let shape = Shape::vector(Rect::new(10., 10., 20., 20.), vec![path]).fill(hex(0xFF0000));
+    c.shape(shape.clone());
+    let first = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(first.changed);
+    let same = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!same.changed);
+    assert_eq!(same.uploaded_bytes, 0);
+    assert_eq!(same.textures_created, 0);
+    let scaled = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 2., &mut NoText)
+        .unwrap();
+    assert!(scaled.changed);
+    // Same bounds, different winding: edge-buffer edits must trigger changed.
+    let mut changed = shape.clone();
+    changed.vector_paths.as_mut().unwrap()[0].winding_rule = WindingRule::EvenOdd;
+    c.clear();
+    c.shape(changed);
+    assert!(
+        renderer
+            .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 2., &mut NoText)
+            .unwrap()
+            .changed
+    );
+    c.clear();
+    c.shape(shape.stroke(1., hex(0), StrokeAlign::Inside));
+    renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(renderer.problems()[0].reason.contains("strokes"));
+}
+
+#[test]
+fn vectors_fail_closed_on_excessive_work_and_degenerate_gradients() {
+    use figleaf::{VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    let mut p = VectorPath::new(WindingRule::NonZero).move_to([0., 0.]);
+    for i in 0..1000 {
+        p = p.line_to([if i % 2 == 0 { 0. } else { 1000. }, i as f32]);
+    }
+    let mut c = Canvas::new();
+    c.shape(Shape::vector(Rect::new(0., 0., 1000., 1000.), vec![p]).fill(hex(0)));
+    renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [1000, 1000], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(
+        renderer.problems()[0].reason,
+        "vector coverage work limit exceeded"
+    );
+    c.clear();
+    let p = vector_square(VectorPath::new(WindingRule::NonZero), 0., 20., false);
+    c.shape(
+        Shape::vector(Rect::default(), vec![p])
+            .gradient(LinearGradient::horizontal().stop(0., hex(0))),
+    );
+    renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(renderer.problems().len(), 1);
+}
+
+#[test]
+fn self_intersections_and_unfilled_network_branches_keep_their_meaning() {
+    use figleaf::{VectorPath, WindingRule};
+    let bow = VectorPath::new(WindingRule::EvenOdd)
+        .move_to([0., 0.])
+        .line_to([40., 40.])
+        .line_to([0., 40.])
+        .line_to([40., 0.])
+        .close();
+    let branch = vector_square(VectorPath::new(WindingRule::None), 0., 40., false);
+    let mut c = Canvas::new();
+    c.shape(Shape::vector(Rect::new(10., 10., 40., 40.), vec![bow, branch]).fill(hex(0xFF0000)));
+    let i = draw(&c);
+    assert_eq!(i.pixel(30, 15), RED);
+    assert_eq!(i.pixel(30, 45), RED);
+    assert_eq!(i.pixel(15, 30), CLEAR);
+}

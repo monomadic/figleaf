@@ -14,7 +14,8 @@
 //! other translucent colours come out slightly different from Figma.
 use crate::{
     Canvas, Color, Error, Rect,
-    paint::{Item, Layer, Mode, Outline},
+    paint::{Item, Mode, Outline},
+    path,
     text::{self, Backend},
 };
 use std::{collections::HashMap, ops::Range};
@@ -108,7 +109,9 @@ impl Instances {
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(label),
             size: size as u64,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         })
     }
@@ -153,6 +156,8 @@ pub struct Renderer {
     viewport: [u32; 2],
     shapes: Instances,
     texts: Instances,
+    path_edges: Instances,
+    path_group: wgpu::BindGroup,
     masks: HashMap<MaskKey, MaskSlot>,
     next_mask: u64,
     /// One entry per canvas item: empty for items that draw nothing, and one
@@ -162,7 +167,6 @@ pub struct Renderer {
     wraps: HashMap<WrapKey, (Result<Vec<String>, &'static str>, bool)>,
     order: Vec<u64>,
     problems: Vec<Problem>,
-    layers: Vec<Layer>,
 }
 
 fn pipeline(
@@ -259,7 +263,11 @@ impl Renderer {
                 resource: view.as_entire_binding(),
             }],
         });
+        let path_edges = Instances::new(device, "figleaf vector edges", 32);
+        let path_group = Self::path_group(device, &shape_pipeline, &path_edges.buffer);
         Self {
+            path_edges,
+            path_group,
             linear: format.is_srgb(),
             shape_pipeline,
             text_pipeline,
@@ -274,7 +282,6 @@ impl Renderer {
             wraps: HashMap::new(),
             order: Vec::new(),
             problems: Vec::new(),
-            layers: Vec::new(),
         }
     }
 
@@ -325,6 +332,7 @@ impl Renderer {
 
         self.shapes.bytes.clear();
         self.texts.bytes.clear();
+        self.path_edges.bytes.clear();
         self.draws.clear();
         self.problems.clear();
         for slot in self.masks.values_mut() {
@@ -345,10 +353,70 @@ impl Renderer {
                         continue;
                     }
                     let first = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
-                    self.layers.clear();
-                    shape.layers(&mut self.layers);
-                    for i in 0..self.layers.len() {
-                        let l = self.layers[i];
+                    let mut path_range = None;
+                    if let Some(paths) = &shape.vector_paths {
+                        let result = path::flatten(paths, [shape.rect.x, shape.rect.y], scale);
+                        let edges = match result {
+                            Ok(edges) => edges,
+                            Err(e) => {
+                                self.problems.push(Problem {
+                                    item: index,
+                                    reason: e.0,
+                                });
+                                continue;
+                            }
+                        };
+                        let start = self.path_edges.bytes.len() / 32;
+                        let limit = (device.limits().max_storage_buffer_binding_size as usize)
+                            .min(32 * 1024 * 1024);
+                        // The allocation rounds up to a power of two.
+                        if ((start + edges.len()) * 32).max(32).next_power_of_two() > limit {
+                            self.problems.push(Problem {
+                                item: index,
+                                reason: "vector edge buffer limit exceeded",
+                            });
+                            continue;
+                        }
+                        if edges.is_empty() {
+                            continue;
+                        }
+                        let bounds = path::bounds(paths)
+                            .unwrap()
+                            .translate([shape.rect.x, shape.rect.y]);
+                        let visible = Rect::new(
+                            bounds.x * scale,
+                            bounds.y * scale,
+                            bounds.w * scale,
+                            bounds.h * scale,
+                        )
+                        .inflate(1.)
+                        .intersect(clip_px(shape.clip.map(|c| c.rect)));
+                        let work = f64::from(visible.w.ceil())
+                            * f64::from(visible.h.ceil())
+                            * edges.len() as f64
+                            * 16.
+                            * shape.fills.len() as f64;
+                        if work > 512_000_000. {
+                            self.problems.push(Problem {
+                                item: index,
+                                reason: "vector coverage work limit exceeded",
+                            });
+                            continue;
+                        }
+                        path_range = Some([start as f32, edges.len() as f32, 0., 0.]);
+                        for edge in edges {
+                            self.path_edges.push(&edge.points);
+                            self.path_edges.push(&[
+                                f32::from(edge.even_odd),
+                                f32::from(edge.end_region),
+                                0.,
+                                0.,
+                            ]);
+                        }
+                    }
+                    let mut layers = Vec::new();
+                    shape.layers(&mut layers);
+                    for l in layers {
                         let clip = clip_px(l.clip.map(|c| c.rect));
                         // The clip's own outline, for its antialiased edge.
                         const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];
@@ -380,13 +448,15 @@ impl Renderer {
                         };
                         self.shapes.push(&a_rect);
                         self.shapes.push(&a_radii);
-                        self.shapes.push(&b_rect);
+                        self.shapes.push(&path_range.unwrap_or(b_rect));
                         self.shapes.push(&b_radii);
                         self.shapes.push(&color);
                         self.shapes.push(&[
                             l.sigma * scale,
                             mode,
-                            if l.line {
+                            if path_range.is_some() {
+                                3.
+                            } else if l.line {
                                 2.
                             } else {
                                 f32::from(u8::from(l.ellipse))
@@ -594,7 +664,14 @@ impl Renderer {
         self.masks.retain(|_, slot| slot.used);
         self.wraps.retain(|_, slot| slot.1);
 
+        let capacity = self.path_edges.capacity;
+        let paths_uploaded = self.path_edges.upload(device, queue);
+        if capacity != self.path_edges.capacity {
+            self.path_group =
+                Self::path_group(device, &self.shape_pipeline, &self.path_edges.buffer);
+        }
         for uploaded in [
+            paths_uploaded,
             self.shapes.upload(device, queue),
             self.texts.upload(device, queue),
         ]
@@ -607,6 +684,21 @@ impl Renderer {
         report.changed |= report.textures_created > 0 || order != self.order;
         self.order = order;
         Ok(report)
+    }
+
+    fn path_group(
+        device: &wgpu::Device,
+        pipeline: &wgpu::RenderPipeline,
+        buffer: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("figleaf vector edges"),
+            layout: &pipeline.get_bind_group_layout(1),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+        })
     }
 
     fn upload_mask(
@@ -671,7 +763,7 @@ impl Renderer {
 
     /// Draws only the canvas items in `items`, by index. A host with its own
     /// ordered display list uses this to put its drawing between ours. This
-    /// sets the pipeline, bind group 0 and vertex buffer 0; the host restores
+    /// sets the pipeline, bind groups 0/1 and vertex buffer 0; the host restores
     /// its own afterwards. The scissor rectangle is left as the host set it.
     pub fn draw_items(&self, pass: &mut wgpu::RenderPass<'_>, items: Range<usize>) {
         let end = items.end.min(self.draws.len());
@@ -680,6 +772,7 @@ impl Renderer {
             if let Some(range) = run.take() {
                 pass.set_pipeline(&self.shape_pipeline);
                 pass.set_bind_group(0, &self.view_group, &[]);
+                pass.set_bind_group(1, &self.path_group, &[]);
                 pass.set_vertex_buffer(0, self.shapes.buffer.slice(..));
                 pass.draw(0..6, range);
             }

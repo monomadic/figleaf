@@ -31,7 +31,7 @@ An agent can consume the displayed code just as a person can; this plugin does
 not install an agent connection or write to a consumer's project.
 
 Supported: translation-only rectangles, frames/components/instances/groups,
-full ellipses, round-capped straight lines, solid and linear-gradient fills
+full ellipses, filled vector paths, round-capped straight lines, solid and linear-gradient fills
 (up to eight stops), solid uniform/individual borders, and shape shadows.
 Rectangular clips can intersect; one rounded clip is supported for shapes.
 Simple Latin text needs one solid fill, one style, explicit line height, and
@@ -39,7 +39,13 @@ caller-supplied font indices. Code comments identify each required family/style;
 the host must supply the exact font and variable-font configuration. Normal
 figleaf text limits still apply (including a maximum 2048-unit raster width).
 
-Errors include vector paths, images, masks, layer opacity, blend modes, corner
+Vector output preserves M/L/Q/C/Z commands, subpaths, nonzero/even-odd holes,
+and explicitly unfilled branches. It reads Figma’s resolved fill geometry, with
+no topology reconstruction. Regions share the node’s paints and are unioned
+before filling; differing per-region paints are rejected. The limits are 256
+regions and 4,096 commands; scale-dependent renderer limits also apply.
+
+Errors include vector strokes/effects/paint overrides, images, masks, layer opacity, blend modes, corner
 smoothing, rotation/scale/skew (except rotation of a line), unsupported gradients,
 multiple/dashed/gradient strokes, non-miter joins, blur, container effects,
 variable bindings, Display P3 documents, mixed/automatic-height/decorated/list
@@ -60,5 +66,8 @@ node --test plugin/exporter.test.js
 
 Tests compile and execute generated Rust, check diagnostics, clipping, escaping,
 font contracts, read-only plugin messages, stale-result clearing, and UI states.
-Tests use synthetic Plugin API objects; the plugin has not yet been exercised
-inside Figma Desktop. A browser policy blocked the local HTML visual preview.
+Tests include synthetic Plugin API objects and a real Figma person-icon fixture.
+The exporter was also exercised through the Figma Plugin API: the original
+variable-bound vector failed as intended, and an in-memory fixture with its
+explicit resolved paint generated Rust. The complete panel has not yet been
+exercised inside Figma Desktop. A browser policy blocked the local HTML visual preview.

@@ -3,6 +3,38 @@
 // exact for axis-aligned edges on pixel boundaries.
 struct View { size: vec4f }
 @group(0) @binding(0) var<uniform> view: View;
+struct PathEdge { points: vec4f, flags: vec4f }
+@group(1) @binding(0) var<storage, read> path_edges: array<PathEdge>;
+
+// Regions are unioned per sample. Each region's winding spans every subpath,
+// preserving holes and self-intersections without darkening overlapping fills.
+fn path_inside(p: vec2f, first: u32, count: u32) -> bool {
+    var winding = 0i;
+    for (var i = first; i < first + count; i++) {
+        let edge = path_edges[i];
+        let a = edge.points.xy;
+        let b = edge.points.zw;
+        let cross = (b.x - a.x) * (p.y - a.y) - (p.x - a.x) * (b.y - a.y);
+        if (a.y <= p.y && b.y > p.y && cross > 0.0) { winding++; }
+        if (a.y > p.y && b.y <= p.y && cross < 0.0) { winding--; }
+        if (edge.flags.y > 0.5) {
+            let inside = select(winding != 0, (abs(winding) % 2) != 0, edge.flags.x > 0.5);
+            if (inside) { return true; }
+            winding = 0;
+        }
+    }
+    return false;
+}
+fn path_coverage(p: vec2f, range: vec4f) -> f32 {
+    var coverage = 0.0;
+    for (var y = 0u; y < 4u; y++) {
+        for (var x = 0u; x < 4u; x++) {
+            let sample_at = p + (vec2f(f32(x), f32(y)) + 0.5) / 4.0 - 0.5;
+            if (path_inside(sample_at, u32(range.x), u32(range.y))) { coverage += 1.0 / 16.0; }
+        }
+    }
+    return coverage;
+}
 
 struct Vertex {
     @builtin(position) position: vec4f,
@@ -194,7 +226,9 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     // An absent `b` is an empty box or a line of no width: it covers nothing.
     b = cover(sd(p, v.b_rect, v.b_radii, v.b_radii_y, kind));
     var alpha = 0.0;
-    if (v.params.y < 0.5) {
+    if (kind > 2.5) {
+        alpha = path_coverage(p, v.b_rect);
+    } else if (v.params.y < 0.5) {
         alpha = max(cover(da) - b, 0.0);
     } else if (v.params.y < 1.5) {
         alpha = blurred(da, v.params.x) * (1.0 - b);

@@ -7,7 +7,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
   if (selection.length !== 1) return { code: null, errors: [{ path: 'Selection', message: 'Select exactly one hierarchy root.' }] };
   const number = value => {
     if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1e7) throw Error('Invalid or out-of-range numeric value.');
-    const s = String(Object.is(value, -0) ? 0 : value);
+    // Emit the shortest decimal that preserves figleaf's f32 value. Figma
+    // returns doubles even for f32 colors; printing all digits fails Clippy.
+    const f = Math.fround(value);
+    let rounded = f;
+    for (let digits = 1; digits <= 9; digits++) {
+      const candidate = Number(f.toPrecision(digits));
+      if (Math.fround(candidate) === f) { rounded = candidate; break; }
+    }
+    const s = String(Object.is(rounded, -0) ? 0 : rounded);
     return /[.eE]/.test(s) ? s : s + '.0';
   };
   const array = values => '[' + values.map(number).join(', ') + ']';
@@ -35,6 +43,45 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
     const x = Math.max(a.rect[0], b.rect[0]), y = Math.max(a.rect[1], b.rect[1]);
     return { rect: [x, y, Math.max(0, Math.min(a.rect[0]+a.rect[2], b.rect[0]+b.rect[2])-x), Math.max(0, Math.min(a.rect[1]+a.rect[3], b.rect[1]+b.rect[3])-y)], radius: 0 };
   };
+  // Figma's documented absolute path command subset. Use resolved fillGeometry
+  // so branched networks retain every filled region and hole. Never reconstruct
+  // network topology from bounding boxes or silently turn strokes into fills.
+  function vectorCode(n) {
+    if (!Array.isArray(n.fillGeometry)) throw Error('Vector fill geometry is unavailable.');
+    const geometry = [...n.fillGeometry.filter(p => p.windingRule !== 'NONE'), ...(n.vectorPaths || n.fillGeometry).filter(p => p.windingRule === 'NONE')];
+    if (geometry.length > 256) throw Error('Vector exceeds 256 regions.');
+    const paints = JSON.stringify(n.fills);
+    for (const region of n.vectorNetwork?.regions || []) {
+      if (region.fills && JSON.stringify(region.fills) !== paints) throw Error('Per-region vector paint overrides are unsupported.');
+    }
+    let commands = 0;
+    const paths = [];
+    for (const path of geometry) {
+      const rule = { NONZERO: 'NonZero', EVENODD: 'EvenOdd', NONE: 'None' }[path.windingRule];
+      if (!rule) throw Error('Unsupported vector winding rule.');
+      if (typeof path.data !== 'string' || path.data.length > 1000000) throw Error('Invalid or oversized vector path.');
+      const token = /[MLQCZ]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g;
+      if (path.data.replace(token, '').replace(/[\s,]/g, '')) throw Error('Unsupported or malformed vector path command.');
+      const tokens = path.data.match(token) || [];
+      let code = `VectorPath::new(WindingRule::${rule})`, started = false;
+      for (let i = 0; i < tokens.length;) {
+        const op = tokens[i++];
+        const arity = { M: 2, L: 2, Q: 4, C: 6, Z: 0 }[op];
+        if (arity === undefined || i + arity > tokens.length) throw Error('Malformed vector path arguments.');
+        if (!started && op !== 'M') throw Error('Vector subpath must start with M.');
+        started = true;
+        const values = tokens.slice(i, i + arity).map(Number);
+        values.forEach(number);
+        i += arity;
+        if (++commands > 4096) throw Error('Vector exceeds 4096 commands.');
+        const args = [];
+        for (let j = 0; j < arity; j += 2) args.push(array(values.slice(j, j + 2)));
+        code += `\n            .${{M:'move_to', L:'line_to', Q:'quadratic_to', C:'cubic_to', Z:'close'}[op]}(${args.join(', ')})`;
+      }
+      paths.push(code);
+    }
+    return `vec![${paths.join(',\n        ')}]`;
+  }
   let count = 0;
   function visit(n, path, offset, clip, root = false, depth = 0) {
     if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
@@ -45,7 +92,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
     let childClip = clip;
     let position = offset;
     try {
-      const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT'];
+      const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR'];
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
       if (n.isMask) reject('Masks are unsupported.');
       if (Object.keys(n.boundVariables || {}).length) reject('Variable bindings are unsupported; use explicit values.');
@@ -131,7 +178,13 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
         if (Math.abs(a*a+b*b-1) > 1e-6 || Math.abs(c*c+d*d-1)>1e-6 || Math.abs(a*c+b*d)>1e-6) reject('Scaled or skewed lines are unsupported.');
         if (errors.length === before) expression = `Shape::line(${array(position)}, ${array([position[0]+a*n.width,position[1]+b*n.width])}, ${number(n.strokeWeight)}).fill(${color(strokes[0].color,strokes[0].opacity)})`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
-        expression = `Shape::${n.type === 'ELLIPSE' ? 'ellipse' : 'rect'}(${rect(box)})`;
+        if (n.type === 'VECTOR') {
+          if (strokes.length) reject('Vector path strokes are unsupported (geometry task 3).');
+          if (effects.length) reject('Vector path effects are unsupported.');
+          expression = `Shape::vector(${rect(box)}, ${vectorCode(n)})`;
+        } else {
+          expression = `Shape::${n.type === 'ELLIPSE' ? 'ellipse' : 'rect'}(${rect(box)})`;
+        }
         if (radii.some(r => r)) expression += `.radii(${array(radii)})`;
         // Figma's paint arrays are in drawing order, bottom to top.
         for (const p of fills) {
@@ -175,7 +228,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

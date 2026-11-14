@@ -17,6 +17,7 @@ function fixture() {
   return node({ type:'FRAME', name:'Frame', relativeTransform:[[1,0,500],[0,1,200]], clipsContent:true, fills:[], strokes:[solid], strokeBottomWeight:1, children:[
     node({name:'Pill', relativeTransform:[[1,0,3],[0,1,4]], width:30, height:20, topLeftRadius:8,topRightRadius:8,bottomLeftRadius:8,bottomRightRadius:8, fills:[solid,{type:'GRADIENT_LINEAR', opacity:0.5, gradientTransform:[[1,0,0],[0,1,0]], gradientStops:[{position:0,color:{r:0,g:0,b:1,a:1}},{position:1,color:{r:0,g:1,b:0,a:0}}]}], effects:[{type:'DROP_SHADOW',color:{r:0,g:0,b:0,a:0.2},offset:{x:0,y:2},radius:4,spread:0}]}),
     text({relativeTransform:[[1,0,35],[0,1,4]],width:60,height:20}),
+    node({type:'VECTOR',name:'Curved path',fillGeometry:[{windingRule:'EVENODD',data:'M0 0 Q5 -5 10 0 C15 5 15 15 10 20 L0 20 Z M2 4 L8 4 L8 10 L2 10 Z'}],vectorPaths:[{windingRule:'NONE',data:'M10 20 L15 25 L20 20'}]}),
     node({name:'Dot',type:'ELLIPSE',width:8,height:8,relativeTransform:[[1,0,90],[0,1,30]]}),
     node({type:'LINE',name:'Line',width:10,height:0,fills:[],strokes:[solid],strokeWeight:2,strokeCap:'ROUND',relativeTransform:[[0,-1,15],[1,0,15]]}),
   ] });
@@ -32,7 +33,7 @@ test('deterministic complete hierarchy and Rust compilation', () => {
   try {
     const root = path.resolve(__dirname, '..');
     execFileSync('rustc', ['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.join(root,'src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
-    fs.writeFileSync(path.join(tmp,'generated.rs'), result.code + '\nfn main() { let mut c = Canvas::new(); draw_selection(&mut c, [0]); assert_eq!(c.items().len(), 5); for item in c.items() { if let figleaf::paint::Item::Shape(s) = item { assert_eq!(s.problem(), None); } } }');
+    fs.writeFileSync(path.join(tmp,'generated.rs'), result.code + '\nfn main() { let mut c = Canvas::new(); draw_selection(&mut c, [0]); assert_eq!(c.items().len(), 6); for item in c.items() { if let figleaf::paint::Item::Shape(s) = item { assert_eq!(s.problem(), None); } } }');
     execFileSync('rustc',['--edition=2024',path.join(tmp,'generated.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'generated')]);
     execFileSync(path.join(tmp,'generated'));
   } finally { fs.rmSync(tmp,{recursive:true,force:true}); }
@@ -114,4 +115,29 @@ test('UI clears stale code, renders literal errors, and only enables valid outpu
 test('wide-gamut documents and container effects fail closed', () => {
   assert.equal(exportHierarchy([node()], 'DISPLAY_P3').code, null);
   assert.equal(exportHierarchy([node({type:'FRAME',children:[node()],effects:[{type:'DROP_SHADOW',color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]})]).code,null);
+});
+test('resolved network regions, holes and unfilled branches survive export', () => {
+  const geometry=[{windingRule:'NONZERO',data:'M0 0L20 0L20 20L0 20Z M5 5 L5 15 L15 15 L15 5 Z'}, {windingRule:'EVENODD',data:'M30 0 Q40 -10 50 0 C60 10 60 20 50 20 Z'}];
+  const n=node({type:'VECTOR',fillGeometry:geometry,vectorPaths:[{windingRule:'NONE',data:'M20 10 L30 10 M30 10 L40 20 M30 10 L40 0'}],vectorNetwork:{regions:[{fills:[solid]}]}});
+  const r=exportHierarchy([n]); assert.deepEqual(r.errors,[]);
+  assert.match(r.code,/Shape::vector/); assert.match(r.code,/WindingRule::NonZero/);assert.match(r.code,/WindingRule::EvenOdd/);assert.match(r.code,/WindingRule::None/);
+  assert.equal((r.code.match(/\.move_to\(/g)||[]).length,6);
+  assert.match(r.code,/\.quadratic_to/);assert.match(r.code,/\.cubic_to/);
+});
+test('vector errors block output instead of dropping features or malformed commands', () => {
+  const n=node({type:'VECTOR',fillGeometry:[{windingRule:'NONZERO',data:'M0 0 L10 0 L0 10 Z'}]});
+  for(const overrides of [
+    {strokes:[solid]}, {effects:[{type:'DROP_SHADOW',radius:2,color:{r:0,g:0,b:0,a:1},offset:{x:0,y:1}}]},
+    {vectorNetwork:{regions:[{fills:[]}]}},
+    ...['M0 0 A10 10 0 0 0 20 20','L0 0','M0 C1 2 3 4 5 6','M0 0 Q1 2','M0 0 LNaN 10','M0 0 L1e99 10'].map(data=>({fillGeometry:[{windingRule:'NONZERO',data}]})),
+    {fillGeometry:[{windingRule:'UNKNOWN',data:'M0 0'}]},
+    {fillGeometry:[{windingRule:'NONZERO',data:'M0 0 '.repeat(4097)}]},
+  ]) { const r=exportHierarchy([{...n,...overrides}]);assert.equal(r.code,null,JSON.stringify(overrides));assert.ok(r.errors.length); }
+});
+test('Figma person icon fixture exports cubic contours and retains both holes', () => {
+  const ref=require('./vector-reference.json');const c=ref.color;
+  const n=node({type:'VECTOR',id:ref.id,width:ref.width,height:ref.height,fillGeometry:ref.fillGeometry,fills:[{type:'SOLID',color:{r:c.r,g:c.g,b:c.b},opacity:c.a}]});
+  const r=exportHierarchy([n]);assert.deepEqual(r.errors,[]);
+  assert.equal((r.code.match(/\.move_to\(/g)||[]).length,3);
+  assert.equal((r.code.match(/\.cubic_to\(/g)||[]).length,10);
 });

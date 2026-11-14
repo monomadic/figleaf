@@ -11,10 +11,16 @@ Work top to bottom, ordered by reusable foundations and usefulness for native
 UI controls. Extend both the paint API/renderer and the plugin's validation and
 Rust output; do not merely remove an exporter error.
 
-1. **General vector paths.** Open/closed contours, straight segments, quadratic
+1. **General vector paths — done 2026-11-15 (fills).** Open/closed contours, straight segments, quadratic
    and cubic Béziers, multiple subpaths, holes, and nonzero/even-odd fill rules.
    Support Figma vector networks without dropping branches or holes. This
    unlocks real icons and shapes such as the person icon's shoulder lens.
+   Implemented `VectorPath`, winding rules, filled-region unions, unfilled
+   branches, GPU coverage and plugin Rust output. The generated person icon was
+   reviewed beside its Figma export ([comparison](docs/vector-person-compare.png),
+   mean 0.82/255 at 4×). Its variable color was resolved only for the fixture;
+   the live exporter still rejects bindings. Other curve/winding cases are
+   synthetic. Strokes (task 3), effects and per-region paints remain errors.
 2. **Affine transforms.** Rotation, reflection, nonuniform scale, and skew;
    compose nested transforms and apply them consistently to geometry, strokes,
    fills, clips, and effects. Translation and rotation of a plain line already
@@ -303,7 +309,7 @@ What it taught:
 
 - Icons are vectors with a 1.5 centre stroke and round caps, so
   `Shape::line` was added: one straight segment, drawn as a distance field
-  like everything else, with drop shadows. Curved paths are still not done.
+  like everything else, with drop shadows. Filled curved paths were added on 2026-11-15; path strokes remain task 3.
 - The count carries a drop shadow in two tones, so text drop shadows were
   added (the glyph mask, blurred on the CPU, drawn under the text).
 - An inner shadow on a shape paints over its outside stroke, and shows on a
