@@ -262,8 +262,8 @@ each tone's own well stroke, inner shadow, end padding and cross shadow, and
 the fill's own alpha. Seen running with a hot, a cold and a person pill
 ([docs/switchblade-applied-tones-in-app.png](docs/switchblade-applied-tones-in-app.png)).
 
-Popup chips follow the component's later edit since 2026-11-13 (Switchblade
-branch `figma-popup-chips`): on a heat tone the add well is a faint outline
+Popup chips follow the component's later edit since 2026-11-13 (merged into
+Switchblade's `master` on 2026-11-15): on a heat tone the add well is a faint outline
 around a faint dark plus with no fill, the count disc is 15 tall, and its
 stroke and inner shadow follow the tone, and every ring is the component's
 gold. Seen running with Command held
