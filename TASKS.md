@@ -269,6 +269,12 @@ stroke and inner shadow follow the tone, and every ring is the component's
 gold. Seen running with Command held
 ([docs/switchblade-chips-addable-in-app.png](docs/switchblade-chips-addable-in-app.png)).
 
+The component changed again and the app followed it on 2026-11-14 (same
+branch): new heat colours, title-case hashtag labels, 12px lead, one count
+disc for every heat, and the person icon on people pills
+([docs/switchblade-people-in-app.png](docs/switchblade-people-in-app.png)).
+The icon is three ellipses; its shoulders are a lens in the design.
+
 Chip widths were wrong until 2026-11-12: Switchblade kept room for the add
 well in every count chip, from a hidden layer the Figma component used to
 carry. Since the fix (merged into Switchblade's `master` the same day) a chip at rest is the Count form and only takes the Addable form,
