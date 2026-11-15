@@ -48,7 +48,7 @@ regions and 4,096 commands; scale-dependent renderer limits also apply.
 
 Errors include vector effects/paint overrides, images, masks, layer opacity, blend modes, corner
 smoothing, singular transforms, unsupported gradients,
-multiple/dashed/gradient strokes, non-miter primitive borders, blur, container effects,
+multiple/gradient strokes, non-miter undashed primitive borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text, rounded text clipping, and intersecting rounded or independently transformed clips. Unequal corner radii
 are supported on shapes, but not clipping frames. The size limit is 5,000 nodes
@@ -65,9 +65,25 @@ joins, SVG miter limits, and inside/center/outside alignment. Open contours are
 centered. The exporter traces the original non-branching vector network instead
 of treating resolved fill boundaries as stroke centerlines. Curves stay curves;
 no outlined-stroke or raster fallback is used. Branches, isolated vertices,
-per-vertex styling, rounded vertices, dashes and arrowheads still produce errors.
+per-vertex joins and rounded vertices still produce errors.
 The saved stroke fixture exports and compiles to Rust and was rendered beside
 its Figma export; see `examples/path_strokes.rs` and `docs/path-strokes-compare.png`.
+
+## Dashes and endpoints
+
+Dash patterns export on vector/line strokes and uniform rectangle/frame/ellipse
+borders. Rounded rectangles are supported. Dashes fit each segment and keep
+caps at dash ends and joins at vertices. Unequal dashed borders and dashed effects
+remain errors. Patterns are limited to 32 finite, nonnegative entries; renderer
+geometry limits still apply.
+
+The five Figma decorations (`ARROW_LINES`, `ARROW_EQUILATERAL`, `TRIANGLE_FILLED`,
+`DIAMOND_FILLED`, `CIRCLE_FILLED`) map to native `StrokeCap` values. Endpoint
+vertex overrides export independently as `VectorPath::start_cap/end_cap`, even
+when the node-wide cap is mixed. Unavailable mixed caps on a LINE node still
+fail closed: the API must expose the endpoint values. No outlined-stroke fallback
+is emitted. Generated code was rendered beside the saved Figma dash/endpoint
+fixture; the complete panel still needs live Figma Desktop validation.
 
 ## Variable bindings
 

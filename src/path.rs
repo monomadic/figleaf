@@ -26,6 +26,9 @@ pub enum Command {
 pub struct VectorPath {
     pub winding_rule: WindingRule,
     pub commands: Vec<Command>,
+    /// Endpoint overrides for every open subpath; closed contours have no caps.
+    pub start_cap: Option<StrokeCap>,
+    pub end_cap: Option<StrokeCap>,
 }
 
 impl VectorPath {
@@ -33,7 +36,17 @@ impl VectorPath {
         Self {
             winding_rule,
             commands: Vec::new(),
+            start_cap: None,
+            end_cap: None,
         }
+    }
+    pub fn start_cap(mut self, cap: StrokeCap) -> Self {
+        self.start_cap = Some(cap);
+        self
+    }
+    pub fn end_cap(mut self, cap: StrokeCap) -> Self {
+        self.end_cap = Some(cap);
+        self
     }
     pub fn move_to(mut self, to: [f32; 2]) -> Self {
         self.commands.push(Command::MoveTo(to));
@@ -332,6 +345,11 @@ pub enum StrokeCap {
     Butt,
     Square,
     Round,
+    ArrowLines,
+    ArrowEquilateral,
+    TriangleFilled,
+    DiamondFilled,
+    CircleFilled,
 }
 /// Join between consecutive path segments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -368,164 +386,42 @@ pub fn stroke_bounds(paths: &[VectorPath]) -> Result<Rect, Error> {
 }
 
 #[cfg(feature = "wgpu")]
-pub(crate) fn stroke_outlines(
-    paths: &[VectorPath],
-    width: f32,
-    style: PathStroke,
-    align: crate::StrokeAlign,
-    resolution: f32,
-) -> Result<[Vec<VectorPath>; 3], Error> {
-    use tiny_skia_path::{LineCap, LineJoin, PathBuilder, PathSegment, Stroke};
-    stroke_bounds(paths)?;
-    if !resolution.is_finite()
-        || resolution <= 0.
-        || !width.is_finite()
-        || width * resolution > 1e7
-        || width * style.miter_limit > 1e7
-    {
-        return Err(Error("path stroke exceeds numeric limits"));
+mod stroke;
+#[cfg(feature = "wgpu")]
+pub(crate) use stroke::{primitive_path, stroke_outlines};
+
+pub(crate) fn validate_dash(dash: &[f32]) -> Result<(), Error> {
+    if dash.len() > 32 || dash.iter().any(|v| !v.is_finite() || *v < 0. || *v > 1e7) {
+        return Err(Error(
+            "dash pattern needs at most 32 finite nonnegative lengths",
+        ));
     }
-    // Closed outlines, open outlines, and the closed-contour alignment domain.
-    let mut output: [Vec<VectorPath>; 3] = Default::default();
-    if width == 0. {
-        return Ok(output);
-    }
-    let mut total = 0;
-    for path in paths {
-        let mut closed = PathBuilder::new();
-        let mut open = PathBuilder::new();
-        let mut contour = Vec::new();
-        let mut domain = VectorPath::new(if path.winding_rule == WindingRule::None {
-            WindingRule::NonZero
-        } else {
-            path.winding_rule
-        });
-        let flush = |commands: &mut Vec<Command>,
-                     is_closed: bool,
-                     closed: &mut PathBuilder,
-                     open: &mut PathBuilder,
-                     domain: &mut VectorPath| {
-            if commands.is_empty() {
-                return;
-            }
-            let builder = if is_closed { closed } else { open };
-            for command in commands.iter() {
-                match *command {
-                    Command::MoveTo(p) => builder.move_to(p[0], p[1]),
-                    Command::LineTo(p) => builder.line_to(p[0], p[1]),
-                    Command::QuadraticTo(a, p) => builder.quad_to(a[0], a[1], p[0], p[1]),
-                    Command::CubicTo(a, b, p) => {
-                        builder.cubic_to(a[0], a[1], b[0], b[1], p[0], p[1])
-                    }
-                    Command::Close => builder.close(),
-                }
-            }
-            if is_closed {
-                domain.commands.extend(commands.iter().copied());
-            }
-            commands.clear();
-        };
-        let mut current = [0.; 2];
-        for command in &path.commands {
-            if matches!(command, Command::MoveTo(_)) {
-                flush(&mut contour, false, &mut closed, &mut open, &mut domain);
-            }
-            if contour.is_empty() && !matches!(command, Command::MoveTo(_)) {
-                contour.push(Command::MoveTo(current));
-            }
-            contour.push(*command);
-            match *command {
-                Command::MoveTo(p)
-                | Command::LineTo(p)
-                | Command::QuadraticTo(_, p)
-                | Command::CubicTo(_, _, p) => current = p,
-                Command::Close => {
-                    if let Some(Command::MoveTo(p)) = contour.first() {
-                        current = *p;
-                    }
-                    flush(&mut contour, true, &mut closed, &mut open, &mut domain);
-                }
-            }
+    Ok(())
+}
+
+#[cfg(test)]
+mod dash_tests {
+    use super::*;
+    #[test]
+    fn dash_values_fail_closed_without_renderer_dependencies() {
+        for bad in [
+            vec![-1., 2.],
+            vec![f32::NAN, 2.],
+            vec![f32::INFINITY],
+            vec![1.; 33],
+        ] {
+            assert!(validate_dash(&bad).is_err());
+            let shape = crate::Shape::vector(Rect::default(), vec![]).dash_pattern(bad);
+            assert!(shape.problem().is_some());
         }
-        flush(&mut contour, false, &mut closed, &mut open, &mut domain);
-        output[2].push(domain);
-        for (i, builder) in [closed, open].into_iter().enumerate() {
-            let Some(source) = builder.finish() else {
-                continue;
-            };
-            // A zero-length butt contour has no ink, unlike round/square dots.
-            let mut current = tiny_skia_path::Point::from_xy(0., 0.);
-            let mut start = current;
-            let has_length = source.segments().any(|segment| match segment {
-                PathSegment::MoveTo(p) => {
-                    current = p;
-                    start = p;
-                    false
-                }
-                PathSegment::LineTo(p) => {
-                    let yes = p != current;
-                    current = p;
-                    yes
-                }
-                PathSegment::QuadTo(a, p) => {
-                    let yes = a != current || p != current;
-                    current = p;
-                    yes
-                }
-                PathSegment::CubicTo(a, b, p) => {
-                    let yes = a != current || b != current || p != current;
-                    current = p;
-                    yes
-                }
-                PathSegment::Close => {
-                    let yes = current != start;
-                    current = start;
-                    yes
-                }
-            });
-            if !has_length && style.cap == StrokeCap::Butt {
-                continue;
-            }
-            let stroke = Stroke {
-                width: if i == 0 && align != crate::StrokeAlign::Center {
-                    width * 2.
-                } else {
-                    width
-                },
-                miter_limit: style.miter_limit,
-                line_cap: match style.cap {
-                    StrokeCap::Butt => LineCap::Butt,
-                    StrokeCap::Square => LineCap::Square,
-                    StrokeCap::Round => LineCap::Round,
-                },
-                line_join: match style.join {
-                    StrokeJoin::Miter => LineJoin::Miter,
-                    StrokeJoin::Bevel => LineJoin::Bevel,
-                    StrokeJoin::Round => LineJoin::Round,
-                },
-                ..Stroke::default()
-            };
-            let outline = source
-                .stroke(&stroke, resolution)
-                .ok_or(Error("path stroke could not be constructed"))?;
-            let mut p = VectorPath::new(WindingRule::NonZero);
-            for segment in outline.segments() {
-                total += 1;
-                if total > 4096 {
-                    return Err(Error("stroke outline exceeds 4096 commands"));
-                }
-                p.commands.push(match segment {
-                    PathSegment::MoveTo(p) => Command::MoveTo([p.x, p.y]),
-                    PathSegment::LineTo(p) => Command::LineTo([p.x, p.y]),
-                    PathSegment::QuadTo(a, p) => Command::QuadraticTo([a.x, a.y], [p.x, p.y]),
-                    PathSegment::CubicTo(a, b, p) => {
-                        Command::CubicTo([a.x, a.y], [b.x, b.y], [p.x, p.y])
-                    }
-                    PathSegment::Close => Command::Close,
-                });
-            }
-            output[i].push(p);
+        for good in [
+            vec![],
+            vec![0., 0.],
+            vec![12.],
+            vec![8., 4., 2.],
+            vec![0., 8.],
+        ] {
+            assert!(validate_dash(&good).is_ok());
         }
     }
-    Ok(output)
 }

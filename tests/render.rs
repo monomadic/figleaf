@@ -990,3 +990,111 @@ fn path_miter_limit_degenerate_caps_and_thick_strokes() {
     assert_eq!(i.pixel(30, 30), [128, 0, 0, 128]);
     assert_eq!(i.pixel(19, 30), CLEAR);
 }
+
+#[test]
+fn fitted_dashes_preserve_caps_corners_alpha_and_cache() {
+    use figleaf::{StrokeCap, VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let base = Shape::vector(
+        Rect::new(0., 0., 100., 60.),
+        vec![
+            VectorPath::new(WindingRule::None)
+                .move_to([20., 20.])
+                .line_to([80., 20.]),
+        ],
+    )
+    .stroke(4., hexa(0xff000080), StrokeAlign::Center)
+    .dash_pattern(vec![12., 8.]);
+    let mut c = Canvas::new();
+    c.shape(base.clone());
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    for x in [20, 25, 34, 45, 74, 79] {
+        assert_eq!(i.pixel(x, 20), [128, 0, 0, 128]);
+    }
+    for x in [19, 26, 33, 46, 73, 80] {
+        assert_eq!(i.pixel(x, 20), CLEAR);
+    }
+    assert!(
+        !r.prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+            .unwrap()
+            .changed
+    );
+    c.clear();
+    c.shape(base.clone().stroke_cap(StrokeCap::Round));
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(report.changed && report.uploaded_bytes > 0);
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(i.pixel(26, 20)[3] > 100);
+    assert!(i.rgba.as_chunks::<4>().0.iter().all(|p| p[3] <= 128));
+    c.clear();
+    c.shape(
+        Shape::rect(Rect::new(20., 15., 60., 30.))
+            .strokes([4.; 4], hexa(0xff000080), StrokeAlign::Center)
+            .dash_pattern(vec![12., 8.]),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(19, 14), [128, 0, 0, 128]);
+    assert_eq!(i.pixel(29, 15), CLEAR);
+    c.clear();
+    c.shape(
+        base.dash_pattern(vec![0.00001, 0.00001])
+            .fill(hex(0xff0000)),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(r.problems().len(), 1);
+    assert!(i.rgba.iter().all(|v| *v == 0));
+}
+
+#[test]
+fn endpoints_are_independent_and_triangle_shaft_is_trimmed() {
+    use figleaf::{StrokeCap, Transform, VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let p = VectorPath::new(WindingRule::None)
+        .move_to([20., 30.])
+        .line_to([80., 30.])
+        .start_cap(StrokeCap::CircleFilled)
+        .end_cap(StrokeCap::ArrowEquilateral);
+    let shape = Shape::vector(Rect::new(0., 0., 100., 60.), vec![p]).stroke(
+        4.,
+        hex(0xff0000),
+        StrokeAlign::Center,
+    );
+    let mut c = Canvas::new();
+    c.shape(shape.clone());
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(20, 21), RED);
+    assert_eq!(i.pixel(62, 23), RED);
+    assert_eq!(i.pixel(79, 31), CLEAR);
+    assert_eq!(i.pixel(82, 30), CLEAR);
+    c.clear();
+    c.shape(shape.transform(Transform::new([[-1., 0., 100.], [0., 1., 0.]])));
+    let reflected = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    for y in 0..60 {
+        for x in 0..100 {
+            assert_eq!(i.pixel(x, y), reflected.pixel(99 - x, y));
+        }
+    }
+    c.clear();
+    c.shape(
+        Shape::vector(
+            Rect::new(0., 0., 20., 20.),
+            vec![
+                VectorPath::new(WindingRule::None)
+                    .move_to([10., 10.])
+                    .line_to([10., 10.]),
+            ],
+        )
+        .stroke(2., hex(0), StrokeAlign::Center)
+        .stroke_cap(StrokeCap::ArrowLines),
+    );
+    r.prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(r.problems().len(), 1);
+}

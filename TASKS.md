@@ -35,12 +35,18 @@ Rust output; do not merely remove an exporter error.
    centerlines separately from resolved fill regions. Generated Rust reviewed
    beside Figma ([comparison](docs/path-strokes-compare.png), mean 0.07/255).
    Miter limits, degeneracy, transforms, clipping, alpha and caching also tested.
-   Branching/isolated networks, per-vertex overrides and rounded vector vertices
+   Branching/isolated networks, per-vertex join overrides and rounded vector vertices
    still hard-error; extend topology support separately. Unequal rounded frame
    borders still have synthetic validation only.
-4. **Dashed strokes and endpoint decorations.** Dash/gap patterns around curves
-   and closed contours, cap behavior at dash ends, and Figma's arrow endpoints.
-   Build on path stroking rather than substituting independent rectangles.
+4. **Dashed strokes and endpoint decorations — done 2026-11-16.**
+   Fitted dash/gap patterns on curves, closed contours and uniform primitive
+   borders, with cap/join behavior and all five Figma endpoint decorations.
+   Independent endpoint overrides, tangent orientation and triangle shaft trim
+   use native path geometry. Generated Rust reviewed beside Figma
+   ([comparison](docs/dashed-endpoints-compare.png), mean 0.12/255; largest local
+   difference 232/255 near a curved decorated endpoint). Cache, reflection,
+   opacity, malformed data and resource limits have synthetic tests. Dashed
+   effects/unequal borders and mixed LINE caps without endpoint data hard-error.
 5. **Remaining geometric primitives.** Ellipse arcs, sectors and rings (start,
    end, inner radius), polygons, and stars, including supported corner rounding.
    Lower them through shared path geometry while retaining Figma's parameters.

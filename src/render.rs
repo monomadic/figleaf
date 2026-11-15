@@ -372,7 +372,16 @@ impl Renderer {
                     for l in &layers {
                         let mut ranges = [[0.; 4]; 3];
                         let mut bounds = None;
-                        if let Some(paths) = l.vector_paths {
+                        let primitive = if l.vector_stroke.is_some() && l.vector_paths.is_none() {
+                            Some(vec![path::primitive_path(
+                                shape.rect,
+                                shape.radii,
+                                shape.ellipse,
+                            )])
+                        } else {
+                            None
+                        };
+                        if let Some(paths) = l.vector_paths.or(primitive.as_deref()) {
                             let groups = if let Some((stroke, style)) = l.vector_stroke {
                                 path::stroke_outlines(
                                     paths,
@@ -380,6 +389,7 @@ impl Renderer {
                                     style,
                                     stroke.align,
                                     scale * shape.transform.max_scale(),
+                                    l.dash_pattern,
                                 )
                             } else {
                                 Ok([paths.to_vec(), Vec::new(), Vec::new()])
@@ -394,7 +404,11 @@ impl Renderer {
                                 for (i, group) in groups.iter().enumerate() {
                                     let edges = path::flatten_transformed(
                                         group,
-                                        l.vector_origin,
+                                        if primitive.is_some() {
+                                            [0.; 2]
+                                        } else {
+                                            l.vector_origin
+                                        },
                                         scale,
                                         l.transform,
                                     )?;
@@ -528,7 +542,8 @@ impl Renderer {
                         self.transforms.push(&[m.0[1][0], m.0[1][1], m.0[1][2], 0.]);
                     }
                     for (l, (ranges, path_bounds)) in layers.into_iter().zip(prepared) {
-                        let path_range = l.vector_paths.map(|_| ranges[0]);
+                        let path_range = (l.vector_paths.is_some() || l.vector_stroke.is_some())
+                            .then_some(ranges[0]);
                         let clip = clip_px(l.clip.map(|c| l.clip_transform.bounds(c.rect)));
                         // The clip's own outline, for its antialiased edge.
                         const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];

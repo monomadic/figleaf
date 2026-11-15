@@ -170,8 +170,8 @@ network whose resolved filled regions differ from its stroked edges.
 
 The plugin traces non-branching vector networks exactly once and exports native
 stroke calls, including curved segments. Branches, isolated network vertices,
-per-vertex cap/join overrides, rounded vector vertices, dashes, arrowheads and
-variable-width strokes remain hard errors. Path effects remain unsupported.
+per-vertex join overrides, rounded vector vertices and variable-width strokes
+remain hard errors. Endpoint overrides and dashes are supported below. Path effects remain unsupported.
 
 `cargo run --example path_strokes --features wgpu` renders generated plugin code
 beside Figma's 2× export ([comparison](docs/path-strokes-compare.png)): curved caps,
@@ -185,6 +185,38 @@ stroking, adding three crates (`tiny-skia-path`, `strict-num`, `arrayref`), abou
 Default builds still have no dependencies. Stroke expansion shares the existing
 4,096-command / 8,192-edge and GPU work limits; exceeding them reports a problem
 rather than omitting part of a shape.
+
+## Dashes and endpoints
+
+`.dash_pattern(vec![12., 8.])` accepts Figma's alternating dash/gap lengths.
+Patterns fit each segment with a dash centered on its vertices; adjacent pieces
+join across corners. Odd sequences repeat; zero entries follow Figma's evaluated
+pattern behavior, and empty/all-zero patterns draw solid strokes. Curves remain
+curves throughout dash splitting. Rectangles (including rounded corners), ellipses,
+and vector paths support dashed uniform strokes. Unequal dashed borders, dashed
+effects, and dashes on the legacy `Shape::line` helper produce errors; use a
+stroked `Shape::vector` for dashed lines, as the plugin does.
+
+`StrokeCap` also has `ArrowLines`, `ArrowEquilateral`, `TriangleFilled`,
+`DiamondFilled`, and `CircleFilled`. Set a node-wide cap with `.stroke_cap(...)`,
+or override each open path's endpoints with `VectorPath::start_cap(...)` and
+`end_cap(...)`. Decorations follow endpoint tangents and stroke width before
+transforms; triangle shafts are shortened, and decorations are unioned with the
+stroke before opacity. Closed contours have joins instead of decorations.
+
+The plugin emits these calls, including different caps at a vector's two ends.
+Unsupported/missing endpoint styles, mixed joins, branching networks and brush
+strokes still fail closed. A decorated zero-length path reports that it has no
+tangent. Patterns allow at most 32 finite, nonnegative entries; dash subdivision
+and stroke outlines retain explicit command, region, edge and GPU work limits.
+
+`cargo run --example dashed_endpoints --features wgpu` renders generated code
+beside Figma ([comparison](docs/dashed-endpoints-compare.png)): curved dash caps,
+aligned closed paths, all five decorations, mixed endpoints and primitive borders.
+Mean channel difference is 0.12/255; the largest local difference is 232/255 near
+a curved decorated endpoint. Synthetic tests also cover reflected arrows, shaft
+trimming, dash phase, opacity, malformed patterns and unchanged-canvas uploads.
+No additional dependencies were added for this task.
 
 ## Layout
 

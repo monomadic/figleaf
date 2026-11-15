@@ -76,3 +76,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "path_strokes"
 required-features = ["wgpu"]
+
+[[example]]
+name = "dashed_endpoints"
+required-features = ["wgpu"]

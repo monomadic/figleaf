@@ -1,0 +1,1792 @@
+{
+  "id": "359:242",
+  "name": "figleaf dashed endpoints validation",
+  "type": "FRAME",
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "relativeTransform": [
+    [
+      1,
+      0,
+      20000
+    ],
+    [
+      0,
+      1,
+      20000
+    ]
+  ],
+  "width": 510,
+  "height": 440,
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "cornerSmoothing": 0,
+  "cornerRadius": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "bottomRightRadius": 0,
+  "strokeTopWeight": 1,
+  "strokeRightWeight": 1,
+  "strokeBottomWeight": 1,
+  "strokeLeftWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeWeight": 1,
+  "strokeMiterLimit": 4,
+  "clipsContent": true,
+  "dashPattern": [],
+  "fillGeometry": [
+    {
+      "windingRule": "NONZERO",
+      "data": "M0 0 L510 0 L510 440 L0 440 L0 0 Z"
+    }
+  ],
+  "variableWidthStrokeProperties": {
+    "widthProfile": "UNIFORM",
+    "variableWidthPoints": []
+  },
+  "complexStrokeProperties": {
+    "type": "BASIC"
+  },
+  "children": [
+    {
+      "id": "359:243",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          35
+        ]
+      ],
+      "width": 110,
+      "height": 14.72339153289795,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 4.87281 C25 -15.1272 60 34.8728 110 4.87281 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 4.872807025909424 C 25 -15.127192974090576 60 34.872807025909424 110 4.872807025909424"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 4.872807025909424,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 4.872807025909424,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 25,
+              "y": -20
+            },
+            "tangentEnd": {
+              "x": -50,
+              "y": 30
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:244",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          190
+        ],
+        [
+          0,
+          1,
+          35
+        ]
+      ],
+      "width": 110,
+      "height": 14.72339153289795,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "ROUND",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 4.87281 C25 -15.1272 60 34.8728 110 4.87281 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 4.872807025909424 C 25 -15.127192974090576 60 34.872807025909424 110 4.872807025909424"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 4.872807025909424,
+            "strokeCap": "ROUND",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 4.872807025909424,
+            "strokeCap": "ROUND",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 25,
+              "y": -20
+            },
+            "tangentEnd": {
+              "x": -50,
+              "y": 30
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:245",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          355
+        ],
+        [
+          0,
+          1,
+          35
+        ]
+      ],
+      "width": 110,
+      "height": 14.72339153289795,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "SQUARE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 4.87281 C25 -15.1272 60 34.8728 110 4.87281 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 4.872807025909424 C 25 -15.127192974090576 60 34.872807025909424 110 4.872807025909424"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 4.872807025909424,
+            "strokeCap": "SQUARE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 4.872807025909424,
+            "strokeCap": "SQUARE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 25,
+              "y": -20
+            },
+            "tangentEnd": {
+              "x": -50,
+              "y": 30
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:246",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          95
+        ]
+      ],
+      "width": 103,
+      "height": 45,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "ROUND",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L103 0 L103 45 L0 45 L0 0 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 L 103 0 L 103 45 L 0 45 L 0 0 Z"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 103,
+            "y": 0,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 103,
+            "y": 45,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 0,
+            "y": 45,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 1,
+            "end": 2,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 2,
+            "end": 3,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 3,
+            "end": 0,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0,
+                1,
+                2,
+                3
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:247",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          190
+        ],
+        [
+          0,
+          1,
+          95
+        ]
+      ],
+      "width": 103,
+      "height": 45,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L103 0 L103 45 L0 45 L0 0 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 L 103 0 L 103 45 L 0 45 L 0 0 Z"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 103,
+            "y": 0,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 103,
+            "y": 45,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 0,
+            "y": 45,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 1,
+            "end": 2,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 2,
+            "end": 3,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 3,
+            "end": 0,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0,
+                1,
+                2,
+                3
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:248",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          355
+        ],
+        [
+          0,
+          1,
+          95
+        ]
+      ],
+      "width": 103,
+      "height": 45,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "ROUND",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L103 0 L103 45 L0 45 L0 0 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 L 103 0 L 103 45 L 0 45 L 0 0 Z"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 103,
+            "y": 0,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 103,
+            "y": 45,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 0,
+            "y": 45,
+            "strokeCap": "NONE",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 1,
+            "end": 2,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 2,
+            "end": 3,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "start": 3,
+            "end": 0,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0,
+                1,
+                2,
+                3
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:249",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          190
+        ]
+      ],
+      "width": 110,
+      "height": 0,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "ARROW_LINES",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 L 110 0"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "ARROW_LINES",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 0,
+            "strokeCap": "ARROW_LINES",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:250",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          190
+        ],
+        [
+          0,
+          1,
+          190
+        ]
+      ],
+      "width": 110,
+      "height": 0,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "ARROW_EQUILATERAL",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 L 110 0"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "ARROW_EQUILATERAL",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 0,
+            "strokeCap": "ARROW_EQUILATERAL",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:251",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          355
+        ],
+        [
+          0,
+          1,
+          190
+        ]
+      ],
+      "width": 110,
+      "height": 0,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "TRIANGLE_FILLED",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 L 110 0"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "TRIANGLE_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 0,
+            "strokeCap": "TRIANGLE_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 0,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:252",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          260
+        ]
+      ],
+      "width": 110,
+      "height": 22.040817260742188,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "DIAMOND_FILLED",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 C30 0 75 30 110 20 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 C 30 0 75 30 110 20"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "DIAMOND_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 20,
+            "strokeCap": "DIAMOND_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 30,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": -35,
+              "y": 10
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:253",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          190
+        ],
+        [
+          0,
+          1,
+          260
+        ]
+      ],
+      "width": 110,
+      "height": 22.040817260742188,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeCap": "CIRCLE_FILLED",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 C30 0 75 30 110 20 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 C 30 0 75 30 110 20"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "CIRCLE_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 20,
+            "strokeCap": "CIRCLE_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 30,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": -35,
+              "y": 10
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:254",
+      "name": "Vector",
+      "type": "VECTOR",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          355
+        ],
+        [
+          0,
+          1,
+          260
+        ]
+      ],
+      "width": 110,
+      "height": 22.040817260742188,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "ROUND",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 C30 0 75 30 110 20 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M 0 0 C 30 0 75 30 110 20"
+        }
+      ],
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "strokeCap": "CIRCLE_FILLED",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 20,
+            "strokeCap": "ARROW_EQUILATERAL",
+            "strokeJoin": "ROUND",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 30,
+              "y": 0
+            },
+            "tangentEnd": {
+              "x": -35,
+              "y": 10
+            }
+          }
+        ],
+        "regions": [
+          {
+            "windingRule": "NONZERO",
+            "loops": [
+              [
+                0
+              ]
+            ],
+            "fillStyleId": "",
+            "fills": []
+          }
+        ]
+      },
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:255",
+      "name": "Rectangle",
+      "type": "RECTANGLE",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          345
+        ]
+      ],
+      "width": 103,
+      "height": 55,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 4,
+      "strokeRightWeight": 4,
+      "strokeBottomWeight": 4,
+      "strokeLeftWeight": 4,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L103 0 L103 55 L0 55 L0 0 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:256",
+      "name": "Rectangle",
+      "type": "RECTANGLE",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          190
+        ],
+        [
+          0,
+          1,
+          345
+        ]
+      ],
+      "width": 103,
+      "height": 55,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 12,
+      "topLeftRadius": 12,
+      "topRightRadius": 12,
+      "bottomLeftRadius": 12,
+      "bottomRightRadius": 12,
+      "strokeTopWeight": 4,
+      "strokeRightWeight": 4,
+      "strokeBottomWeight": 4,
+      "strokeLeftWeight": 4,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 12 C0 5.37258 5.37258 0 12 0 L91 0 C97.6274 0 103 5.37258 103 12 L103 43 C103 49.6274 97.6274 55 91 55 L12 55 C5.37258 55 0 49.6274 0 43 L0 12 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "359:257",
+      "name": "Ellipse",
+      "type": "ELLIPSE",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+        [
+          1,
+          0,
+          355
+        ],
+        [
+          0,
+          1,
+          345
+        ]
+      ],
+      "width": 103,
+      "height": 55,
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09000000357627869,
+            "g": 0.4099999964237213,
+            "b": 0.8799999952316284
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeWeight": 4,
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        12,
+        8
+      ],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M103 27.5 C103 42.6878 79.9427 55 51.5 55 C23.0573 55 0 42.6878 0 27.5 C0 12.3122 23.0573 0 51.5 0 C79.9427 0 103 12.3122 103 27.5 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    }
+  ]
+}

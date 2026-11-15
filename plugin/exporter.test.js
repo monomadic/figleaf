@@ -48,7 +48,7 @@ test('unsupported features never produce partial Rust', () => {
     node({opacity:0.5}), node({isMask:true}), node({cornerSmoothing:0.6}), node({blendMode:'MULTIPLY'}),
     node({fills:[{type:'IMAGE'}]}), node({fills:[{...solid,blendMode:'SCREEN'}]}),
     node({relativeTransform:[[0,0,0],[1,0,0]]}),
-    node({strokes:[solid,solid]}), node({strokes:[solid],dashPattern:[1,2]}),
+    node({strokes:[solid,solid]}), node({strokes:[solid],dashPattern:[-1,2]}),
     node({strokes:[solid],strokeJoin:'BEVEL'}),
     node({fills:[{type:'GRADIENT_RADIAL'}]}),
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(9).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
@@ -249,9 +249,29 @@ test('real Figma stroke fixture exports centerlines, caps, joins and alignment a
 test('unsupported stroke topology and styling fail closed', () => {
   const n=require('./stroke-reference.json').children[0];
   for(const patch of [
-    {variableWidthStrokeProperties:{widthProfile:'WEDGE'}}, {complexStrokeProperties:{type:'BRUSH'}}, {strokeCap:'ARROW_LINES'}, {strokeCap:Symbol('mixed')}, {strokeJoin:'unknown'}, {strokeMiterLimit:0}, {strokeWeight:-1}, {dashPattern:[2,2]},
+    {variableWidthStrokeProperties:{widthProfile:'WEDGE'}}, {complexStrokeProperties:{type:'BRUSH'}}, {strokeCap:'UNKNOWN_ARROW'}, {strokeJoin:'unknown'}, {strokeMiterLimit:0}, {strokeWeight:-1}, {dashPattern:[-2,2]},
     {vectorNetwork:{vertices:[{x:0,y:0},{x:10,y:0},{x:0,y:10},{x:10,y:10}],segments:[{start:0,end:1},{start:0,end:2},{start:0,end:3}]}},
     {vectorNetwork:{vertices:[{x:0,y:0}],segments:[]}},
     {vectorNetwork:{vertices:[{x:0,y:0}],segments:[{start:0,end:2}]}},
   ]) {const r=exportHierarchy([{...n,...patch}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
+});
+
+test('Figma dash and endpoint fixture exports independent caps and compiles', () => {
+  const result=exportHierarchy([require('./dash-reference.json')]);assert.deepEqual(result.errors,[]);
+  for(const token of ['.dash_pattern(','.start_cap(StrokeCap::CircleFilled)','.end_cap(StrokeCap::ArrowEquilateral)','StrokeCap::ArrowLines','StrokeCap::TriangleFilled','StrokeCap::DiamondFilled']) assert.ok(result.code.includes(token),token);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-dashes-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for item in c.items(){if let figleaf::paint::Item::Shape(s)=item{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('malformed dashes, unsupported decoration types and unequal borders fail closed',()=>{
+  const n=require('./dash-reference.json').children[0];
+  for(const patch of [{dashPattern:[-1,4]},{dashPattern:[NaN,4]},{dashPattern:Array(33).fill(1)},{strokeCap:'ERD_MANY'},{complexStrokeProperties:{type:'BRUSH'}}]) {
+    const r=exportHierarchy([{...n,...patch}]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  const rect=require('./dash-reference.json').children.at(-3);
+  assert.equal(exportHierarchy([{...rect,strokeTopWeight:3}]).code,null);
 });

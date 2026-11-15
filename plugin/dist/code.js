@@ -109,6 +109,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     }
     return `vec![${paths.join(',\n        ')}]`;
   }
+  const caps={NONE:'Butt',SQUARE:'Square',ROUND:'Round',ARROW_LINES:'ArrowLines',ARROW_EQUILATERAL:'ArrowEquilateral',TRIANGLE_FILLED:'TriangleFilled',DIAMOND_FILLED:'DiamondFilled',CIRCLE_FILLED:'CircleFilled'};
   // Trace each non-branching network edge once. vectorPaths is incomplete for
   // networks, so it is never used as a substitute for stroke centerlines.
   function strokeCode(n) {
@@ -120,7 +121,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     vertices.forEach(v=>{
       number(v.x);number(v.y);
       if (v.cornerRadius || n.cornerRadius) throw Error('Rounded vector vertices are unsupported.');
-      if (v.strokeCap && v.strokeCap!==n.strokeCap || v.strokeJoin && v.strokeJoin!==n.strokeJoin) throw Error('Per-vertex stroke overrides are unsupported.');
+      if (v.strokeCap && !caps[v.strokeCap]) throw Error('Unsupported endpoint decoration.');
+      if (v.strokeJoin && v.strokeJoin!==n.strokeJoin) throw Error('Per-vertex stroke joins are unsupported.');
     });
     segments.forEach((e,i)=>{
       for(const v of [e.start,e.end]) {
@@ -146,6 +148,11 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           ? `.cubic_to(${array([a.x+ta.x,a.y+ta.y])}, ${array([b.x+tb.x,b.y+tb.y])}, ${array([b.x,b.y])})`
           : `.line_to(${array([b.x,b.y])})`;
         at=next; if(at===start){commandCount++;code+='.close()';break;}
+      }
+      if(at!==start) {
+        const a=caps[vertices[start].strokeCap ?? n.strokeCap],b=caps[vertices[at].strokeCap ?? n.strokeCap];
+        if(!a || !b) throw Error('Missing or unsupported endpoint caps.');
+        code+=`.start_cap(StrokeCap::${a}).end_cap(StrokeCap::${b})`;
       }
       paths.push(code);
     }
@@ -196,8 +203,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (strokes.length && n.complexStrokeProperties && n.complexStrokeProperties.type !== 'BASIC') reject('Brush and dynamic strokes are unsupported.');
       if (strokes.length > 1) reject('Multiple strokes are unsupported.');
       if (strokes.some(p => p.type !== 'SOLID')) reject('Only solid strokes are supported.');
-      if (strokes.length && n.dashPattern?.length) reject('Dashed strokes are unsupported.');
-      if (strokes.length && n.type !== 'VECTOR' && n.type !== 'LINE' && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
+      if(strokes.length && n.dashPattern?.length) {
+        if(!Array.isArray(n.dashPattern) || n.dashPattern.length>32 || n.dashPattern.some(v=>typeof v!=='number' || !Number.isFinite(v) || v<0 || v>1e7)) reject('Invalid dash pattern.');
+        if(effects.length) reject('Dashed stroke effects are unsupported.');
+        if('strokeTopWeight' in n && [n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v!==n.strokeTopWeight)) reject('Dashed individual borders require uniform widths.');
+      }
+      if (strokes.length && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
@@ -279,15 +290,17 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
       }
-      if (strokes.length && ['VECTOR','LINE'].includes(n.type)) {
-        if(typeof n.strokeWeight!=='number' || n.strokeWeight<0 || !Number.isFinite(n.strokeWeight)) reject('Invalid stroke width.');
-        const cap={NONE:'Butt',SQUARE:'Square',ROUND:'Round'}[n.strokeCap];
+      if (strokes.length && (['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
+        const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' ? n.strokeTopWeight : n.strokeWeight;
+        if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
+        const cap=caps[n.strokeCap] || (n.type==='VECTOR' && (typeof n.strokeCap==='symbol' || n.strokeCap===undefined) ? 'Butt' : undefined) || (!['VECTOR','LINE'].includes(n.type) && n.strokeCap===undefined ? 'Butt' : undefined);
         const join={MITER:'Miter',BEVEL:'Bevel',ROUND:'Round'}[n.strokeJoin];
-        if(!cap || !join) reject('Unsupported or mixed stroke caps/joins (arrows remain unsupported).');
-        const miter=n.strokeMiterLimit;
+        if(!cap || !join) reject('Unsupported or mixed stroke caps/joins.');
+        const miter=n.strokeMiterLimit ?? (!['VECTOR','LINE'].includes(n.type) ? 4 : undefined);
         if(typeof miter!=='number' || !Number.isFinite(miter) || miter<1) reject('Invalid stroke miter limit.');
         if(expression && cap && join && miter>=1) expression+=`.stroke_cap(StrokeCap::${cap}).stroke_join(StrokeJoin::${join}).stroke_miter_limit(${number(miter)})`;
         if(n.type==='VECTOR') expression+=`.stroke_paths(${strokeCode(n)})`;
+        if(n.dashPattern?.length) expression+=`.dash_pattern(vec!${array(n.dashPattern)})`;
       }
       if (expression) expression += `.transform(${matrix(world)})`;
       if (expression && n.type !== 'TEXT' && clip) expression += `.clip_transformed(${rect(clip.rect)}, ${number(clip.radius)}, ${matrix(clip.transform)})`;

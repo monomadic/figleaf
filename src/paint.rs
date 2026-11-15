@@ -174,6 +174,7 @@ pub struct Shape {
     /// Optional centerlines independent of resolved fill regions (vector networks).
     pub stroke_paths: Option<Vec<VectorPath>>,
     pub path_stroke: path::PathStroke,
+    pub dash_pattern: Vec<f32>,
     pub ellipse: bool,
     /// The width of a straight line with round ends, when the shape is one.
     pub line: Option<f32>,
@@ -202,6 +203,7 @@ impl Shape {
             vector_paths: None,
             stroke_paths: None,
             path_stroke: Default::default(),
+            dash_pattern: Vec::new(),
             ellipse: false,
             line: None,
             radii: [0.; 4],
@@ -222,6 +224,12 @@ impl Shape {
     }
     pub fn stroke_paths(mut self, paths: Vec<VectorPath>) -> Self {
         self.stroke_paths = Some(paths);
+        self
+    }
+    /// Figma dash/gap lengths, fitted per segment. Empty/all-zero means solid.
+    /// Supported on vector strokes and uniform primitive borders without effects.
+    pub fn dash_pattern(mut self, pattern: Vec<f32>) -> Self {
+        self.dash_pattern = pattern;
         self
     }
     pub fn stroke_cap(mut self, cap: path::StrokeCap) -> Self {
@@ -396,7 +404,9 @@ impl Shape {
             }
         }
         if self.vector_paths.is_none()
-            && (self.stroke_paths.is_some() || self.path_stroke != path::PathStroke::default())
+            && (self.stroke_paths.is_some()
+                || (self.dash_pattern.is_empty()
+                    && self.path_stroke != path::PathStroke::default()))
         {
             return Some("path stroke settings require a vector");
         }
@@ -407,6 +417,18 @@ impl Shape {
         }
         if !self.path_stroke.miter_limit.is_finite() || self.path_stroke.miter_limit < 1. {
             return Some("stroke miter limit must be finite and at least 1");
+        }
+        if let Err(e) = path::validate_dash(&self.dash_pattern) {
+            return Some(e.0);
+        }
+        if !self.dash_pattern.is_empty()
+            && (self.line.is_some()
+                || !self.shadows.is_empty()
+                || self
+                    .stroke_weights
+                    .is_some_and(|w| w.iter().any(|v| *v != w[0])))
+        {
+            return Some("dashes require uniform borders or vector strokes without effects");
         }
         let mut numbers = self.radii.to_vec();
         numbers.extend(self.clip.map_or([0.; 4], |c| c.radii));
@@ -517,6 +539,7 @@ impl Shape {
             vector_paths: self.vector_paths.as_deref(),
             vector_origin: [self.rect.x, self.rect.y],
             vector_stroke: None,
+            dash_pattern: &self.dash_pattern,
             a,
             b,
             ellipse: self.ellipse,
@@ -590,12 +613,18 @@ impl Shape {
             let hole = self.outline_sides(inside.map(|w| -w));
             let hole = (hole.rect.w > 0. && hole.rect.h > 0.).then_some(hole);
             let mut stroke_layer = layer(Mode::Band, silhouette, hole, s.color, 0.);
-            if self.vector_paths.is_some() {
+            if self.vector_paths.is_some() || !self.dash_pattern.is_empty() {
                 stroke_layer.vector_paths = self
                     .stroke_paths
                     .as_deref()
                     .or(self.vector_paths.as_deref());
-                stroke_layer.vector_stroke = Some((s, self.path_stroke));
+                stroke_layer.vector_stroke = Some((
+                    Stroke {
+                        width: widths[0],
+                        ..s
+                    },
+                    self.path_stroke,
+                ));
             }
             out.push(stroke_layer);
         }
@@ -660,6 +689,7 @@ pub struct Layer<'a> {
     pub vector_paths: Option<&'a [VectorPath]>,
     pub vector_origin: [f32; 2],
     pub vector_stroke: Option<(Stroke, path::PathStroke)>,
+    pub dash_pattern: &'a [f32],
     pub mode: Mode,
     pub a: Outline,
     pub b: Option<Outline>,
@@ -686,7 +716,7 @@ impl Layer<'_> {
                 return path::stroke_bounds(paths)
                     .unwrap_or_default()
                     .translate(self.vector_origin)
-                    .inflate(stroke.width * style.miter_limit.max(2.));
+                    .inflate(stroke.width * style.miter_limit.max(6.));
             }
             return path::bounds(paths)
                 .unwrap_or_default()
