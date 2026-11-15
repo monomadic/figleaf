@@ -25,7 +25,7 @@ Rust output; do not merely remove an exporter error.
    scale and skew; composed plugin matrices and local geometry, borders,
    gradients, clips, supported effects and text. Singular matrices fail closed.
    Rotation/reflection/skew reviewed beside Figma ([comparison](docs/affine-compare.png),
-   mean 0.36/255, edge maximum 78/255). Other cases have synthetic tests.
+   mean 0.23/255, edge maximum 78/255). Other cases have synthetic tests.
    Crossing transformed clip intersections and rounded text clips remain task 7;
    transformed path strokes were added in task 3; path effects remain unsupported.
 3. **Complete path strokes — done for non-branching paths 2026-11-15.**
@@ -47,9 +47,14 @@ Rust output; do not merely remove an exporter error.
    difference 232/255 near a curved decorated endpoint). Cache, reflection,
    opacity, malformed data and resource limits have synthetic tests. Dashed
    effects/unequal borders and mixed LINE caps without endpoint data hard-error.
-5. **Remaining geometric primitives.** Ellipse arcs, sectors and rings (start,
-   end, inner radius), polygons, and stars, including supported corner rounding.
-   Lower them through shared path geometry while retaining Figma's parameters.
+5. **Remaining geometric primitives — done for supported rounding 2026-11-16.**
+   Parameterized ellipse arcs, sectors/rings, polygons and stars lower through
+   shared paths. Polygon/star circular corners clamp to adjacent edges; open
+   arcs retain stroke alignment. Plugin-generated Rust reviewed beside Figma
+   ([comparison](docs/primitives-compare.png), mean 0.23/255 at 1×).
+   Rounded arc corners, primitive effects/individual borders and inside open-arc
+   offsets reaching the minimum curvature radius remain hard errors.
+   Invalid geometry, holes and unchanged-canvas uploads have regression tests.
 6. **Boolean geometry.** Union, subtract, intersect, and exclude with correct
    contours and holes, including nested boolean nodes. Preserve the actual
    resulting geometry; no bounding-box or raster stand-ins.

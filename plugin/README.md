@@ -48,7 +48,7 @@ regions and 4,096 commands; scale-dependent renderer limits also apply.
 
 Errors include vector effects/paint overrides, images, masks, layer opacity, blend modes, corner
 smoothing, singular transforms, unsupported gradients,
-multiple/gradient strokes, non-miter undashed primitive borders, blur, container effects,
+multiple/gradient strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text, rounded text clipping, and intersecting rounded or independently transformed clips. Unequal corner radii
 are supported on shapes, but not clipping frames. The size limit is 5,000 nodes
@@ -113,3 +113,11 @@ The new variable resolver has synthetic tests for per-consumer modes, lookup
 failures, scalar/text/effect/gradient bindings and asynchronous invalidation;
 live variable-bound export in Figma Desktop remains unverified. The complete panel has not yet been
 exercised inside Figma Desktop. A browser policy blocked the local HTML visual preview.
+
+Ellipse arcs/sectors/rings, polygons and stars export inspector parameters through
+`Shape::ellipse_arc`, `Shape::polygon` and `Shape::star`. Polygon/star corner radii
+include clamping at adjacent edges. Rounded arc corners and effects on these
+path primitives hard-error; counts are limited to 3–256. Open-arc inside offsets
+that reach the ellipse's minimum curvature radius are also rejected. The saved
+`primitive-reference.json` exports code compiled and rendered in `examples/primitives.rs`,
+reviewed beside its [Figma export](../docs/primitives-compare.png).

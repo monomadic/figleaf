@@ -121,7 +121,7 @@ translation. Crossing independently transformed clips and rounded text clips
 still fail closed; complete clip intersections are a separate task.
 
 Run `cargo run --example affine --features wgpu` for rotation/reflection/skew
-beside Figma ([comparison](docs/affine-compare.png)): mean difference 0.36/255,
+beside Figma ([comparison](docs/affine-compare.png)): mean difference 0.23/255,
 maximum 78/255 at an edge. Nonuniform scale, transformed text/effects, nested
 composition and cache behavior have synthetic tests. Text rasterizes at the
 maximum magnification, within the existing backend limits (including 4× scale),
@@ -282,3 +282,27 @@ figleaf is a sister of [figui](../figui), which tried to import whole Figma
 frames into a runtime. figleaf keeps the parts that turned out to matter: the
 auto layout solver and the CoreText text backend are borrowed from there; the
 shape renderer is new.
+
+### Ellipse arcs, polygons and stars
+
+`Shape::ellipse_arc(rect, ArcData::new(start, end, inner_radius))` retains
+Figma's angles in radians (clockwise from +x) and inner-radius ratio 0–1.
+The signed sweep is `end - start`: zero is empty, one full turn makes a ring,
+and an inner radius of 1 leaves only the arc stroke. Open arc strokes retain
+inside/center/outside alignment and caps. `Shape::polygon(rect, point_count)`
+and `Shape::star(rect, point_count, inner_radius)` retain the inspector's
+ellipse-inscribed vertices; `.radius(r)` rounds convex and concave corners,
+clamping where adjacent corners meet. Counts are limited to 3–256.
+
+These parameters lower to shared vector geometry for fills, gradients, strokes,
+dashes, transforms and clipping, with no new dependencies. Rounded arc corners,
+primitive effects and individual borders remain errors. Inside open-arc strokes
+whose offset reaches the ellipse's minimum curvature radius also fail explicitly.
+`Primitive::paths` exposes the generated paths in rectangle coordinates.
+
+`cargo run --example primitives --features wgpu` renders plugin-generated code
+beside [Figma's reference](docs/primitives-compare.png): sectors, partial/full
+rings, open-arc alignment, polygons, rounded/clamped stars and dashed borders.
+Mean difference 0.23/255 at 1×, largest 224/255 near rounded-star dashes.
+Dense strokes remain subject to the renderer’s coverage-work budget;
+other edge cases have synthetic tests.

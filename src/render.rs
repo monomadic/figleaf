@@ -372,7 +372,19 @@ impl Renderer {
                     for l in &layers {
                         let mut ranges = [[0.; 4]; 3];
                         let mut bounds = None;
-                        let primitive = if l.vector_stroke.is_some() && l.vector_paths.is_none() {
+                        let primitive = if let Some(geometry) = l.primitive {
+                            match geometry.render_paths(
+                                shape.rect,
+                                shape.radii[0],
+                                l.vector_stroke.and(shape.stroke),
+                            ) {
+                                Ok(paths) => Some(paths),
+                                Err(e) => {
+                                    path_error = Some(e.0);
+                                    break;
+                                }
+                            }
+                        } else if l.vector_stroke.is_some() && l.vector_paths.is_none() {
                             Some(vec![path::primitive_path(
                                 shape.rect,
                                 shape.radii,
@@ -542,8 +554,10 @@ impl Renderer {
                         self.transforms.push(&[m.0[1][0], m.0[1][1], m.0[1][2], 0.]);
                     }
                     for (l, (ranges, path_bounds)) in layers.into_iter().zip(prepared) {
-                        let path_range = (l.vector_paths.is_some() || l.vector_stroke.is_some())
-                            .then_some(ranges[0]);
+                        let path_range = (l.vector_paths.is_some()
+                            || l.primitive.is_some()
+                            || l.vector_stroke.is_some())
+                        .then_some(ranges[0]);
                         let clip = clip_px(l.clip.map(|c| l.clip_transform.bounds(c.rect)));
                         // The clip's own outline, for its antialiased edge.
                         const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];

@@ -171,6 +171,8 @@ pub struct Shape {
     pub rect: Rect,
     /// Filled vector regions in local coordinates, unioned before painting.
     pub vector_paths: Option<Vec<VectorPath>>,
+    /// Inspector parameters lowered to vector paths by the renderer.
+    pub primitive: Option<crate::Primitive>,
     /// Optional centerlines independent of resolved fill regions (vector networks).
     pub stroke_paths: Option<Vec<VectorPath>>,
     pub path_stroke: path::PathStroke,
@@ -201,6 +203,7 @@ impl Shape {
             transform: Transform::IDENTITY,
             clip_transform: Transform::IDENTITY,
             vector_paths: None,
+            primitive: None,
             stroke_paths: None,
             path_stroke: Default::default(),
             dash_pattern: Vec::new(),
@@ -219,6 +222,30 @@ impl Shape {
     pub fn vector(rect: Rect, paths: Vec<VectorPath>) -> Self {
         Self {
             vector_paths: Some(paths),
+            ..Self::rect(rect)
+        }
+    }
+    /// Ellipse sector/ring, or an unfilled arc when inner_radius is one.
+    pub fn ellipse_arc(rect: Rect, arc: crate::ArcData) -> Self {
+        Self {
+            primitive: Some(crate::Primitive::Arc(arc)),
+            ..Self::rect(rect)
+        }
+    }
+    /// Regular polygon inscribed in the rectangle, with the first point at top.
+    pub fn polygon(rect: Rect, point_count: u32) -> Self {
+        Self {
+            primitive: Some(crate::Primitive::Polygon { point_count }),
+            ..Self::rect(rect)
+        }
+    }
+    /// Alternating outer and inner vertices, inscribed in the rectangle.
+    pub fn star(rect: Rect, point_count: u32, inner_radius: f32) -> Self {
+        Self {
+            primitive: Some(crate::Primitive::Star {
+                point_count,
+                inner_radius,
+            }),
             ..Self::rect(rect)
         }
     }
@@ -388,6 +415,23 @@ impl Shape {
         {
             return Some(e.0);
         }
+        if let Some(primitive) = self.primitive {
+            if let Err(e) = primitive.validate(self.radii[0]) {
+                return Some(e.0);
+            }
+            if self.vector_paths.is_some()
+                || self.stroke_paths.is_some()
+                || self.line.is_some()
+                || self.ellipse
+                || self.stroke_weights.is_some()
+                || !self.shadows.is_empty()
+                || self.radii.iter().any(|r| *r != self.radii[0])
+            {
+                return Some(
+                    "parameterized primitives do not support effects, individual borders or unequal corner radii",
+                );
+            }
+        }
         if let Some(paths) = &self.vector_paths {
             if self.ellipse
                 || self.line.is_some()
@@ -404,6 +448,7 @@ impl Shape {
             }
         }
         if self.vector_paths.is_none()
+            && self.primitive.is_none()
             && (self.stroke_paths.is_some()
                 || (self.dash_pattern.is_empty()
                     && self.path_stroke != path::PathStroke::default()))
@@ -537,6 +582,7 @@ impl Shape {
             transform: self.transform,
             clip_transform: self.clip_transform,
             vector_paths: self.vector_paths.as_deref(),
+            primitive: self.primitive,
             vector_origin: [self.rect.x, self.rect.y],
             vector_stroke: None,
             dash_pattern: &self.dash_pattern,
@@ -613,7 +659,10 @@ impl Shape {
             let hole = self.outline_sides(inside.map(|w| -w));
             let hole = (hole.rect.w > 0. && hole.rect.h > 0.).then_some(hole);
             let mut stroke_layer = layer(Mode::Band, silhouette, hole, s.color, 0.);
-            if self.vector_paths.is_some() || !self.dash_pattern.is_empty() {
+            if self.vector_paths.is_some()
+                || self.primitive.is_some()
+                || !self.dash_pattern.is_empty()
+            {
                 stroke_layer.vector_paths = self
                     .stroke_paths
                     .as_deref()
@@ -621,6 +670,11 @@ impl Shape {
                 stroke_layer.vector_stroke = Some((
                     Stroke {
                         width: widths[0],
+                        align: if self.primitive.is_some_and(crate::Primitive::is_open_arc) {
+                            StrokeAlign::Center
+                        } else {
+                            s.align
+                        },
                         ..s
                     },
                     self.path_stroke,
@@ -687,6 +741,7 @@ pub struct Layer<'a> {
     /// When present, union these filled regions instead of the `a`/`b` outlines.
     /// The paths borrow the source shape and are positioned by `vector_origin`.
     pub vector_paths: Option<&'a [VectorPath]>,
+    pub primitive: Option<crate::Primitive>,
     pub vector_origin: [f32; 2],
     pub vector_stroke: Option<(Stroke, path::PathStroke)>,
     pub dash_pattern: &'a [f32],
@@ -711,6 +766,12 @@ impl Layer<'_> {
         self.transform.bounds(self.local_extent())
     }
     fn local_extent(&self) -> Rect {
+        if self.primitive.is_some() {
+            return self.a.rect.inflate(
+                self.vector_stroke
+                    .map_or(0., |(s, style)| s.width * style.miter_limit.max(6.)),
+            );
+        }
         if let Some(paths) = self.vector_paths {
             if let Some((stroke, style)) = self.vector_stroke {
                 return path::stroke_bounds(paths)

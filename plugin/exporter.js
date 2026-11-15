@@ -168,7 +168,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     let childClip = clip;
     let world = parentTransform;
     try {
-      const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR'];
+      const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR', 'POLYGON', 'STAR'];
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
       if (n.isMask) reject('Masks are unsupported.');
       if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
@@ -206,7 +206,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(effects.length) reject('Dashed stroke effects are unsupported.');
         if('strokeTopWeight' in n && [n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v!==n.strokeTopWeight)) reject('Dashed individual borders require uniform widths.');
       }
-      if (strokes.length && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
+      const arc = n.type === 'ELLIPSE' && n.arcData && (n.arcData.startingAngle !== 0 || Math.abs(n.arcData.endingAngle - Math.PI*2) > 1e-6 || n.arcData.innerRadius !== 0);
+      const primitive = arc || ['POLYGON','STAR'].includes(n.type);
+      if (strokes.length && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
@@ -214,7 +216,20 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       const radii = 'topLeftRadius' in n ? [n.topLeftRadius, n.topRightRadius, n.bottomRightRadius, n.bottomLeftRadius] : [0,0,0,0];
       radii.forEach(number);
-      if (n.type === 'ELLIPSE' && n.arcData && (n.arcData.startingAngle !== 0 || Math.abs(n.arcData.endingAngle - Math.PI*2) > 1e-6 || n.arcData.innerRadius !== 0)) reject('Ellipse arcs and rings are unsupported.');
+      if (primitive) {
+        if (effects.length) reject('Parameterized primitive effects are unsupported.');
+        const radius = n.cornerRadius ?? 0;
+        if (typeof radius !== 'number' || !Number.isFinite(radius) || radius < 0 || radius > 1e7) reject('Invalid primitive corner radius.');
+        if (arc) {
+          const a = n.arcData;
+          if (![a.startingAngle,a.endingAngle,a.innerRadius].every(Number.isFinite) || Math.abs(a.startingAngle)>1e7 || Math.abs(a.endingAngle)>1e7 || Math.abs(a.endingAngle-a.startingAngle)>Math.PI*2+1e-5 || a.innerRadius<0 || a.innerRadius>1) reject('Invalid ellipse arc parameters.');
+          if (radius) reject('Rounded ellipse arc corners are unsupported.');
+          if (a.innerRadius===1 && strokes.length && n.strokeAlign==='INSIDE' && n.width>0 && n.height>0 && n.strokeWeight/2 >= (Math.min(n.width,n.height)/2)**2/(Math.max(n.width,n.height)/2)) reject('Inside arc stroke exceeds ellipse curvature radius.');
+        } else {
+          if (!Number.isInteger(n.pointCount) || n.pointCount<3 || n.pointCount>256) reject('Primitive point count must be 3 to 256.');
+          if (n.type==='STAR' && (!Number.isFinite(n.innerRadius) || n.innerRadius<0 || n.innerRadius>1)) reject('Star inner radius must be 0 to 1.');
+        }
+      }
       let expression = null;
       if (n.type === 'TEXT') {
         if (clip?.radius) reject('Rounded clipping of text is unsupported.');
@@ -264,10 +279,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
 
           if (effects.length) reject('Vector path effects are unsupported.');
           expression = `Shape::vector(${rect(box)}, ${vectorCode(n)})`;
+        } else if (primitive) {
+          expression = arc ? `Shape::ellipse_arc(${rect(box)}, ArcData::new(${number(n.arcData.startingAngle)}, ${number(n.arcData.endingAngle)}, ${number(n.arcData.innerRadius)}))`
+            : n.type==='POLYGON' ? `Shape::polygon(${rect(box)}, ${n.pointCount})`
+            : `Shape::star(${rect(box)}, ${n.pointCount}, ${number(n.innerRadius)})`;
+          if (n.cornerRadius) expression += `.radius(${number(n.cornerRadius)})`;
         } else {
           expression = `Shape::${n.type === 'ELLIPSE' ? 'ellipse' : 'rect'}(${rect(box)})`;
         }
-        if (radii.some(r => r)) expression += `.radii(${array(radii)})`;
+        if (!primitive && radii.some(r => r)) expression += `.radii(${array(radii)})`;
         // Figma's paint arrays are in drawing order, bottom to top.
         for (const p of fills) {
           if (p.type === 'SOLID') expression += `.fill(${color(p.color,p.opacity)})`;
@@ -281,15 +301,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const p = strokes[0];
           const align = { INSIDE:'Inside', CENTER:'Center', OUTSIDE:'Outside' }[n.strokeAlign];
           if (!align) reject('Unsupported stroke alignment.');
-          if ('strokeTopWeight' in n && n.type !== 'VECTOR') expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
+          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
           else expression += `.stroke(${number(n.strokeWeight)}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
         }
         for (const e of effects) if (['DROP_SHADOW','INNER_SHADOW'].includes(e.type)) {
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
       }
-      if (strokes.length && (['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
-        const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' ? n.strokeTopWeight : n.strokeWeight;
+      if (strokes.length && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
+        const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' && !primitive ? n.strokeTopWeight : n.strokeWeight;
         if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
         const cap=caps[n.strokeCap] || (n.type==='VECTOR' && (typeof n.strokeCap==='symbol' || n.strokeCap===undefined) ? 'Butt' : undefined) || (!['VECTOR','LINE'].includes(n.type) && n.strokeCap===undefined ? 'Butt' : undefined);
         const join={MITER:'Miter',BEVEL:'Bevel',ROUND:'Round'}[n.strokeJoin];
@@ -324,7 +344,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

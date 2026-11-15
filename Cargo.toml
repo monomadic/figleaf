@@ -80,3 +80,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "dashed_endpoints"
 required-features = ["wgpu"]
+
+[[example]]
+name = "primitives"
+required-features = ["wgpu"]

@@ -1098,3 +1098,54 @@ fn endpoints_are_independent_and_triangle_shaft_is_trimmed() {
         .unwrap();
     assert_eq!(r.problems().len(), 1);
 }
+
+#[test]
+fn primitive_holes_alignment_errors_and_cache() {
+    use figleaf::{ArcData, StrokeCap};
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    let rect = Rect::new(10., 10., 80., 60.);
+    c.shape(
+        Shape::ellipse_arc(rect, ArcData::new(0., std::f32::consts::TAU, 0.5)).fill(hex(0xff0000)),
+    );
+    let i = gpu.render(&mut r, &c, [100, 80], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(50, 40), CLEAR);
+    assert_eq!(i.pixel(50, 15), RED);
+    assert_eq!(i.pixel(5, 40), CLEAR);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 80], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    for (align, red_x, clear_x) in [
+        (StrokeAlign::Inside, 88, 92),
+        (StrokeAlign::Center, 90, 94),
+        (StrokeAlign::Outside, 92, 88),
+    ] {
+        c.clear();
+        c.shape(
+            Shape::ellipse_arc(rect, ArcData::new(0., std::f32::consts::PI, 1.))
+                .fill(hex(0xff0000))
+                .stroke(4., hex(0xff0000), align)
+                .stroke_cap(StrokeCap::Round),
+        );
+        let i = gpu.render(&mut r, &c, [100, 80], 1., [0.; 4], &mut NoText);
+        assert!(r.problems().is_empty());
+        assert_eq!(i.pixel(red_x, 40), RED);
+        assert_eq!(i.pixel(clear_x, 40), CLEAR);
+        assert_eq!(i.pixel(50, 50), CLEAR);
+    }
+    for shape in [
+        Shape::polygon(rect, 2),
+        Shape::star(rect, 5, 2.),
+        Shape::ellipse_arc(rect, ArcData::new(0., 1., 0.)).radius(2.),
+        Shape::ellipse_arc(rect, ArcData::new(0., 1., 1.)).stroke(60., hex(0), StrokeAlign::Inside),
+    ] {
+        c.clear();
+        c.shape(shape.fill(hex(0xff0000)));
+        let i = gpu.render(&mut r, &c, [100, 80], 1., [0.; 4], &mut NoText);
+        assert_eq!(r.problems().len(), 1);
+        assert!(i.rgba.iter().all(|v| *v == 0));
+    }
+}

@@ -52,7 +52,7 @@ test('unsupported features never produce partial Rust', () => {
     node({strokes:[solid],strokeJoin:'BEVEL'}),
     node({fills:[{type:'GRADIENT_RADIAL'}]}),
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(9).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
-    node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:0}}),
+    node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
     text({lineHeight:{unit:'AUTO'}}),text({textDecoration:'UNDERLINE'}),text({characters:'🐈'}),
     text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:4}),text({textTruncation:'ENDING'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
@@ -274,4 +274,21 @@ test('malformed dashes, unsupported decoration types and unequal borders fail cl
   }
   const rect=require('./dash-reference.json').children.at(-3);
   assert.equal(exportHierarchy([{...rect,strokeTopWeight:3}]).code,null);
+});
+
+test('Figma primitive fixture preserves inspector parameters and compiles',()=>{
+  const result=exportHierarchy([require('./primitive-reference.json')]);assert.deepEqual(result.errors,[]);
+  for(const token of ['Shape::ellipse_arc(', 'ArcData::new(', 'Shape::polygon(', 'Shape::star(', '.radius(100.0)']) assert.ok(result.code.includes(token),token);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-primitives-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for item in c.items(){if let figleaf::paint::Item::Shape(s)=item{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported primitive geometry fails without partial code',()=>{
+  const f=require('./primitive-reference.json');
+  for(const [n,patch] of [[f.children[0],{cornerRadius:3}],[f.children[0],{arcData:{startingAngle:0,endingAngle:8,innerRadius:0}}],[f.children[3],{strokeWeight:100}],[f.children[6],{pointCount:2}],[f.children[6],{pointCount:3.5}],[f.children[9],{innerRadius:2}],[f.children[9],{cornerRadius:NaN}],[f.children[9],{effects:[{type:'DROP_SHADOW'}]}]]){
+    const r=exportHierarchy([{...f,children:[{...n,...patch}]}]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
 });
