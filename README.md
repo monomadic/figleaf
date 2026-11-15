@@ -138,8 +138,8 @@ unfilled network branches. Open filled contours close implicitly. Regions are
 unioned before each fill, so overlaps do not accumulate opacity.
 
 The plugin reads Figma's resolved `fillGeometry` plus unfilled `vectorPaths`.
-Path strokes, effects, and per-region paint overrides remain hard
-errors. Run `cargo run --example vector_paths --features wgpu` for the person
+Path effects and per-region paint overrides remain hard errors. Solid path
+strokes are supported as described below. Run `cargo run --example vector_paths --features wgpu` for the person
 icon from [Switchblade's design](https://www.figma.com/design/p01oYypZrTOjxe4Pi2Ytxe?node-id=336-1230).
 Its bound color was explicitly resolved for the saved fixture. The plugin now resolves bindings in the consumer’s active
 mode and records their provenance in comments. Figma's 4× export is left, generated Rust's render right:
@@ -155,6 +155,36 @@ scene edge storage (or the device limit). A shape exceeding 512 million estimate
 edge/sample checks is reported in `Renderer::problems`, as are invalid paths
 and unsupported styles. Unchanged geometry uploads nothing. `Layer` now borrows
 its source vector paths; hosts consuming layers must retain the source shapes.
+
+## Path strokes
+
+Vectors accept `.stroke(width, color, StrokeAlign::Inside/Center/Outside)`,
+`.stroke_cap(StrokeCap::Butt/Square/Round)`,
+`.stroke_join(StrokeJoin::Miter/Bevel/Round)`, and `.stroke_miter_limit(ratio)`
+(the SVG ratio, default 4, minimum 1). Closed contours use their winding rules
+for inside/outside alignment, including holes; open contours use centered strokes.
+Strokes are formed in local coordinates before affine transformation. Overlaps
+within one stroke are unioned before applying opacity. Fill and stroke remain
+separate paints. `stroke_paths(paths)` supplies independent centerlines for a
+network whose resolved filled regions differ from its stroked edges.
+
+The plugin traces non-branching vector networks exactly once and exports native
+stroke calls, including curved segments. Branches, isolated network vertices,
+per-vertex cap/join overrides, rounded vector vertices, dashes, arrowheads and
+variable-width strokes remain hard errors. Path effects remain unsupported.
+
+`cargo run --example path_strokes --features wgpu` renders generated plugin code
+beside Figma's 2× export ([comparison](docs/path-strokes-compare.png)): curved caps,
+acute joins, thick aligned strokes and holes; mean channel difference 0.07/255,
+maximum 72/255 at an edge. Miter-limit changes, zero-length round/square caps,
+transforms, clipping, alpha and caching also have synthetic GPU tests.
+
+The optional `wgpu` feature now includes `tiny-skia-path` 0.11.4 for curve
+stroking, adding three crates (`tiny-skia-path`, `strict-num`, `arrayref`), about
+280 KiB of installed Rust source. Linked size depends on the host's build.
+Default builds still have no dependencies. Stroke expansion shares the existing
+4,096-command / 8,192-edge and GPU work limits; exceeding them reports a problem
+rather than omitting part of a shape.
 
 ## Layout
 
@@ -209,7 +239,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Radial, angular and diamond gradients, gradients on strokes and text, more
-than eight gradient stops, images, vector strokes/effects, blurs, blend modes, clipped text
+than eight gradient stops, images, vector effects, blurs, blend modes, clipped text
 with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.

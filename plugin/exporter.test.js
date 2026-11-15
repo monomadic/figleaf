@@ -8,7 +8,7 @@ const { execFileSync } = require('node:child_process');
 const { exportHierarchy } = require('./exporter');
 const solid = { type: 'SOLID', color: { r: 1, g: 0, b: 0 }, opacity: 1, blendMode: 'NORMAL' };
 function node(props = {}) {
-  return { id: '1:1', name: 'Rectangle', type: 'RECTANGLE', visible: true, opacity: 1, blendMode: 'NORMAL', relativeTransform: [[1,0,0],[0,1,0]], width: 100, height: 40, fills: [solid], strokes: [], effects: [], cornerSmoothing: 0, topLeftRadius: 0, topRightRadius: 0, bottomLeftRadius: 0, bottomRightRadius: 0, strokeTopWeight: 0, strokeRightWeight: 0, strokeBottomWeight: 0, strokeLeftWeight: 0, strokeAlign: 'INSIDE', strokeJoin: 'MITER', ...props };
+  return { id: '1:1', name: 'Rectangle', type: 'RECTANGLE', visible: true, opacity: 1, blendMode: 'NORMAL', relativeTransform: [[1,0,0],[0,1,0]], width: 100, height: 40, fills: [solid], strokes: [], effects: [], cornerSmoothing: 0, topLeftRadius: 0, topRightRadius: 0, bottomLeftRadius: 0, bottomRightRadius: 0, strokeTopWeight: 0, strokeRightWeight: 0, strokeBottomWeight: 0, strokeLeftWeight: 0, strokeAlign: 'INSIDE', strokeJoin: 'MITER', strokeCap:'NONE', strokeMiterLimit:4, ...props };
 }
 function text(props = {}) {
   return node({ type:'TEXT', name:'Label', characters:'Hello "Rust" \\ world', fontName:{family:'Inter',style:'Regular'}, fontSize:12, lineHeight:{unit:'PIXELS',value:16}, letterSpacing:{unit:'PIXELS',value:0}, textCase:'ORIGINAL', textDecoration:'NONE', textAlignHorizontal:'LEFT', textAlignVertical:'CENTER', ...props });
@@ -231,4 +231,27 @@ test('hidden paints do not resolve mirrored node bindings', async () => {
   const n=node({boundVariables:{fills:[alias]},fills:[solid,{...solid,visible:false,boundVariables:{color:alias}}]});
   const result=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:()=>{throw Error('must not look up hidden paint');}});
   assert.equal(result.errors.length,0);
+});
+
+test('real Figma stroke fixture exports centerlines, caps, joins and alignment and compiles', () => {
+  const result=exportHierarchy([require('./stroke-reference.json')]);
+  assert.deepEqual(result.errors,[]);
+  for(const token of ['StrokeCap::Butt','StrokeCap::Square','StrokeCap::Round','StrokeJoin::Miter','StrokeJoin::Bevel','StrokeJoin::Round','StrokeAlign::Inside','StrokeAlign::Center','StrokeAlign::Outside','.cubic_to(','.stroke_paths(']) assert.ok(result.code.includes(token),token);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-strokes-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for item in c.items(){if let figleaf::paint::Item::Shape(s)=item{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);
+    execFileSync(path.join(tmp,'main'));
+  } finally {fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('unsupported stroke topology and styling fail closed', () => {
+  const n=require('./stroke-reference.json').children[0];
+  for(const patch of [
+    {variableWidthStrokeProperties:{widthProfile:'WEDGE'}}, {complexStrokeProperties:{type:'BRUSH'}}, {strokeCap:'ARROW_LINES'}, {strokeCap:Symbol('mixed')}, {strokeJoin:'unknown'}, {strokeMiterLimit:0}, {strokeWeight:-1}, {dashPattern:[2,2]},
+    {vectorNetwork:{vertices:[{x:0,y:0},{x:10,y:0},{x:0,y:10},{x:10,y:10}],segments:[{start:0,end:1},{start:0,end:2},{start:0,end:3}]}},
+    {vectorNetwork:{vertices:[{x:0,y:0}],segments:[]}},
+    {vectorNetwork:{vertices:[{x:0,y:0}],segments:[{start:0,end:2}]}},
+  ]) {const r=exportHierarchy([{...n,...patch}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
 });

@@ -31,7 +31,7 @@ An agent can consume the displayed code just as a person can; this plugin does
 not install an agent connection or write to a consumer's project.
 
 Supported: affine-transformed rectangles, frames/components/instances/groups,
-full ellipses, filled vector paths, round-capped straight lines, solid and linear-gradient fills
+full ellipses, filled vector paths, stroked straight lines, solid and linear-gradient fills
 (up to eight stops), solid uniform/individual borders, and shape shadows.
 Nested transforms compose; the root translation is omitted but its linear matrix is retained.
 Rectangular clips sharing axes can intersect; one rounded clip is supported for shapes.
@@ -46,9 +46,9 @@ no topology reconstruction. Regions share the node’s paints and are unioned
 before filling; differing per-region paints are rejected. The limits are 256
 regions and 4,096 commands; scale-dependent renderer limits also apply.
 
-Errors include vector strokes/effects/paint overrides, images, masks, layer opacity, blend modes, corner
+Errors include vector effects/paint overrides, images, masks, layer opacity, blend modes, corner
 smoothing, singular transforms, unsupported gradients,
-multiple/dashed/gradient strokes, non-miter joins, blur, container effects,
+multiple/dashed/gradient strokes, non-miter primitive borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text, rounded text clipping, and intersecting rounded or independently transformed clips. Unequal corner radii
 are supported on shapes, but not clipping frames. The size limit is 5,000 nodes
@@ -57,6 +57,17 @@ and 128 levels. New Figma features may need additional validation rules.
 Generated code targets figleaf's supported semantics, not pixel identity.
 Existing antialiasing, shadow, text, and sRGB-target blending differences remain.
 Use an encoded-sRGB `Rgba8Unorm`/`Bgra8Unorm` target for the examples' blending.
+
+## Path strokes
+
+Solid vector and line strokes export butt/square/round caps, miter/bevel/round
+joins, SVG miter limits, and inside/center/outside alignment. Open contours are
+centered. The exporter traces the original non-branching vector network instead
+of treating resolved fill boundaries as stroke centerlines. Curves stay curves;
+no outlined-stroke or raster fallback is used. Branches, isolated vertices,
+per-vertex styling, rounded vertices, dashes and arrowheads still produce errors.
+The saved stroke fixture exports and compiles to Rust and was rendered beside
+its Figma export; see `examples/path_strokes.rs` and `docs/path-strokes-compare.png`.
 
 ## Variable bindings
 

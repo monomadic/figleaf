@@ -32,12 +32,18 @@ fn path_inside(p: vec2f, first: u32, count: u32) -> bool {
     }
     return false;
 }
-fn path_coverage(p: vec2f, range: vec4f) -> f32 {
+fn path_coverage(p: vec2f, range: vec4f, open: vec4f, domain: vec4f, align: f32) -> f32 {
     var coverage = 0.0;
     for (var y = 0u; y < 4u; y++) {
         for (var x = 0u; x < 4u; x++) {
             let sample_at = p + (vec2f(f32(x), f32(y)) + 0.5) / 4.0 - 0.5;
-            if (path_inside(sample_at, u32(range.x), u32(range.y))) { coverage += 1.0 / 16.0; }
+            var inside=path_inside(sample_at,u32(range.x),u32(range.y));
+            if (align>0.5) {
+                let filled=path_inside(sample_at,u32(domain.x),u32(domain.y));
+                inside=inside && select(filled,!filled,align>1.5);
+            }
+            inside=inside || path_inside(sample_at,u32(open.x),u32(open.y));
+            if (inside) { coverage += 1.0 / 16.0; }
         }
     }
     return coverage;
@@ -241,7 +247,7 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     b = cover(db / bw);
     var alpha = 0.0;
     if (kind > 2.5) {
-        alpha = path_coverage(p, v.b_rect);
+        alpha = path_coverage(p, v.b_rect, v.a_radii, v.b_radii, select(0.0,v.params.y,kind>3.5));
     } else if (v.params.y < 0.5) {
         alpha = max(cover(da / aw) - b, 0.0);
     } else if (v.params.y < 1.5) {

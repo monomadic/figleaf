@@ -107,6 +107,50 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     }
     return `vec![${paths.join(',\n        ')}]`;
   }
+  // Trace each non-branching network edge once. vectorPaths is incomplete for
+  // networks, so it is never used as a substitute for stroke centerlines.
+  function strokeCode(n) {
+    const network=n.vectorNetwork;
+    if (!network || !Array.isArray(network.vertices) || !Array.isArray(network.segments)) throw Error('Stroke vector network is unavailable.');
+    const {vertices,segments}=network;
+    if (segments.length>4096 || vertices.length>4096) throw Error('Stroke network exceeds 4096 segments/vertices.');
+    const adjacency=vertices.map(()=>[]);
+    vertices.forEach(v=>{
+      number(v.x);number(v.y);
+      if (v.cornerRadius || n.cornerRadius) throw Error('Rounded vector vertices are unsupported.');
+      if (v.strokeCap && v.strokeCap!==n.strokeCap || v.strokeJoin && v.strokeJoin!==n.strokeJoin) throw Error('Per-vertex stroke overrides are unsupported.');
+    });
+    segments.forEach((e,i)=>{
+      for(const v of [e.start,e.end]) {
+        if (!Number.isInteger(v) || !adjacency[v]) throw Error('Invalid stroke network vertex.');
+        adjacency[v].push(i);
+      }
+      for(const t of [e.tangentStart,e.tangentEnd]) if(t){number(t.x);number(t.y);}
+    });
+    if(adjacency.some(a=>a.length===0)) throw Error('Isolated stroke vertices are unsupported.');
+    if(adjacency.some(a=>a.length>2)) throw Error('Branching stroke networks are unsupported.');
+    const used=new Set(),paths=[]; let commandCount=0;
+    const starts=[...vertices.keys()].sort((a,b)=>adjacency[a].length-adjacency[b].length);
+    for(const start of starts) {
+      if(!adjacency[start].some(e=>!used.has(e))) continue;
+      commandCount++;
+      let at=start,code=`VectorPath::new(WindingRule::NonZero).move_to(${array([vertices[start].x,vertices[start].y])})`;
+      while(true) {
+        const index=adjacency[at].find(e=>!used.has(e)); if(index===undefined) break;
+        commandCount++;
+        used.add(index); const e=segments[index],forward=e.start===at,next=forward?e.end:e.start;
+        const a=vertices[at],b=vertices[next],ta=(forward?e.tangentStart:e.tangentEnd)||{x:0,y:0},tb=(forward?e.tangentEnd:e.tangentStart)||{x:0,y:0};
+        code+=ta.x || ta.y || tb.x || tb.y
+          ? `.cubic_to(${array([a.x+ta.x,a.y+ta.y])}, ${array([b.x+tb.x,b.y+tb.y])}, ${array([b.x,b.y])})`
+          : `.line_to(${array([b.x,b.y])})`;
+        at=next; if(at===start){commandCount++;code+='.close()';break;}
+      }
+      paths.push(code);
+    }
+    if(commandCount>4096) throw Error('Stroke network exceeds 4096 commands.');
+    if(paths.length>256) throw Error('Stroke network exceeds 256 contours.');
+    return `vec![${paths.join(', ')}]`;
+  }
   let count = 0;
   function visit(n, path, parentTransform, clip, root = false, depth = 0) {
     if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
@@ -146,10 +190,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if (!t || !t.flat().every(Number.isFinite) || Math.abs(t[0][0]*t[1][1]-t[0][1]*t[1][0]) < 1e-12) reject('Degenerate gradient transforms are unsupported.');
         }
       }
+      if (strokes.length && n.variableWidthStrokeProperties && n.variableWidthStrokeProperties.widthProfile !== 'UNIFORM') reject('Variable-width strokes are unsupported.');
+      if (strokes.length && n.complexStrokeProperties && n.complexStrokeProperties.type !== 'BASIC') reject('Brush and dynamic strokes are unsupported.');
       if (strokes.length > 1) reject('Multiple strokes are unsupported.');
       if (strokes.some(p => p.type !== 'SOLID')) reject('Only solid strokes are supported.');
       if (strokes.length && n.dashPattern?.length) reject('Dashed strokes are unsupported.');
-      if (strokes.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
+      if (strokes.length && n.type !== 'VECTOR' && n.type !== 'LINE' && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
@@ -200,11 +246,11 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if (clip) expression += `.clip_transformed(${rect(clip.rect)}, ${matrix(clip.transform)})`;
         }
       } else if (n.type === 'LINE') {
-        if (fills.length || strokes.length !== 1 || n.strokeCap !== 'ROUND' || effects.length) reject('Lines require one solid round-capped stroke, no fills, and no effects.');
-        if (errors.length === before) expression = `Shape::line([0.0, 0.0], ${array([n.width,0])}, ${number(n.strokeWeight)}).fill(${color(strokes[0].color,strokes[0].opacity)})`;
+        if (fills.length || strokes.length !== 1 || effects.length) reject('Lines require one solid stroke, no fills, and no effects.');
+        if (errors.length === before) expression = `Shape::vector(${rect(box)}, vec![VectorPath::new(WindingRule::None).move_to([0.0, 0.0]).line_to(${array([n.width,0])})]).stroke(${number(n.strokeWeight)}, ${color(strokes[0].color,strokes[0].opacity)}, StrokeAlign::Center)`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
         if (n.type === 'VECTOR') {
-          if (strokes.length) reject('Vector path strokes are unsupported (geometry task 3).');
+
           if (effects.length) reject('Vector path effects are unsupported.');
           expression = `Shape::vector(${rect(box)}, ${vectorCode(n)})`;
         } else {
@@ -224,12 +270,22 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const p = strokes[0];
           const align = { INSIDE:'Inside', CENTER:'Center', OUTSIDE:'Outside' }[n.strokeAlign];
           if (!align) reject('Unsupported stroke alignment.');
-          if ('strokeTopWeight' in n) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
+          if ('strokeTopWeight' in n && n.type !== 'VECTOR') expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
           else expression += `.stroke(${number(n.strokeWeight)}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
         }
         for (const e of effects) if (['DROP_SHADOW','INNER_SHADOW'].includes(e.type)) {
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
+      }
+      if (strokes.length && ['VECTOR','LINE'].includes(n.type)) {
+        if(typeof n.strokeWeight!=='number' || n.strokeWeight<0 || !Number.isFinite(n.strokeWeight)) reject('Invalid stroke width.');
+        const cap={NONE:'Butt',SQUARE:'Square',ROUND:'Round'}[n.strokeCap];
+        const join={MITER:'Miter',BEVEL:'Bevel',ROUND:'Round'}[n.strokeJoin];
+        if(!cap || !join) reject('Unsupported or mixed stroke caps/joins (arrows remain unsupported).');
+        const miter=n.strokeMiterLimit;
+        if(typeof miter!=='number' || !Number.isFinite(miter) || miter<1) reject('Invalid stroke miter limit.');
+        if(expression && cap && join && miter>=1) expression+=`.stroke_cap(StrokeCap::${cap}).stroke_join(StrokeJoin::${join}).stroke_miter_limit(${number(miter)})`;
+        if(n.type==='VECTOR') expression+=`.stroke_paths(${strokeCode(n)})`;
       }
       if (expression) expression += `.transform(${matrix(world)})`;
       if (expression && n.type !== 'TEXT' && clip) expression += `.clip_transformed(${rect(clip.rect)}, ${number(clip.radius)}, ${matrix(clip.transform)})`;
@@ -255,7 +311,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

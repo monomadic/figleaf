@@ -10,11 +10,12 @@ description = "Figma-flavoured paint primitives and auto layout for small native
 # types only.
 default = []
 # Draws a `Canvas` with the host's wgpu device.
-wgpu = ["dep:wgpu"]
+wgpu = ["dep:wgpu", "dep:tiny-skia-path"]
 # Single-line text rasterized by CoreText. macOS only; needs clang and ar.
 text-coretext = []
 
 [dependencies]
+tiny-skia-path = { version = "0.11.4", optional = true }
 wgpu = { version = "30", default-features = false, features = ["std", "metal", "wgsl"], optional = true }
 
 [dev-dependencies]
@@ -70,4 +71,8 @@ required-features = ["wgpu"]
 
 [[example]]
 name = "affine"
+required-features = ["wgpu"]
+
+[[example]]
+name = "path_strokes"
 required-features = ["wgpu"]

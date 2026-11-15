@@ -636,8 +636,7 @@ fn vector_cache_tracks_geometry_scale_and_problems() {
     renderer
         .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
         .unwrap();
-    assert_eq!(renderer.problems().len(), 1);
-    assert!(renderer.problems()[0].reason.contains("strokes"));
+    assert!(renderer.problems().is_empty());
 }
 
 #[test]
@@ -804,4 +803,190 @@ fn rotation_carries_strokes_shadows_vectors_and_text() {
         }
     }
     assert!(total < 5000, "rotation changed pixels by {total}");
+}
+
+#[test]
+fn path_caps_joins_alignment_holes_and_cache() {
+    use figleaf::{StrokeCap, StrokeJoin, VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let line = VectorPath::new(WindingRule::None)
+        .move_to([20., 20.])
+        .line_to([60., 20.]);
+    for cap in [StrokeCap::Butt, StrokeCap::Square, StrokeCap::Round] {
+        let mut c = Canvas::new();
+        c.shape(
+            Shape::vector(Rect::new(0., 0., 100., 60.), vec![line.clone()])
+                .stroke(10., hex(0xff0000), StrokeAlign::Center)
+                .stroke_cap(cap),
+        );
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert!(r.problems().is_empty());
+        assert_eq!(i.pixel(30, 20), RED);
+        assert_eq!(
+            i.pixel(16, 20),
+            if cap == StrokeCap::Butt { CLEAR } else { RED }
+        );
+        assert_eq!(
+            i.pixel(15, 15),
+            if cap == StrokeCap::Square { RED } else { CLEAR }
+        );
+        let report = r
+            .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0);
+    }
+    let square = |p: VectorPath, a: f32, b: f32| {
+        p.move_to([a, a])
+            .line_to([b, a])
+            .line_to([b, b])
+            .line_to([a, b])
+            .close()
+    };
+    let path = square(
+        square(VectorPath::new(WindingRule::EvenOdd), 10., 50.),
+        20.,
+        40.,
+    );
+    for align in [
+        StrokeAlign::Inside,
+        StrokeAlign::Center,
+        StrokeAlign::Outside,
+    ] {
+        let mut c = Canvas::new();
+        c.shape(
+            Shape::vector(Rect::new(0., 0., 60., 60.), vec![path.clone()]).stroke(
+                6.,
+                hex(0xff0000),
+                align,
+            ),
+        );
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(
+            i.pixel(8, 30),
+            if align == StrokeAlign::Inside {
+                CLEAR
+            } else {
+                RED
+            }
+        );
+        assert_eq!(
+            i.pixel(12, 30),
+            if align == StrokeAlign::Outside {
+                CLEAR
+            } else {
+                RED
+            }
+        );
+        assert_eq!(
+            i.pixel(22, 30),
+            if align == StrokeAlign::Inside {
+                CLEAR
+            } else {
+                RED
+            }
+        );
+        assert_eq!(i.pixel(30, 30), CLEAR);
+    }
+    let corner = VectorPath::new(WindingRule::None)
+        .move_to([20., 40.])
+        .line_to([20., 20.])
+        .line_to([60., 20.]);
+    for join in [StrokeJoin::Miter, StrokeJoin::Bevel, StrokeJoin::Round] {
+        let mut c = Canvas::new();
+        c.shape(
+            Shape::vector(Rect::new(0., 0., 100., 60.), vec![corner.clone()])
+                .stroke(12., hex(0xff0000), StrokeAlign::Center)
+                .stroke_join(join),
+        );
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(
+            i.pixel(14, 14),
+            if join == StrokeJoin::Miter {
+                RED
+            } else {
+                CLEAR
+            }
+        );
+    }
+}
+
+#[test]
+fn path_strokes_transform_clip_and_reject_invalid_geometry() {
+    use figleaf::{StrokeCap, Transform, VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let path = VectorPath::new(WindingRule::None)
+        .move_to([5., 5.])
+        .cubic_to([20., 0.], [30., 30.], [40., 20.]);
+    let shape = Shape::vector(Rect::new(0., 0., 50., 40.), vec![path])
+        .stroke(8., hexa(0xff000080), StrokeAlign::Center)
+        .stroke_cap(StrokeCap::Round)
+        .transform(Transform::new([[-1.5, 0.2, 80.], [0., 1., 10.]]))
+        .clip(Rect::new(20., 10., 40., 40.));
+    let mut c = Canvas::new();
+    c.shape(shape.clone());
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert!(i.rgba.as_chunks::<4>().0.iter().any(|p| p[3] > 100));
+    assert!(i.rgba.as_chunks::<4>().0.iter().all(|p| p[3] <= 128));
+    assert_eq!(i.pixel(65, 15), CLEAR);
+    c.clear();
+    c.shape(shape.stroke_miter_limit(0.));
+    r.prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(r.problems().len(), 1);
+}
+
+#[test]
+fn path_miter_limit_degenerate_caps_and_thick_strokes() {
+    use figleaf::{StrokeCap, VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    for (limit, expected) in [(1., CLEAR), (4., RED)] {
+        let mut c = Canvas::new();
+        let p = VectorPath::new(WindingRule::None)
+            .move_to([20., 40.])
+            .line_to([20., 20.])
+            .line_to([60., 20.]);
+        c.shape(
+            Shape::vector(Rect::new(0., 0., 100., 60.), vec![p])
+                .stroke(12., hex(0xff0000), StrokeAlign::Center)
+                .stroke_miter_limit(limit),
+        );
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(i.pixel(14, 14), expected);
+    }
+    for cap in [StrokeCap::Butt, StrokeCap::Round, StrokeCap::Square] {
+        let mut c = Canvas::new();
+        let p = VectorPath::new(WindingRule::None)
+            .move_to([30., 30.])
+            .line_to([30., 30.]);
+        c.shape(
+            Shape::vector(Rect::new(0., 0., 60., 60.), vec![p])
+                .stroke(10., hex(0xff0000), StrokeAlign::Center)
+                .stroke_cap(cap),
+        );
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert!(r.problems().is_empty(), "{:?}", r.problems());
+        assert_eq!(
+            i.pixel(30, 30),
+            if cap == StrokeCap::Butt { CLEAR } else { RED }
+        );
+    }
+    let mut c = Canvas::new();
+    let p = VectorPath::new(WindingRule::NonZero)
+        .move_to([20., 20.])
+        .line_to([40., 20.])
+        .line_to([40., 40.])
+        .line_to([20., 40.])
+        .close();
+    c.shape(Shape::vector(Rect::new(0., 0., 60., 60.), vec![p]).stroke(
+        40.,
+        hexa(0xff000080),
+        StrokeAlign::Inside,
+    ));
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(30, 30), [128, 0, 0, 128]);
+    assert_eq!(i.pixel(19, 30), CLEAR);
 }

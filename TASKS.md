@@ -20,19 +20,24 @@ Rust output; do not merely remove an exporter error.
    reviewed beside its Figma export ([comparison](docs/vector-person-compare.png),
    mean 0.82/255 at 4×). Its variable color was resolved only for the fixture;
    the live exporter now resolves bindings in each consumer’s active mode. Other curve/winding cases are
-   synthetic. Strokes (task 3), effects and per-region paints remain errors.
+   synthetic. Strokes were added in task 3; effects and per-region paints remain errors.
 2. **Affine transforms — done 2026-11-15.** Rotation, reflection, nonuniform
    scale and skew; composed plugin matrices and local geometry, borders,
    gradients, clips, supported effects and text. Singular matrices fail closed.
    Rotation/reflection/skew reviewed beside Figma ([comparison](docs/affine-compare.png),
    mean 0.36/255, edge maximum 78/255). Other cases have synthetic tests.
    Crossing transformed clip intersections and rounded text clips remain task 7;
-   transformed path strokes/effects remain unsupported as before.
-3. **Complete path strokes.** Butt/square/round caps, miter/bevel/round joins,
-   miter limits, and inside/center/outside alignment on supported paths. Cover
-   open ends, closed contours, acute corners, and thick strokes. Individual
-   rectangle/frame borders already exist; verify unequal rounded widths beside
-   Figma before treating that existing implementation as visually validated.
+   transformed path strokes were added in task 3; path effects remain unsupported.
+3. **Complete path strokes — done for non-branching paths 2026-11-15.**
+   Butt/square/round caps, miter/bevel/round joins, SVG miter limits, closed
+   inside/center/outside alignment with holes, and centered open contours.
+   Renderer strokes curves before transforms; plugin traces original network
+   centerlines separately from resolved fill regions. Generated Rust reviewed
+   beside Figma ([comparison](docs/path-strokes-compare.png), mean 0.07/255).
+   Miter limits, degeneracy, transforms, clipping, alpha and caching also tested.
+   Branching/isolated networks, per-vertex overrides and rounded vector vertices
+   still hard-error; extend topology support separately. Unequal rounded frame
+   borders still have synthetic validation only.
 4. **Dashed strokes and endpoint decorations.** Dash/gap patterns around curves
    and closed contours, cap behavior at dash ends, and Figma's arrow endpoints.
    Build on path stroking rather than substituting independent rectangles.

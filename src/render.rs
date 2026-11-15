@@ -362,78 +362,127 @@ impl Renderer {
                         continue;
                     }
                     let first = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
-                    let mut path_range = None;
-                    if let Some(paths) = &shape.vector_paths {
-                        let result = path::flatten_transformed(
-                            paths,
-                            [shape.rect.x, shape.rect.y],
-                            scale,
-                            shape.transform,
-                        );
-                        let edges = match result {
-                            Ok(edges) => edges,
-                            Err(e) => {
-                                self.problems.push(Problem {
-                                    item: index,
-                                    reason: e.0,
-                                });
-                                continue;
-                            }
-                        };
-                        let start = self.path_edges.bytes.len() / 32;
-                        let limit = (device.limits().max_storage_buffer_binding_size as usize)
-                            .min(32 * 1024 * 1024);
-                        // The allocation rounds up to a power of two.
-                        if ((start + edges.len()) * 32).max(32).next_power_of_two() > limit {
-                            self.problems.push(Problem {
-                                item: index,
-                                reason: "vector edge buffer limit exceeded",
-                            });
-                            continue;
-                        }
-                        if edges.is_empty() {
-                            continue;
-                        }
-                        let bounds = shape.transform.bounds(
-                            path::bounds(paths)
-                                .unwrap()
-                                .translate([shape.rect.x, shape.rect.y]),
-                        );
-                        let visible = Rect::new(
-                            bounds.x * scale,
-                            bounds.y * scale,
-                            bounds.w * scale,
-                            bounds.h * scale,
-                        )
-                        .inflate(1.)
-                        .intersect(clip_px(
-                            shape.clip.map(|c| shape.clip_transform.bounds(c.rect)),
-                        ));
-                        let work = f64::from(visible.w.ceil())
-                            * f64::from(visible.h.ceil())
-                            * edges.len() as f64
-                            * 16.
-                            * shape.fills.len() as f64;
-                        if work > 512_000_000. {
-                            self.problems.push(Problem {
-                                item: index,
-                                reason: "vector coverage work limit exceeded",
-                            });
-                            continue;
-                        }
-                        path_range = Some([start as f32, edges.len() as f32, 0., 0.]);
-                        for edge in edges {
-                            self.path_edges.push(&edge.points);
-                            self.path_edges.push(&[
-                                f32::from(edge.even_odd),
-                                f32::from(edge.end_region),
-                                0.,
-                                0.,
-                            ]);
-                        }
-                    }
                     let mut layers = Vec::new();
                     shape.layers(&mut layers);
+                    let mut prepared = Vec::new();
+                    let mut pending_edges = Vec::new();
+                    let mut path_error = None;
+                    let mut path_work = 0.;
+                    let edge_start = self.path_edges.bytes.len() / 32;
+                    for l in &layers {
+                        let mut ranges = [[0.; 4]; 3];
+                        let mut bounds = None;
+                        if let Some(paths) = l.vector_paths {
+                            let groups = if let Some((stroke, style)) = l.vector_stroke {
+                                path::stroke_outlines(
+                                    paths,
+                                    stroke.width,
+                                    style,
+                                    stroke.align,
+                                    scale * shape.transform.max_scale(),
+                                )
+                            } else {
+                                Ok([paths.to_vec(), Vec::new(), Vec::new()])
+                            };
+                            let result = groups.and_then(|mut groups| {
+                                // Resolved fill regions supply holes/orientation when the
+                                // caller provides separate network centerlines.
+                                if l.vector_stroke.is_some() && shape.stroke_paths.is_some() {
+                                    groups[2] = shape.vector_paths.clone().unwrap_or_default();
+                                }
+                                let mut all = Vec::new();
+                                for (i, group) in groups.iter().enumerate() {
+                                    let edges = path::flatten_transformed(
+                                        group,
+                                        l.vector_origin,
+                                        scale,
+                                        l.transform,
+                                    )?;
+                                    ranges[i] = [
+                                        (edge_start + pending_edges.len() + all.len()) as f32,
+                                        edges.len() as f32,
+                                        0.,
+                                        0.,
+                                    ];
+                                    all.extend(edges);
+                                }
+                                Ok(all)
+                            });
+                            match result {
+                                Err(e) => {
+                                    path_error = Some(e.0);
+                                    break;
+                                }
+                                Ok(edges) => {
+                                    // Actual outline bounds include every cap and miter tip.
+                                    let mut lo = [f32::INFINITY; 2];
+                                    let mut hi = [f32::NEG_INFINITY; 2];
+                                    for e in &edges {
+                                        for p in
+                                            [[e.points[0], e.points[1]], [e.points[2], e.points[3]]]
+                                        {
+                                            for i in 0..2 {
+                                                lo[i] = lo[i].min(p[i]);
+                                                hi[i] = hi[i].max(p[i]);
+                                            }
+                                        }
+                                    }
+                                    let r = if edges.is_empty() {
+                                        Rect::default()
+                                    } else {
+                                        Rect::new(lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1])
+                                    };
+                                    let visible = r.inflate(1.).intersect(clip_px(
+                                        l.clip.map(|c| l.clip_transform.bounds(c.rect)),
+                                    ));
+                                    let work = f64::from(visible.w.ceil())
+                                        * f64::from(visible.h.ceil())
+                                        * edges.len() as f64
+                                        * 16.;
+                                    path_work += work;
+                                    if path_work > 512_000_000. {
+                                        path_error = Some("vector coverage work limit exceeded");
+                                        break;
+                                    }
+                                    bounds = Some(r);
+                                    if pending_edges.len() + edges.len() > 8192 {
+                                        path_error = Some("vector exceeds 8192 flattened edges");
+                                        break;
+                                    }
+                                    pending_edges.extend(edges);
+                                }
+                            }
+                        }
+                        prepared.push((ranges, bounds));
+                    }
+                    if pending_edges.len() > 8192 {
+                        path_error = Some("vector exceeds 8192 flattened edges");
+                    }
+                    let limit = (device.limits().max_storage_buffer_binding_size as usize)
+                        .min(32 * 1024 * 1024);
+                    if ((edge_start + pending_edges.len()) * 32)
+                        .max(32)
+                        .next_power_of_two()
+                        > limit
+                    {
+                        path_error = Some("vector edge buffer limit exceeded");
+                    }
+                    if let Some(reason) = path_error {
+                        self.problems.push(Problem {
+                            item: index,
+                            reason,
+                        });
+                        continue;
+                    }
+                    for edge in pending_edges {
+                        self.path_edges.push(&edge.points);
+                        self.path_edges.push(&[
+                            f32::from(edge.even_odd),
+                            f32::from(edge.end_region),
+                            0.,
+                            0.,
+                        ]);
+                    }
                     let inverse = shape.transform.pixels(scale, scale).inverse();
                     let clip_inverse = shape.clip_transform.pixels(scale, scale).inverse();
                     let (inverse, clip_inverse) = match (inverse, clip_inverse) {
@@ -478,12 +527,14 @@ impl Renderer {
                         ]);
                         self.transforms.push(&[m.0[1][0], m.0[1][1], m.0[1][2], 0.]);
                     }
-                    for l in layers {
+                    for (l, (ranges, path_bounds)) in layers.into_iter().zip(prepared) {
+                        let path_range = l.vector_paths.map(|_| ranges[0]);
                         let clip = clip_px(l.clip.map(|c| l.clip_transform.bounds(c.rect)));
                         // The clip's own outline, for its antialiased edge.
                         const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];
                         let (clip_rect, clip_radii) = l.clip.map_or((OPEN, [0.; 4]), outline);
-                        let e = edges(l.extent(), scale);
+                        let e =
+                            path_bounds.map_or_else(|| edges(l.extent(), scale), |r| edges(r, 1.));
                         // One spare pixel for the antialiased edge.
                         let quad = Rect::new(
                             e[0].floor() - 1.,
@@ -509,14 +560,28 @@ impl Renderer {
                             None => self.color(l.color),
                         };
                         self.shapes.push(&a_rect);
-                        self.shapes.push(&a_radii);
+                        self.shapes.push(&if path_range.is_some() {
+                            ranges[1]
+                        } else {
+                            a_radii
+                        });
                         self.shapes.push(&path_range.unwrap_or(b_rect));
-                        self.shapes.push(&b_radii);
+                        self.shapes.push(&if path_range.is_some() {
+                            ranges[2]
+                        } else {
+                            b_radii
+                        });
                         self.shapes.push(&color);
                         self.shapes.push(&[
                             l.sigma * scale,
-                            mode,
-                            if path_range.is_some() {
+                            l.vector_stroke.map_or(mode, |(s, _)| match s.align {
+                                crate::StrokeAlign::Center => 0.,
+                                crate::StrokeAlign::Inside => 1.,
+                                crate::StrokeAlign::Outside => 2.,
+                            }),
+                            if l.vector_stroke.is_some() {
+                                4.
+                            } else if path_range.is_some() {
                                 3.
                             } else if l.line {
                                 2.

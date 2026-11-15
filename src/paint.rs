@@ -171,6 +171,9 @@ pub struct Shape {
     pub rect: Rect,
     /// Filled vector regions in local coordinates, unioned before painting.
     pub vector_paths: Option<Vec<VectorPath>>,
+    /// Optional centerlines independent of resolved fill regions (vector networks).
+    pub stroke_paths: Option<Vec<VectorPath>>,
+    pub path_stroke: path::PathStroke,
     pub ellipse: bool,
     /// The width of a straight line with round ends, when the shape is one.
     pub line: Option<f32>,
@@ -197,6 +200,8 @@ impl Shape {
             transform: Transform::IDENTITY,
             clip_transform: Transform::IDENTITY,
             vector_paths: None,
+            stroke_paths: None,
+            path_stroke: Default::default(),
             ellipse: false,
             line: None,
             radii: [0.; 4],
@@ -214,6 +219,22 @@ impl Shape {
             vector_paths: Some(paths),
             ..Self::rect(rect)
         }
+    }
+    pub fn stroke_paths(mut self, paths: Vec<VectorPath>) -> Self {
+        self.stroke_paths = Some(paths);
+        self
+    }
+    pub fn stroke_cap(mut self, cap: path::StrokeCap) -> Self {
+        self.path_stroke.cap = cap;
+        self
+    }
+    pub fn stroke_join(mut self, join: path::StrokeJoin) -> Self {
+        self.path_stroke.join = join;
+        self
+    }
+    pub fn stroke_miter_limit(mut self, limit: f32) -> Self {
+        self.path_stroke.miter_limit = limit;
+        self
     }
     /// The ellipse inscribed in `rect`.
     pub fn ellipse(rect: Rect) -> Self {
@@ -363,17 +384,29 @@ impl Shape {
             if self.ellipse
                 || self.line.is_some()
                 || self.radii != [0.; 4]
-                || self.stroke.is_some()
                 || self.stroke_weights.is_some()
                 || !self.shadows.is_empty()
             {
                 return Some(
-                    "vector paths take fills and clips only; strokes, corner radii and effects are unsupported",
+                    "vector paths do not support individual widths, corner radii or effects",
                 );
             }
             if let Err(e) = path::bounds(paths) {
                 return Some(e.0);
             }
+        }
+        if self.vector_paths.is_none()
+            && (self.stroke_paths.is_some() || self.path_stroke != path::PathStroke::default())
+        {
+            return Some("path stroke settings require a vector");
+        }
+        if let Some(paths) = &self.stroke_paths
+            && let Err(e) = path::stroke_bounds(paths)
+        {
+            return Some(e.0);
+        }
+        if !self.path_stroke.miter_limit.is_finite() || self.path_stroke.miter_limit < 1. {
+            return Some("stroke miter limit must be finite and at least 1");
         }
         let mut numbers = self.radii.to_vec();
         numbers.extend(self.clip.map_or([0.; 4], |c| c.radii));
@@ -483,6 +516,7 @@ impl Shape {
             clip_transform: self.clip_transform,
             vector_paths: self.vector_paths.as_deref(),
             vector_origin: [self.rect.x, self.rect.y],
+            vector_stroke: None,
             a,
             b,
             ellipse: self.ellipse,
@@ -555,7 +589,15 @@ impl Shape {
         if let Some(s) = self.stroke.filter(|_| widths.iter().any(|w| *w > 0.)) {
             let hole = self.outline_sides(inside.map(|w| -w));
             let hole = (hole.rect.w > 0. && hole.rect.h > 0.).then_some(hole);
-            out.push(layer(Mode::Band, silhouette, hole, s.color, 0.));
+            let mut stroke_layer = layer(Mode::Band, silhouette, hole, s.color, 0.);
+            if self.vector_paths.is_some() {
+                stroke_layer.vector_paths = self
+                    .stroke_paths
+                    .as_deref()
+                    .or(self.vector_paths.as_deref());
+                stroke_layer.vector_stroke = Some((s, self.path_stroke));
+            }
+            out.push(stroke_layer);
         }
         for s in self.shadows.iter().filter(|s| s.inner) {
             let mut a = self.outline_sides(outside.map(|w| w - s.spread));
@@ -617,6 +659,7 @@ pub struct Layer<'a> {
     /// The paths borrow the source shape and are positioned by `vector_origin`.
     pub vector_paths: Option<&'a [VectorPath]>,
     pub vector_origin: [f32; 2],
+    pub vector_stroke: Option<(Stroke, path::PathStroke)>,
     pub mode: Mode,
     pub a: Outline,
     pub b: Option<Outline>,
@@ -639,6 +682,12 @@ impl Layer<'_> {
     }
     fn local_extent(&self) -> Rect {
         if let Some(paths) = self.vector_paths {
+            if let Some((stroke, style)) = self.vector_stroke {
+                return path::stroke_bounds(paths)
+                    .unwrap_or_default()
+                    .translate(self.vector_origin)
+                    .inflate(stroke.width * style.miter_limit.max(2.));
+            }
             return path::bounds(paths)
                 .unwrap_or_default()
                 .translate(self.vector_origin);
