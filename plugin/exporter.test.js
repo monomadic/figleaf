@@ -73,18 +73,18 @@ test('selection validation, hidden subtrees, and hostile names', () => {
   const r = exportHierarchy([node({name:'x\n}\npanic!(); //', children:[node({visible:false,type:'VECTOR',children:[node({type:'IMAGE'})]})]})]);
   assert.deepEqual(r.errors,[]); assert.match(r.code,/\/\/ x } panic!\(\); \/\//);
 });
-test('plugin lifecycle is read-only, page-local, and invalidates results', () => {
+test('plugin lifecycle is read-only, page-local, and invalidates results', async () => {
   const events = {}, messages = [], pageEvents = {};
   const page = {selection:[fixture()],on:(key,fn)=>pageEvents[key]=fn,off:()=>{}};
   const figma = {root:{documentColorProfile:'SRGB'},currentPage:page,showUI:()=>{},on:(key,fn)=>events[key]=fn,ui:{postMessage:m=>messages.push(m)}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'dist/code.js'),'utf8'),{figma});
   assert.equal(messages.at(-1).type,'invalidated');
-  figma.ui.onmessage({type:'generate'}); assert.equal(messages.at(-1).errors.length,0);
+  await figma.ui.onmessage({type:'generate'}); assert.equal(messages.at(-1).errors.length,0);
   pageEvents.nodechange(); assert.equal(messages.at(-1).type,'invalidated');
-  page.selection=[]; events.selectionchange(); figma.ui.onmessage({type:'generate'}); assert.equal(messages.at(-1).code,null);
+  page.selection=[]; events.selectionchange(); await figma.ui.onmessage({type:'generate'}); assert.equal(messages.at(-1).code,null);
   assert.equal(events.documentchange,undefined);
 });
-test('variable bindings are errors rather than fallback values', () => {
+test('unchecked variable bindings cannot bypass resolution', () => {
   for (const n of [node({boundVariables:{opacity:{id:'v'}}}),node({fills:[{...solid,boundVariables:{color:{id:'v'}}}]}),node({effects:[{type:'DROP_SHADOW',boundVariables:{radius:{id:'v'}},color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]})]) {
     assert.equal(exportHierarchy([n]).code,null);
   }
@@ -161,4 +161,74 @@ test('crossing transformed clips fail closed', () => {
   ]})]);
   assert.equal(r.code,null);
   assert.ok(r.errors.some(e=>/transformed clips/.test(e.message)));
+});
+
+// Load the resolver with the same lexical exporter dependency as the bundle.
+const resolverContext = { exportHierarchy, module: {exports:{}} };
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'variables.js'),'utf8'), resolverContext);
+const {exportWithVariables} = resolverContext.module.exports;
+const alias = {type:'VARIABLE_ALIAS',id:'color'};
+test('bindings resolve per consumer; literals and provenance are exported', async () => {
+  const a=node({name:'Dark',fills:[{...solid,boundVariables:{color:alias}}]});
+  const b=node({name:'Light',fills:[{...solid,color:{r:0,g:0,b:1},boundVariables:{color:alias}}]});
+  const seen=[];
+  const variables={getVariableByIdAsync:async id=>({name:'Theme / Accent',resolveForConsumer:n=>{
+    seen.push(n.name); return {resolvedType:'COLOR',value:n.fills[0].color};
+  }})};
+  const root=node({type:'FRAME',fills:[],children:[a,b]});
+  const result=await exportWithVariables([root],'SRGB',variables);
+  assert.equal(result.errors.length,0);
+  assert.match(result.code,/Theme \/ Accent \[color\]/);
+  assert.match(result.code,/fill\(\[0.0, 0.0, 1.0, 1.0\]\)/);
+  assert.deepEqual(seen,['Dark','Light']);
+  assert.equal(a.fills[0].boundVariables.color,alias);
+});
+test('missing, malformed, unresolved and unsupported bound values fail closed', async () => {
+  const n=node({boundVariables:{opacity:alias},opacity:0.5});
+  for (const variable of [null,{resolveForConsumer:()=>({resolvedType:'COLOR',value:alias})},{resolveForConsumer:()=>{throw Error('cycle');}}]) {
+    const r=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>variable});
+    assert.equal(r.code,null); assert.ok(r.errors.length);
+  }
+  const r=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>({name:'Opacity',resolveForConsumer:()=>({resolvedType:'FLOAT',value:0.5})})});
+  assert.equal(r.code,null); assert.ok(r.errors.some(e=>/compositing/.test(e.message)));
+});
+
+test('numeric, text, effect and gradient-stop bindings keep evaluated Figma properties', async () => {
+  const bound = (id) => ({type:'VARIABLE_ALIAS',id});
+  const n=fixture();
+  n.boundVariables={width:bound('width')};
+  n.children[0].effects[0].boundVariables={radius:bound('blur')};
+  n.children[0].fills[1].gradientStops[0].boundVariables={color:bound('blue')};
+  n.children[1].boundVariables={characters:[bound('label')]};
+  const values={width:['FLOAT',100],blur:['FLOAT',4],blue:['COLOR',{r:0,g:0,b:1,a:1}],label:['STRING',n.children[1].characters]};
+  const result=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async id=>({name:id,resolveForConsumer:()=>({resolvedType:values[id][0],value:values[id][1]})})});
+  assert.equal(result.errors.length,0);
+  for (const id of Object.keys(values)) assert.ok(result.code.includes(`[${id}]`));
+  const explicit=exportHierarchy([fixture()]);
+  assert.equal(result.code.replace(/^    \/\/ Resolved binding:.*\n/gm,''),explicit.code);
+});
+
+test('async variable lookup cannot publish after selection changes or a newer request', async () => {
+  const events={}, messages=[], pending=[];
+  const n=node({boundVariables:{width:alias}});
+  const page={selection:[n],on:()=>{},off:()=>{}};
+  const figma={root:{documentColorProfile:'SRGB'},currentPage:page,showUI:()=>{},on:(key,fn)=>events[key]=fn,
+    variables:{getVariableByIdAsync:()=>new Promise(resolve=>pending.push(resolve))},ui:{postMessage:m=>messages.push(m)}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'dist/code.js'),'utf8'),{figma});
+  const variable={name:'Width',resolveForConsumer:()=>({resolvedType:'FLOAT',value:100})};
+  const first=figma.ui.onmessage({type:'generate'});
+  events.selectionchange(); pending.shift()(variable); await first;
+  assert.equal(messages.at(-1).type,'invalidated');
+  const older=figma.ui.onmessage({type:'generate'}), newer=figma.ui.onmessage({type:'generate'});
+  pending.pop()(variable); await newer;
+  const length=messages.length;
+  pending.shift()(variable); await older;
+  assert.equal(messages.length,length);
+  assert.equal(messages.at(-1).type,'result');
+});
+
+test('hidden paints do not resolve mirrored node bindings', async () => {
+  const n=node({boundVariables:{fills:[alias]},fills:[solid,{...solid,visible:false,boundVariables:{color:alias}}]});
+  const result=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:()=>{throw Error('must not look up hidden paint');}});
+  assert.equal(result.errors.length,0);
 });

@@ -1,5 +1,6 @@
 figma.showUI(__html__, { width: 720, height: 600, themeColors: true });
 let revision = 0;
+let generation = 0;
 function invalidate() {
   revision++;
   figma.ui.postMessage({ type: 'invalidated', revision, selection: figma.currentPage.selection.map(n => n.name) });
@@ -15,11 +16,14 @@ figma.on('currentpagechange', () => {
   page.on('nodechange', invalidate);
   invalidate();
 });
-figma.ui.onmessage = message => {
+figma.ui.onmessage = async message => {
   if (message.type === 'ready') invalidate();
   if (message.type === 'generate') {
-    const result = exportHierarchy(figma.currentPage.selection, figma.root.documentColorProfile);
-    figma.ui.postMessage({ type: 'result', revision, ...result });
+    const started = revision, request = ++generation;
+    const selection = [...figma.currentPage.selection];
+    const result = await exportWithVariables(selection, figma.root.documentColorProfile, figma.variables);
+    if (started !== revision || request !== generation) return;
+    figma.ui.postMessage({ type: 'result', revision: started, ...result });
   }
 };
 invalidate();

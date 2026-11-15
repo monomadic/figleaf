@@ -19,7 +19,7 @@ Rust output; do not merely remove an exporter error.
    branches, GPU coverage and plugin Rust output. The generated person icon was
    reviewed beside its Figma export ([comparison](docs/vector-person-compare.png),
    mean 0.82/255 at 4×). Its variable color was resolved only for the fixture;
-   the live exporter still rejects bindings. Other curve/winding cases are
+   the live exporter now resolves bindings in each consumer’s active mode. Other curve/winding cases are
    synthetic. Strokes (task 3), effects and per-region paints remain errors.
 2. **Affine transforms — done 2026-11-15.** Rotation, reflection, nonuniform
    scale and skew; composed plugin matrices and local geometry, borders,
@@ -66,9 +66,18 @@ Paint and layout gaps are separate from this geometry queue. After geometry,
 prioritize: multiple/gradient strokes and remaining gradient types/stop counts;
 image and pattern fills; flattened opacity, blend modes and container effects;
 layer/background blur; remaining text styling/shaping; responsive layout export
-and solver gaps; variable resolution, wide-gamut color, and multisampled targets.
+and solver gaps; wide-gamut color and multisampled targets.
 These remain unsupported where documented; listing them does not authorize a
 file importer, input handling, or a runtime.
+
+## Variable bindings — 2026-11-15
+
+The read-only plugin verifies variables using Figma's consumer-aware resolution
+and exports evaluated properties as literals, with binding provenance comments.
+Aliases and active/inherited modes use Figma's resolver; no live variable runtime
+or theme switching is added. Missing variables and unsupported resulting features
+remain hard errors. Synthetic tests cover modes, scalar/text/paint/effect bindings,
+lookup failures and stale async results; live Desktop validation remains open.
 
 ## Plugin and individual borders — 2026-11-15
 

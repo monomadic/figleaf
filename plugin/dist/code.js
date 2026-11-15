@@ -2,7 +2,7 @@
 const __html__ = "<!doctype html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\n<style>\n  :root { font: 12px/1.5 system-ui, sans-serif; color: var(--figma-color-text, #222); background: var(--figma-color-bg, #fff); }\n  body { margin: 20px; display: flex; flex-direction: column; height: calc(100vh - 40px); gap: 12px; }\n  h1 { font-size: 18px; margin: 0; } p { margin: 0; } .muted { color: var(--figma-color-text-secondary, #666); }\n  .toolbar { display: flex; gap: 8px; align-items: center; }\n  button { border: 1px solid var(--figma-color-border, #bbb); border-radius: 5px; padding: 8px 12px; background: var(--figma-color-bg, #fff); color: inherit; cursor: pointer; }\n  #generate { background: #1769e0; color: white; border-color: #1769e0; }\n  button:disabled { opacity: .45; cursor: default; }\n  textarea { flex: 1; min-height: 100px; resize: none; background: var(--figma-color-bg-secondary, #f5f5f5); color: inherit; border: 1px solid var(--figma-color-border, #ccc); padding: 12px; font: 12px/1.6 ui-monospace, monospace; tab-size: 4; }\n  #errors { overflow: auto; flex: 1; } #errors[hidden], textarea[hidden] { display: none; }\n  li { margin-bottom: 12px; } .error { color: var(--figma-color-text-danger, #b42318); }\n</style>\n<h1>figleaf → Rust</h1>\n<p class=\"muted\">Export the selected hierarchy at its current dimensions. Resolved values only; no responsive layout or interactions. This plugin only displays code.</p>\n<p id=\"selection\">Select one frame, component, or shape.</p>\n<div class=\"toolbar\"><button id=\"generate\" disabled>Generate Rust</button><button id=\"copy\" disabled>Copy code</button></div>\n<p id=\"status\" role=\"status\" aria-live=\"polite\">Select exactly one hierarchy root.</p>\n<textarea id=\"code\" aria-label=\"Generated Rust code\" readonly spellcheck=\"false\" placeholder=\"Generated Rust will appear here.\"></textarea>\n<div id=\"errors\" hidden><ul id=\"error-list\"></ul></div>\n<script>\n  const output = document.getElementById('code');\n  const generate = document.getElementById('generate');\n  const copy = document.getElementById('copy');\n  const status = document.getElementById('status');\n  const errors = document.getElementById('errors');\n  let revision = -1;\n  generate.onclick = () => { copy.disabled = true; output.value = ''; status.textContent = 'Validating hierarchy…'; parent.postMessage({ pluginMessage: { type: 'generate' } }, '*'); };\n  copy.onclick = async () => {\n    try {\n      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(output.value);\n      else { output.focus(); output.select(); if (!document.execCommand('copy')) throw Error(); }\n      status.textContent = 'Copied Rust code.';\n    } catch { output.focus(); output.select(); status.textContent = 'Press ⌘C / Ctrl+C to copy the selected code.'; }\n  };\n  window.onmessage = event => {\n    const m = event.data.pluginMessage;\n    if (!m) return;\n    if (m.type === 'invalidated') {\n      revision = m.revision; output.value = ''; copy.disabled = true; errors.hidden = true; output.hidden = false;\n      generate.disabled = m.selection.length !== 1;\n      document.getElementById('selection').textContent = m.selection.length === 1 ? m.selection[0] : `${m.selection.length} roots selected`;\n      status.className = ''; status.textContent = m.selection.length === 1 ? 'Ready. Generate Rust for the current selection.' : 'Select exactly one hierarchy root.';\n    }\n    if (m.type === 'result' && m.revision === revision) {\n      const failed = m.errors.length > 0;\n      output.value = failed ? '' : m.code; output.hidden = failed; errors.hidden = !failed; copy.disabled = failed;\n      status.className = failed ? 'error' : '';\n      status.textContent = failed ? `${m.errors.length} unsupported feature(s). No Rust was generated.` : `Generated Rust for ${m.nodeCount} nodes. Review font requirements in the code comments.`;\n      const list = document.getElementById('error-list'); list.replaceChildren();\n      for (const e of m.errors) { const li = document.createElement('li'), name = document.createElement('strong'), detail = document.createElement('div'); name.textContent = e.path; detail.textContent = e.message; li.append(name, detail); list.append(li); }\n    }\n  };\n  parent.postMessage({ pluginMessage: { type: 'ready' } }, '*');\n</script>\n</html>\n";
 /* Read-only Figma selection -> Rust. No Figma mutations, network, or storage.
  * Kept independent of the UI so the same validator is exercised by tests. */
-function exportHierarchy(selection, colorProfile = 'SRGB') {
+function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map()) {
   const errors = [], lines = [], fonts = [];
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
@@ -122,7 +122,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR'];
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
       if (n.isMask) reject('Masks are unsupported.');
-      if (Object.keys(n.boundVariables || {}).length) reject('Variable bindings are unsupported; use explicit values.');
+      if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
       if (n.opacity !== undefined && n.opacity !== 1) reject('Layer opacity requires compositing and is unsupported. Use paint opacity.');
       if (n.blendMode && !['NORMAL', 'PASS_THROUGH'].includes(n.blendMode)) reject(`Unsupported layer blend mode: ${n.blendMode}.`);
       if (n.cornerSmoothing) reject('Corner smoothing is unsupported.');
@@ -139,7 +139,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (n.children?.some(c => c.visible !== false) && visible(n.effects || []).length) reject('Effects on a hierarchy container require compositing and are unsupported.');
       const fills = visible(n.fills || []), strokes = visible(n.strokes || []), effects = visible(n.effects || []);
       for (const p of [...fills, ...strokes]) {
-        if (Object.keys(p.boundVariables || {}).length) reject('Paint variable bindings are unsupported; use explicit values.');
+        if ([p, ...(p.gradientStops || [])].some(v => Object.keys(v.boundVariables || {}).length) && !verifiedBindings.has(n)) reject('Paint variable bindings must be resolved before export.');
         if (p.blendMode && p.blendMode !== 'NORMAL') reject(`Unsupported paint blend mode: ${p.blendMode}.`);
         if (!['SOLID', 'GRADIENT_LINEAR'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
         if (p.type === 'GRADIENT_LINEAR') {
@@ -153,7 +153,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (strokes.length && n.dashPattern?.length) reject('Dashed strokes are unsupported.');
       if (strokes.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
-        if (Object.keys(e.boundVariables || {}).length) reject('Effect variable bindings are unsupported; use explicit values.');
+        if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
         if (e.blendMode && e.blendMode !== 'NORMAL') reject(`Unsupported effect blend mode: ${e.blendMode}.`);
       }
@@ -236,6 +236,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (expression) expression += `.transform(${matrix(world)})`;
       if (expression && n.type !== 'TEXT' && clip) expression += `.clip_transformed(${rect(clip.rect)}, ${number(clip.radius)}, ${matrix(clip.transform)})`;
       if (expression && errors.length === before) {
+        for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
         lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    canvas.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
@@ -263,8 +264,75 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
 }
 if (typeof module !== 'undefined') module.exports = { exportHierarchy };
 
+/* Read-only verification of bindings. Figma's node/paint getters already expose
+ * values in the consumer's mode; resolveForConsumer verifies that they are not
+ * stale fallback values from an unavailable variable. Never assign to the node. */
+async function exportWithVariables(selection, colorProfile, variables) {
+  const verified = new Map(), lookups = new Map(), errors = [];
+  let count = 0;
+  async function visit(node, path, depth) {
+    if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
+    if (node.visible === false) return;
+    const aliases = new Map();
+    function bindings(value, field) {
+      if (!value || typeof value !== 'object') throw Error(`Malformed variable binding: ${field}.`);
+      if (Array.isArray(value)) { value.forEach((v,i) => bindings(v, `${field}[${i}]`)); return; }
+      if (value.type === 'VARIABLE_ALIAS') {
+        if (typeof value.id !== 'string' || !value.id) throw Error(`Missing variable ID: ${field}.`);
+        const fields = aliases.get(value.id) || [];
+        fields.push(field); aliases.set(value.id, fields); return;
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (child !== undefined) bindings(child, `${field}.${key}`);
+      }
+    }
+    function paints(value, field) {
+      if (!Array.isArray(value)) return; // The exporter reports mixed values.
+      value.forEach((p,i) => {
+        if (p.visible === false) return;
+        bindings(p.boundVariables || {}, `${field}[${i}]`);
+        paints(p.gradientStops, `${field}[${i}].stops`);
+      });
+    }
+    try {
+      // Paint/effect aliases are mirrored on nodes; inspect the visible entries
+      // below so hidden paints do not require an available variable.
+      const own = {...(node.boundVariables || {})};
+      delete own.fills; delete own.strokes; delete own.effects;
+      bindings(own, 'node');
+      paints(node.fills, 'fills'); paints(node.strokes, 'strokes'); paints(node.effects, 'effects');
+      for (const region of node.vectorNetwork?.regions || []) paints(region.fills, 'region.fills');
+      const notes = [];
+      for (const [id, fields] of aliases) {
+        if (!lookups.has(id)) lookups.set(id, variables?.getVariableByIdAsync(id));
+        const variable = await lookups.get(id);
+        if (!variable) throw Error(`Variable ${id} is unavailable (${fields.join(', ')}).`);
+        const result = variable.resolveForConsumer(node);
+        const v = result.value;
+        const valid = result.resolvedType === 'FLOAT' ? typeof v === 'number' && Number.isFinite(v)
+          : result.resolvedType === 'STRING' ? typeof v === 'string'
+          : result.resolvedType === 'BOOLEAN' ? typeof v === 'boolean'
+          : result.resolvedType === 'COLOR' ? v && ['r','g','b'].every(k => typeof v[k] === 'number' && Number.isFinite(v[k]) && v[k]>=0 && v[k]<=1) && (v.a === undefined || typeof v.a === 'number' && Number.isFinite(v.a) && v.a>=0 && v.a<=1)
+          : false;
+        if (!valid) throw Error(`Variable ${id} did not resolve to a supported literal.`);
+        const mode = node.resolvedVariableModes?.[variable.variableCollectionId];
+        notes.push(`${fields.join(', ')}: ${variable.name} [${id}]${mode ? ` (mode ${mode})` : ''} = ${JSON.stringify(v)}`);
+      }
+      verified.set(node, notes);
+    } catch (e) { errors.push({nodeId:node.id,path,message:e.message}); }
+    for (const child of node.children || []) await visit(child, `${path} / ${child.name}`, depth+1);
+  }
+  try {
+    if (selection.length === 1) await visit(selection[0], selection[0].name, 0);
+  } catch (e) { errors.push({path:'Selection',message:e.message}); }
+  if (errors.length) return {code:null,errors};
+  return exportHierarchy(selection, colorProfile, verified);
+}
+if (typeof module !== 'undefined') module.exports = { exportWithVariables };
+
 figma.showUI(__html__, { width: 720, height: 600, themeColors: true });
 let revision = 0;
+let generation = 0;
 function invalidate() {
   revision++;
   figma.ui.postMessage({ type: 'invalidated', revision, selection: figma.currentPage.selection.map(n => n.name) });
@@ -280,11 +348,14 @@ figma.on('currentpagechange', () => {
   page.on('nodechange', invalidate);
   invalidate();
 });
-figma.ui.onmessage = message => {
+figma.ui.onmessage = async message => {
   if (message.type === 'ready') invalidate();
   if (message.type === 'generate') {
-    const result = exportHierarchy(figma.currentPage.selection, figma.root.documentColorProfile);
-    figma.ui.postMessage({ type: 'result', revision, ...result });
+    const started = revision, request = ++generation;
+    const selection = [...figma.currentPage.selection];
+    const result = await exportWithVariables(selection, figma.root.documentColorProfile, figma.variables);
+    if (started !== revision || request !== generation) return;
+    figma.ui.postMessage({ type: 'result', revision: started, ...result });
   }
 };
 invalidate();

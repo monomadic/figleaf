@@ -17,11 +17,11 @@ build writes the bundle; the running Figma plugin does not write files.
 ## Contract
 
 Output is a `draw_selection` Rust function appending shapes/text to a caller's
-`Canvas`. It captures the current dimensions and explicit values, with the
+`Canvas`. It captures the current dimensions and resolved values, with the
 selected root at `(0, 0)`. Auto layout and constraints are already resolved by
 Figma: this is a static paint export, not a responsive layout generator. Ancestor
 clipping/effects outside the selected root, interactions, component state, and
-variable bindings are not exported. Bindings produce errors; hidden layers,
+live variable bindings are not exported. Hidden layers,
 paints, and effects are intentionally excluded.
 
 Every visible descendant is validated. Any error suppresses **all** Rust and
@@ -49,7 +49,7 @@ regions and 4,096 commands; scale-dependent renderer limits also apply.
 Errors include vector strokes/effects/paint overrides, images, masks, layer opacity, blend modes, corner
 smoothing, singular transforms, unsupported gradients,
 multiple/dashed/gradient strokes, non-miter joins, blur, container effects,
-variable bindings, Display P3 documents, mixed/automatic-height/decorated/list
+unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text, rounded text clipping, and intersecting rounded or independently transformed clips. Unequal corner radii
 are supported on shapes, but not clipping frames. The size limit is 5,000 nodes
 and 128 levels. New Figma features may need additional validation rules.
@@ -57,6 +57,19 @@ and 128 levels. New Figma features may need additional validation rules.
 Generated code targets figleaf's supported semantics, not pixel identity.
 Existing antialiasing, shadow, text, and sRGB-target blending differences remain.
 Use an encoded-sRGB `Rgba8Unorm`/`Bgra8Unorm` target for the examples' blending.
+
+## Variable bindings
+
+Bindings resolve in each consuming node's active/inherited Figma mode, including
+aliases across collections, using `Variable.resolveForConsumer`. Figma's evaluated
+node/paint properties supply geometry and styling; the plugin never substitutes
+a collection's default mode or writes values back to the design. Numeric, color,
+boolean and string bindings are accepted where the resulting feature is supported.
+Comments record variable names, IDs, resolved literals and mode IDs when available.
+Output remains a snapshot: it does not install live bindings or export every theme.
+Unavailable variables, unresolved aliases and unsupported resulting features
+suppress all Rust. A selection/page change or newer generation discards pending
+lookup results. Generate again after editing variables to refresh the snapshot.
 
 ## Validation
 
@@ -68,7 +81,8 @@ node --test plugin/exporter.test.js
 Tests compile and execute generated Rust, check diagnostics, clipping, escaping,
 font contracts, read-only plugin messages, stale-result clearing, and UI states.
 Tests include synthetic Plugin API objects and a real Figma person-icon fixture.
-The exporter was also exercised through the Figma Plugin API: the original
-variable-bound vector failed as intended, and an in-memory fixture with its
-explicit resolved paint generated Rust. The complete panel has not yet been
+Earlier live validation exercised the vector with an explicitly resolved paint.
+The new variable resolver has synthetic tests for per-consumer modes, lookup
+failures, scalar/text/effect/gradient bindings and asynchronous invalidation;
+live variable-bound export in Figma Desktop remains unverified. The complete panel has not yet been
 exercised inside Figma Desktop. A browser policy blocked the local HTML visual preview.

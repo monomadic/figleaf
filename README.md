@@ -141,8 +141,8 @@ The plugin reads Figma's resolved `fillGeometry` plus unfilled `vectorPaths`.
 Path strokes, effects, and per-region paint overrides remain hard
 errors. Run `cargo run --example vector_paths --features wgpu` for the person
 icon from [Switchblade's design](https://www.figma.com/design/p01oYypZrTOjxe4Pi2Ytxe?node-id=336-1230).
-Its bound color was explicitly resolved for the fixture, not enabled in the
-plugin. Figma's 4× export is left, generated Rust's render right:
+Its bound color was explicitly resolved for the saved fixture. The plugin now resolves bindings in the consumer’s active
+mode and records their provenance in comments. Figma's 4× export is left, generated Rust's render right:
 
 ![Person vector comparison](docs/vector-person-compare.png)
 

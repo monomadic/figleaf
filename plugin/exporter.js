@@ -1,6 +1,6 @@
 /* Read-only Figma selection -> Rust. No Figma mutations, network, or storage.
  * Kept independent of the UI so the same validator is exercised by tests. */
-function exportHierarchy(selection, colorProfile = 'SRGB') {
+function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map()) {
   const errors = [], lines = [], fonts = [];
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
@@ -120,7 +120,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR'];
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
       if (n.isMask) reject('Masks are unsupported.');
-      if (Object.keys(n.boundVariables || {}).length) reject('Variable bindings are unsupported; use explicit values.');
+      if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
       if (n.opacity !== undefined && n.opacity !== 1) reject('Layer opacity requires compositing and is unsupported. Use paint opacity.');
       if (n.blendMode && !['NORMAL', 'PASS_THROUGH'].includes(n.blendMode)) reject(`Unsupported layer blend mode: ${n.blendMode}.`);
       if (n.cornerSmoothing) reject('Corner smoothing is unsupported.');
@@ -137,7 +137,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (n.children?.some(c => c.visible !== false) && visible(n.effects || []).length) reject('Effects on a hierarchy container require compositing and are unsupported.');
       const fills = visible(n.fills || []), strokes = visible(n.strokes || []), effects = visible(n.effects || []);
       for (const p of [...fills, ...strokes]) {
-        if (Object.keys(p.boundVariables || {}).length) reject('Paint variable bindings are unsupported; use explicit values.');
+        if ([p, ...(p.gradientStops || [])].some(v => Object.keys(v.boundVariables || {}).length) && !verifiedBindings.has(n)) reject('Paint variable bindings must be resolved before export.');
         if (p.blendMode && p.blendMode !== 'NORMAL') reject(`Unsupported paint blend mode: ${p.blendMode}.`);
         if (!['SOLID', 'GRADIENT_LINEAR'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
         if (p.type === 'GRADIENT_LINEAR') {
@@ -151,7 +151,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (strokes.length && n.dashPattern?.length) reject('Dashed strokes are unsupported.');
       if (strokes.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
-        if (Object.keys(e.boundVariables || {}).length) reject('Effect variable bindings are unsupported; use explicit values.');
+        if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
         if (e.blendMode && e.blendMode !== 'NORMAL') reject(`Unsupported effect blend mode: ${e.blendMode}.`);
       }
@@ -234,6 +234,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB') {
       if (expression) expression += `.transform(${matrix(world)})`;
       if (expression && n.type !== 'TEXT' && clip) expression += `.clip_transformed(${rect(clip.rect)}, ${number(clip.radius)}, ${matrix(clip.transform)})`;
       if (expression && errors.length === before) {
+        for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
         lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    canvas.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
