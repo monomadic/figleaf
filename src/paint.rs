@@ -175,6 +175,8 @@ pub struct Shape {
     pub primitive: Option<crate::Primitive>,
     /// Optional centerlines independent of resolved fill regions (vector networks).
     pub stroke_paths: Option<Vec<VectorPath>>,
+    /// Resolved stroke outlines, already expanded to the stroke width.
+    pub stroke_geometry: Option<Vec<VectorPath>>,
     pub path_stroke: path::PathStroke,
     pub dash_pattern: Vec<f32>,
     pub ellipse: bool,
@@ -205,6 +207,7 @@ impl Shape {
             vector_paths: None,
             primitive: None,
             stroke_paths: None,
+            stroke_geometry: None,
             path_stroke: Default::default(),
             dash_pattern: Vec::new(),
             ellipse: false,
@@ -248,6 +251,14 @@ impl Shape {
             }),
             ..Self::rect(rect)
         }
+    }
+    /// Use resolved stroke outlines instead of stroking centerlines. As in
+    /// Figma's strokeGeometry, inside/outside outlines must already use twice
+    /// the nominal width; the renderer clips them against the vector fill.
+    /// Requires a vector and a positive-width stroke; caps/dashes are baked in.
+    pub fn stroke_geometry(mut self, paths: Vec<VectorPath>) -> Self {
+        self.stroke_geometry = Some(paths);
+        self
     }
     pub fn stroke_paths(mut self, paths: Vec<VectorPath>) -> Self {
         self.stroke_paths = Some(paths);
@@ -414,6 +425,30 @@ impl Shape {
             .and_then(|_| self.clip_transform.inverse())
         {
             return Some(e.0);
+        }
+        if let Some(paths) = &self.stroke_geometry {
+            if self.vector_paths.is_none()
+                || self.stroke.is_none_or(|s| s.width <= 0.)
+                || self.stroke_paths.is_some()
+                || !self.dash_pattern.is_empty()
+                || self.path_stroke != path::PathStroke::default()
+            {
+                return Some(
+                    "resolved stroke geometry requires a vector stroke without centerline styles",
+                );
+            }
+            if paths.iter().any(|p| {
+                p.winding_rule == crate::WindingRule::None
+                    || p.start_cap.is_some()
+                    || p.end_cap.is_some()
+            }) {
+                return Some(
+                    "resolved stroke geometry requires filled outlines without endpoint overrides",
+                );
+            }
+            if let Err(e) = path::bounds(paths) {
+                return Some(e.0);
+            }
         }
         if let Some(primitive) = self.primitive {
             if let Err(e) = primitive.validate(self.radii[0]) {
@@ -585,6 +620,7 @@ impl Shape {
             primitive: self.primitive,
             vector_origin: [self.rect.x, self.rect.y],
             vector_stroke: None,
+            stroke_geometry: None,
             dash_pattern: &self.dash_pattern,
             a,
             b,
@@ -680,6 +716,7 @@ impl Shape {
                     self.path_stroke,
                 ));
             }
+            stroke_layer.stroke_geometry = self.stroke_geometry.as_deref();
             out.push(stroke_layer);
         }
         for s in self.shadows.iter().filter(|s| s.inner) {
@@ -744,6 +781,8 @@ pub struct Layer<'a> {
     pub primitive: Option<crate::Primitive>,
     pub vector_origin: [f32; 2],
     pub vector_stroke: Option<(Stroke, path::PathStroke)>,
+    /// Pre-expanded stroke outlines; fill paths provide the alignment domain.
+    pub stroke_geometry: Option<&'a [VectorPath]>,
     pub dash_pattern: &'a [f32],
     pub mode: Mode,
     pub a: Outline,
@@ -766,6 +805,12 @@ impl Layer<'_> {
         self.transform.bounds(self.local_extent())
     }
     fn local_extent(&self) -> Rect {
+        if let Some(paths) = self.stroke_geometry {
+            return path::bounds(paths)
+                .ok()
+                .unwrap_or_default()
+                .translate(self.vector_origin);
+        }
         if self.primitive.is_some() {
             return self.a.rect.inflate(
                 self.vector_stroke
@@ -1154,6 +1199,38 @@ mod tests {
         assert!(layers(&Shape::rect(r).fill(hex(0)).opacity(0.)).is_empty());
         let bad = Shape::rect(r).fill(hex(0)).radius(f32::NAN);
         assert!(bad.problem().is_some() && layers(&bad).is_empty());
+    }
+
+    #[test]
+    fn resolved_stroke_geometry_rejects_conflicting_styles() {
+        use crate::{StrokeCap, WindingRule};
+        let rect = Rect::new(0., 0., 20., 20.);
+        let p = VectorPath::new(WindingRule::NonZero)
+            .move_to([0., 0.])
+            .line_to([20., 0.])
+            .line_to([0., 20.])
+            .close();
+        let s = Shape::vector(rect, vec![p.clone()])
+            .stroke(2., hex(0), StrokeAlign::Center)
+            .stroke_geometry(vec![p.clone()]);
+        assert_eq!(s.problem(), None);
+        assert_eq!(layers(&s).len(), 1);
+        for bad in [
+            Shape::rect(rect)
+                .stroke(2., hex(0), StrokeAlign::Center)
+                .stroke_geometry(vec![p.clone()]),
+            Shape::vector(rect, vec![p.clone()]).stroke_geometry(vec![p.clone()]),
+            s.clone().stroke_cap(StrokeCap::Round),
+            s.clone().dash_pattern(vec![2., 2.]),
+            s.clone().stroke_paths(vec![p.clone()]),
+            s.clone()
+                .stroke_geometry(vec![VectorPath::new(WindingRule::None)]),
+            s.clone()
+                .stroke_geometry(vec![p.start_cap(StrokeCap::Round)]),
+        ] {
+            assert!(bad.problem().is_some());
+            assert!(layers(&bad).is_empty());
+        }
     }
 
     #[test]

@@ -306,3 +306,24 @@ rings, open-arc alignment, polygons, rounded/clamped stars and dashed borders.
 Mean difference 0.23/255 at 1×, largest 224/255 near rounded-star dashes.
 Dense strokes remain subject to the renderer’s coverage-work budget;
 other edge cases have synthetic tests.
+
+### Resolved boolean geometry
+
+The plugin exports union, subtract, intersect and exclude nodes as their resolved
+`Shape::vector` contours, including holes, nested operations and empty results.
+Operands supply geometry; they are not painted again. Their variable bindings
+are still verified and recorded. This is a static snapshot of Figma's result,
+not a boolean-operation engine or scene runtime.
+
+`Shape::stroke_geometry(paths)` supplies resolved outlines alongside `.stroke(...)`.
+The outlines already contain caps, joins and dashes. Like Figma's `strokeGeometry`,
+inside/outside outlines must be expanded to twice the nominal width; the renderer
+masks them against the vector fill, including its holes. Regions paint once even
+where outlines overlap. Mixing resolved outlines with centerline styles is an error.
+Effects and unsupported paints still hard-error; missing geometry never falls
+back to operands or a bounding box. No new dependencies.
+
+`cargo run --example booleans --features wgpu` renders plugin-generated code
+beside [Figma's export](docs/booleans-compare.png): all four operations, aligned
+and dashed outlines, a nested reflected gradient and an empty intersection.
+Mean difference 0.22/255 at 1×; other validation and caching cases are synthetic.

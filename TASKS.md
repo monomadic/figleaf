@@ -25,7 +25,7 @@ Rust output; do not merely remove an exporter error.
    scale and skew; composed plugin matrices and local geometry, borders,
    gradients, clips, supported effects and text. Singular matrices fail closed.
    Rotation/reflection/skew reviewed beside Figma ([comparison](docs/affine-compare.png),
-   mean 0.23/255, edge maximum 78/255). Other cases have synthetic tests.
+   mean 0.36/255, edge maximum 78/255). Other cases have synthetic tests.
    Crossing transformed clip intersections and rounded text clips remain task 7;
    transformed path strokes were added in task 3; path effects remain unsupported.
 3. **Complete path strokes — done for non-branching paths 2026-11-15.**
@@ -55,9 +55,13 @@ Rust output; do not merely remove an exporter error.
    Rounded arc corners, primitive effects/individual borders and inside open-arc
    offsets reaching the minimum curvature radius remain hard errors.
    Invalid geometry, holes and unchanged-canvas uploads have regression tests.
-6. **Boolean geometry.** Union, subtract, intersect, and exclude with correct
-   contours and holes, including nested boolean nodes. Preserve the actual
-   resulting geometry; no bounding-box or raster stand-ins.
+6. **Boolean geometry — done 2026-11-16 (resolved paths).** Union, subtract,
+   intersect and exclude export Figma's resulting contours, holes and resolved
+   stroke outlines, including nested/empty results. The renderer masks aligned
+   outlines against the fill; operands are not painted again. No boolean runtime.
+   Generated Rust reviewed beside Figma ([comparison](docs/booleans-compare.png),
+   mean 0.22/255 at 1×). Effects/unsupported paints remain hard errors.
+   Malformed geometry, overlapping alpha, transforms, bindings and caching tested.
 7. **Complete clipping.** Per-corner rounded clips, intersecting nested rounded
    clips, intersecting transformed clips, arbitrary path clips, and rounded/path clipping of
    text. Preserve every ancestor clip within the exported hierarchy. Plain

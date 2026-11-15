@@ -292,3 +292,39 @@ test('unsupported primitive geometry fails without partial code',()=>{
     const r=exportHierarchy([{...f,children:[{...n,...patch}]}]);assert.equal(r.code,null);assert.ok(r.errors.length);
   }
 });
+
+test('boolean fixture exports resolved contours once, preserves stroke outlines and compiles',()=>{
+  const fixture=require('./boolean-reference.json');const result=exportHierarchy([fixture]);assert.deepEqual(result.errors,[]);
+  assert.equal((result.code.match(/canvas.shape\(/g)||[]).length,7);
+  assert.equal((result.code.match(/\.stroke_geometry\(/g)||[]).length,3);
+  assert.ok(result.code.includes('StrokeAlign::Inside'));assert.ok(result.code.includes('StrokeAlign::Outside'));
+  assert.ok(!result.code.includes('.stroke_paths('));assert.ok(!result.code.includes('.dash_pattern('));
+  assert.ok(!result.code.includes('// Temporary figleaf boolean reference / Nested subtraction /'));
+  assert.ok(result.nodeCount>7);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-booleans-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for item in c.items(){if let figleaf::paint::Item::Shape(s)=item{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('boolean failures never fall back to operands or a rectangle',()=>{
+  const n=require('./boolean-reference.json').children[1];
+  for(const patch of [{booleanOperation:'UNKNOWN'},{strokeWeight:-1},{fillGeometry:undefined},{strokeGeometry:undefined},{strokeGeometry:[{windingRule:'NONE',data:'M0 0 L1 1'}]},{strokeGeometry:[{windingRule:'NONZERO',data:'M0 0 A1 1 0 0 0 1 1'}]},{effects:[{type:'LAYER_BLUR'}]},{strokes:[{...solid,type:'GRADIENT_LINEAR',gradientStops:[]}]}]) {
+    const r=exportHierarchy([{...n,...patch}]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  const empty=exportHierarchy([{...n,fillGeometry:[],strokeGeometry:[]}]);assert.deepEqual(empty.errors,[]);assert.ok(empty.code.includes('vec![]'));
+});
+test('boolean operand bindings are verified and retain provenance without painting operands',async()=>{
+  const n=structuredClone(require('./boolean-reference.json').children[0]);n.children[0].boundVariables={width:alias};
+  assert.equal(exportHierarchy([n]).code,null);
+  const r=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>({name:'Operand width',resolveForConsumer:()=>({resolvedType:'FLOAT',value:70})})});
+  assert.deepEqual(r.errors,[]);assert.match(r.code,/Resolved operand binding/);assert.match(r.code,/Operand width/);
+  assert.equal((r.code.match(/canvas.shape\(/g)||[]).length,1);
+});
+
+test('resolved boolean operands still obey hierarchy limits',()=>{
+  const n=structuredClone(require('./boolean-reference.json').children[0]);
+  let child=node();for(let i=0;i<130;i++)child=node({children:[child]});n.children=[child];
+  const result=exportHierarchy([n]);assert.equal(result.code,null);assert.ok(result.errors.some(e=>/limit/.test(e.message)));
+});

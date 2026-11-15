@@ -1149,3 +1149,72 @@ fn primitive_holes_alignment_errors_and_cache() {
         assert!(i.rgba.iter().all(|v| *v == 0));
     }
 }
+
+#[test]
+fn resolved_stroke_geometry_masks_holes_unions_alpha_and_tracks_changes() {
+    use figleaf::{Transform, VectorPath, WindingRule, path::Command};
+    let rectangle = |a: f32, b: f32, c: f32, d: f32| {
+        VectorPath::new(WindingRule::NonZero)
+            .move_to([a, b])
+            .line_to([c, b])
+            .line_to([c, d])
+            .line_to([a, d])
+            .close()
+    };
+    // Resolved boolean domain: square with a square hole.
+    let mut domain = rectangle(10., 10., 50., 50.);
+    domain.winding_rule = WindingRule::EvenOdd;
+    domain
+        .commands
+        .extend(rectangle(20., 20., 40., 40.).commands);
+    // A supplied outline deliberately spans both sides of the hole boundary.
+    let outline = rectangle(18., 16., 22., 44.);
+    let shape = Shape::vector(Rect::new(0., 0., 60., 60.), vec![domain])
+        .stroke(2., [1., 0., 0., 0.5], StrokeAlign::Inside)
+        .stroke_geometry(vec![outline.clone(), outline.clone()]);
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.shape(shape.clone());
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(19, 30)[3], 128); // Overlapping outlines paint once.
+    assert_eq!(i.pixel(21, 30), CLEAR); // Hole excluded by inside alignment.
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    let mut outside = shape.clone();
+    outside.stroke.as_mut().unwrap().align = StrokeAlign::Outside;
+    c.clear();
+    c.shape(outside);
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(19, 30), CLEAR);
+    assert_eq!(i.pixel(21, 30)[3], 128);
+    let mut changed = shape.clone();
+    changed.stroke_geometry = Some(vec![rectangle(16., 16., 20., 44.)]);
+    c.clear();
+    c.shape(changed);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(report.changed && report.uploaded_bytes > 0);
+    c.clear();
+    c.shape(
+        shape
+            .clone()
+            .transform(Transform::new([[-1., 0., 60.], [0., 1., 0.]])),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(40, 30)[3], 128);
+    assert_eq!(i.pixel(38, 30), CLEAR);
+    let mut malformed = shape.fill(hex(0xff0000));
+    malformed.stroke_geometry.as_mut().unwrap()[0]
+        .commands
+        .push(Command::LineTo([f32::NAN, 0.]));
+    c.clear();
+    c.shape(malformed);
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(r.problems().len(), 1);
+    assert!(i.rgba.iter().all(|v| *v == 0));
+}

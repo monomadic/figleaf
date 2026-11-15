@@ -73,9 +73,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   // Figma's documented absolute path command subset. Use resolved fillGeometry
   // so branched networks retain every filled region and hole. Never reconstruct
   // network topology from bounding boxes or silently turn strokes into fills.
-  function vectorCode(n) {
+  function vectorCode(n, resolvedStroke = false) {
+    if (resolvedStroke && (!Array.isArray(n.strokeGeometry) || n.strokeGeometry.some(p=>p.windingRule==='NONE'))) throw Error('Resolved stroke geometry is unavailable or unfilled.');
     if (!Array.isArray(n.fillGeometry)) throw Error('Vector fill geometry is unavailable.');
-    const geometry = [...n.fillGeometry.filter(p => p.windingRule !== 'NONE'), ...(n.vectorPaths || n.fillGeometry).filter(p => p.windingRule === 'NONE')];
+    const geometry = resolvedStroke ? n.strokeGeometry : [...n.fillGeometry.filter(p => p.windingRule !== 'NONE'), ...(n.vectorPaths || n.fillGeometry).filter(p => p.windingRule === 'NONE')];
     if (geometry.length > 256) throw Error('Vector exceeds 256 regions.');
     const paints = JSON.stringify(n.fills);
     for (const region of n.vectorNetwork?.regions || []) {
@@ -161,6 +162,16 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     return `vec![${paths.join(', ')}]`;
   }
   let count = 0;
+  // Operand paint is not drawn, but bound values still need verification and
+  // provenance. Keep hierarchy limits even when resolved geometry is one item.
+  function operands(n, path, depth) {
+    if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
+    if (n.visible === false) return;
+    const bound = v => v && typeof v==='object' && (Object.keys(v.boundVariables || {}).length || (v.gradientStops || []).some(bound));
+    if (!verifiedBindings.has(n) && (bound(n) || [...(Array.isArray(n.fills)?n.fills:[]),...(Array.isArray(n.strokes)?n.strokes:[]),...(Array.isArray(n.effects)?n.effects:[])].some(bound))) fail(n,path,'Boolean operand bindings must be resolved before export.');
+    for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved operand binding (${comment(path)}): ${comment(note)}`);
+    for (const child of n.children || []) operands(child,path+' / '+child.name,depth+1);
+  }
   function visit(n, path, parentTransform, clip, root = false, depth = 0) {
     if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
     // Invisible layers have no output, including their descendants.
@@ -170,7 +181,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     let childClip = clip;
     let world = parentTransform;
     try {
-      const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR', 'POLYGON', 'STAR'];
+      const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR', 'POLYGON', 'STAR', 'BOOLEAN_OPERATION'];
+      const boolean = n.type === 'BOOLEAN_OPERATION';
+      if (boolean && !['UNION','SUBTRACT','INTERSECT','EXCLUDE'].includes(n.booleanOperation)) reject('Unsupported boolean operation.');
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
       if (n.isMask) reject('Masks are unsupported.');
       if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
@@ -202,6 +215,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (strokes.length && n.variableWidthStrokeProperties && n.variableWidthStrokeProperties.widthProfile !== 'UNIFORM') reject('Variable-width strokes are unsupported.');
       if (strokes.length && n.complexStrokeProperties && n.complexStrokeProperties.type !== 'BASIC') reject('Brush and dynamic strokes are unsupported.');
       if (strokes.length > 1) reject('Multiple strokes are unsupported.');
+      if (boolean && strokes.length && (typeof n.strokeWeight !== 'number' || !Number.isFinite(n.strokeWeight) || n.strokeWeight < 0)) reject('Invalid boolean stroke width.');
       if (strokes.some(p => p.type !== 'SOLID')) reject('Only solid strokes are supported.');
       if(strokes.length && n.dashPattern?.length) {
         if(!Array.isArray(n.dashPattern) || n.dashPattern.length>32 || n.dashPattern.some(v=>typeof v!=='number' || !Number.isFinite(v) || v<0 || v>1e7)) reject('Invalid dash pattern.');
@@ -210,7 +224,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       const arc = n.type === 'ELLIPSE' && n.arcData && (n.arcData.startingAngle !== 0 || Math.abs(n.arcData.endingAngle - Math.PI*2) > 1e-6 || n.arcData.innerRadius !== 0);
       const primitive = arc || ['POLYGON','STAR'].includes(n.type);
-      if (strokes.length && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
+      if (strokes.length && !boolean && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
@@ -277,7 +291,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if (fills.length || strokes.length !== 1 || effects.length) reject('Lines require one solid stroke, no fills, and no effects.');
         if (errors.length === before) expression = `Shape::vector(${rect(box)}, vec![VectorPath::new(WindingRule::None).move_to([0.0, 0.0]).line_to(${array([n.width,0])})]).stroke(${number(n.strokeWeight)}, ${color(strokes[0].color,strokes[0].opacity)}, StrokeAlign::Center)`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
-        if (n.type === 'VECTOR') {
+        if (n.type === 'VECTOR' || boolean) {
 
           if (effects.length) reject('Vector path effects are unsupported.');
           expression = `Shape::vector(${rect(box)}, ${vectorCode(n)})`;
@@ -289,7 +303,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         } else {
           expression = `Shape::${n.type === 'ELLIPSE' ? 'ellipse' : 'rect'}(${rect(box)})`;
         }
-        if (!primitive && radii.some(r => r)) expression += `.radii(${array(radii)})`;
+        if (!primitive && !boolean && radii.some(r => r)) expression += `.radii(${array(radii)})`;
         // Figma's paint arrays are in drawing order, bottom to top.
         for (const p of fills) {
           if (p.type === 'SOLID') expression += `.fill(${color(p.color,p.opacity)})`;
@@ -303,14 +317,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const p = strokes[0];
           const align = { INSIDE:'Inside', CENTER:'Center', OUTSIDE:'Outside' }[n.strokeAlign];
           if (!align) reject('Unsupported stroke alignment.');
-          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
+          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive && !boolean) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
           else expression += `.stroke(${number(n.strokeWeight)}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
+          if (boolean && n.strokeWeight > 0) expression += `.stroke_geometry(${vectorCode(n, true)})`;
         }
         for (const e of effects) if (['DROP_SHADOW','INNER_SHADOW'].includes(e.type)) {
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
       }
-      if (strokes.length && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
+      if (strokes.length && !boolean && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
         const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' && !primitive ? n.strokeTopWeight : n.strokeWeight;
         if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
         const cap=caps[n.strokeCap] || (n.type==='VECTOR' && (typeof n.strokeCap==='symbol' || n.strokeCap===undefined) ? 'Butt' : undefined) || (!['VECTOR','LINE'].includes(n.type) && n.strokeCap===undefined ? 'Butt' : undefined);
@@ -333,7 +348,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         childClip = combineClip(clip, { rect: box, radius: radii[0], transform: world });
       }
     } catch (e) { reject(e.message); }
-    let children = n.children || [];
+    // Boolean operands are consumed by Figma’s resolved paths, not painted again.
+    if (n.type === 'BOOLEAN_OPERATION') for (const child of n.children || []) operands(child,path+' / '+child.name,depth+1);
+    let children = n.type === 'BOOLEAN_OPERATION' ? [] : n.children || [];
     if (n.itemReverseZIndex) children = [...children].reverse();
     for (const child of children) visit(child, path + ' / ' + child.name, world, childClip, false, depth + 1);
   }

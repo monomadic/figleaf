@@ -121,3 +121,11 @@ path primitives hard-error; counts are limited to 3–256. Open-arc inside offse
 that reach the ellipse's minimum curvature radius are also rejected. The saved
 `primitive-reference.json` exports code compiled and rendered in `examples/primitives.rs`,
 reviewed beside its [Figma export](../docs/primitives-compare.png).
+
+Boolean union/subtract/intersect/exclude nodes use Figma's resolved `fillGeometry`
+and `strokeGeometry`, including nested and empty results. Operand geometry is
+already baked into these paths; children are not drawn separately. Their variable
+bindings are still verified and included as provenance comments. Stroke outlines
+retain alignment, caps, joins and dashes; effects/unsupported paints remain errors.
+Missing geometry hard-errors. This exports a static result, not live boolean
+operations. See `examples/booleans.rs` and the [comparison](../docs/booleans-compare.png).

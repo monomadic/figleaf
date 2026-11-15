@@ -394,7 +394,9 @@ impl Renderer {
                             None
                         };
                         if let Some(paths) = l.vector_paths.or(primitive.as_deref()) {
-                            let groups = if let Some((stroke, style)) = l.vector_stroke {
+                            let groups = if let Some(outlines) = l.stroke_geometry {
+                                Ok([outlines.to_vec(), Vec::new(), paths.to_vec()])
+                            } else if let Some((stroke, style)) = l.vector_stroke {
                                 path::stroke_outlines(
                                     paths,
                                     stroke.width,

@@ -1,0 +1,1147 @@
+{
+  "id": "366:242",
+  "name": "Temporary figleaf boolean reference",
+  "type": "FRAME",
+  "width": 450,
+  "height": 280,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      2400
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "cornerSmoothing": 0,
+  "cornerRadius": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "bottomRightRadius": 0,
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeCap": "NONE",
+  "strokeJoin": "MITER",
+  "strokeMiterLimit": 4,
+  "dashPattern": [],
+  "clipsContent": false,
+  "children": [
+    {
+      "id": "366:245",
+      "name": "Union",
+      "type": "BOOLEAN_OPERATION",
+      "width": 110,
+      "height": 90,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.550000011920929,
+            "b": 0.8500000238418579
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "booleanOperation": "UNION",
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M35 0 C49.3163 0 61.623 8.59641 67.0449 20.9082 C69.6006 20.3142 72.2636 20 75 20 C94.33 20 110 35.67 110 55 C110 74.33 94.33 90 75 90 C60.6832 90 48.3758 81.4032 42.9541 69.0908 C40.3987 69.6847 37.7362 70 35 70 C15.67 70 0 54.33 0 35 C0 15.67 15.67 0 35 0 Z"
+        }
+      ],
+      "children": [
+        {
+          "id": "366:243",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 70,
+          "height": 70,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              20
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "366:244",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 70,
+          "height": 70,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              60
+            ],
+            [
+              0,
+              1,
+              40
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        }
+      ]
+    },
+    {
+      "id": "366:248",
+      "name": "Subtract inside stroke",
+      "type": "BOOLEAN_OPERATION",
+      "width": 100,
+      "height": 90,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          170
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.550000011920929,
+            "b": 0.8500000238418579
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.11999999731779099,
+            "g": 0.20000000298023224,
+            "b": 0.30000001192092896
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeWeight": 3,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "booleanOperation": "SUBTRACT",
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M100 90 L0 90 L0 0 L100 0 L100 90 Z M50 20 C36.1929 20 25 31.1929 25 45 C25 58.8071 36.1929 70 50 70 C63.8071 70 75 58.8071 75 45 C75 31.1929 63.8071 20 50 20 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M100 90 L100 93 L103 93 L103 90 L100 90 Z M0 90 L-3 90 L-3 93 L0 93 L0 90 Z M0 0 L0 -3 L-3 -3 L-3 0 L0 0 Z M100 0 L103 0 L103 -3 L100 -3 L100 0 Z M100 90 L100 87 L0 87 L0 90 L0 93 L100 93 L100 90 Z M0 90 L3 90 L3 0 L0 0 L-3 0 L-3 90 L0 90 Z M0 0 L0 3 L100 3 L100 0 L100 -3 L0 -3 L0 0 Z M100 0 L97 0 L97 90 L100 90 L103 90 L103 0 L100 0 Z M50 20 L50 17 C34.536 17 22 29.536 22 45 L25 45 L28 45 C28 32.8497 37.8497 23 50 23 L50 20 Z M25 45 L22 45 C22 60.464 34.536 73 50 73 L50 70 L50 67 C37.8497 67 28 57.1503 28 45 L25 45 Z M50 70 L50 73 C65.464 73 78 60.464 78 45 L75 45 L72 45 C72 57.1503 62.1503 67 50 67 L50 70 Z M75 45 L78 45 C78 29.536 65.464 17 50 17 L50 20 L50 23 C62.1503 23 72 32.8497 72 45 L75 45 Z"
+        }
+      ],
+      "children": [
+        {
+          "id": "366:246",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 90,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              170
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "366:247",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 50,
+          "height": 50,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              195
+            ],
+            [
+              0,
+              1,
+              40
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        }
+      ]
+    },
+    {
+      "id": "366:251",
+      "name": "Intersect outside stroke",
+      "type": "BOOLEAN_OPERATION",
+      "width": 80,
+      "height": 80,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          340
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.550000011920929,
+            "b": 0.8500000238418579
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.11999999731779099,
+            "g": 0.20000000298023224,
+            "b": 0.30000001192092896
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeWeight": 3,
+      "strokeAlign": "OUTSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "booleanOperation": "INTERSECT",
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M80 70.002 C71.6433 76.2792 61.2564 80 50 80 C22.3858 80 0 57.6142 0 30 C0 18.7436 3.72078 8.35675 9.99805 0 L80 0 L80 70.002 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M80 70.002 L81.8018 72.4006 L83 71.5006 L83 70.002 L80 70.002 Z M9.99805 0 L9.99805 -3 L8.49944 -3 L7.59938 -1.80178 L9.99805 0 Z M80 0 L83 0 L83 -3 L80 -3 L80 0 Z M80 70.002 L78.1982 67.6033 C70.3429 73.5039 60.5842 77 50 77 L50 80 L50 83 C61.9286 83 72.9436 79.0546 81.8018 72.4006 L80 70.002 Z M50 80 L50 77 C24.0426 77 3 55.9574 3 30 L0 30 L-3 30 C-3 59.2711 20.7289 83 50 83 L50 80 Z M0 30 L3 30 C3 19.4158 6.49614 9.65705 12.3967 1.80178 L9.99805 0 L7.59938 -1.80178 C0.945431 7.05644 -3 18.0714 -3 30 L0 30 Z M9.99805 0 L9.99805 3 L80 3 L80 0 L80 -3 L9.99805 -3 L9.99805 0 Z M80 0 L77 0 L77 70.002 L80 70.002 L83 70.002 L83 0 L80 0 Z"
+        }
+      ],
+      "children": [
+        {
+          "id": "366:249",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 90,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              320
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "366:250",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 100,
+          "height": 100,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              340
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        }
+      ]
+    },
+    {
+      "id": "366:254",
+      "name": "Exclude center stroke",
+      "type": "BOOLEAN_OPERATION",
+      "width": 100,
+      "height": 95,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          160
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.550000011920929,
+            "b": 0.8500000238418579
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.11999999731779099,
+            "g": 0.20000000298023224,
+            "b": 0.30000001192092896
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeWeight": 2,
+      "strokeAlign": "CENTER",
+      "strokeCap": "NONE",
+      "strokeJoin": "ROUND",
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        8,
+        4
+      ],
+      "booleanOperation": "EXCLUDE",
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M100 95 L30 95 L30 70 L70 70 L70 25 L100 25 L100 95 Z M70 25 L30 25 L30 70 L0 70 L0 0 L70 0 L70 25 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M100 95 L100 96 C100.552 96 101 95.5523 101 95 L100 95 Z M30 95 L29 95 C29 95.5523 29.4477 96 30 96 L30 95 Z M70 70 L70 71 C70.5523 71 71 70.5523 71 70 L70 70 Z M100 25 L101 25 C101 24.4477 100.552 24 100 24 L100 25 Z M30 25 L30 24 C29.4477 24 29 24.4477 29 25 L30 25 Z M0 70 L-1 70 C-1 70.5523 -0.552285 71 2.22045e-16 71 L0 70 Z M0 0 L0 -1 C-0.552285 -1 -1 -0.552285 -1 2.22045e-16 L0 0 Z M70 0 L71 0 C71 -0.552285 70.5523 -1 70 -1 L70 0 Z M30 70 L29 70 L29 74.1667 L30 74.1667 L31 74.1667 L31 70 L30 70 Z M30 78.3333 L29 78.3333 L29 86.6667 L30 86.6667 L31 86.6667 L31 78.3333 L30 78.3333 Z M30 90.8333 L29 90.8333 L29 95 L30 95 L31 95 L31 90.8333 L30 90.8333 Z M30 95 L30 96 L33.8889 96 L33.8889 95 L33.8889 94 L30 94 L30 95 Z M37.7778 95 L37.7778 96 L45.5556 96 L45.5556 95 L45.5556 94 L37.7778 94 L37.7778 95 Z M49.4444 95 L49.4444 96 L57.2222 96 L57.2222 95 L57.2222 94 L49.4444 94 L49.4444 95 Z M61.1111 95 L61.1111 96 L68.8889 96 L68.8889 95 L68.8889 94 L61.1111 94 L61.1111 95 Z M72.7778 95 L72.7778 96 L80.5556 96 L80.5556 95 L80.5556 94 L72.7778 94 L72.7778 95 Z M84.4444 95 L84.4444 96 L92.2222 96 L92.2222 95 L92.2222 94 L84.4444 94 L84.4444 95 Z M96.1111 95 L96.1111 96 L100 96 L100 95 L100 94 L96.1111 94 L96.1111 95 Z M100 95 L101 95 L101 91.1111 L100 91.1111 L99 91.1111 L99 95 L100 95 Z M100 87.2222 L101 87.2222 L101 79.4444 L100 79.4444 L99 79.4444 L99 87.2222 L100 87.2222 Z M100 75.5556 L101 75.5556 L101 67.7778 L100 67.7778 L99 67.7778 L99 75.5556 L100 75.5556 Z M100 63.8889 L101 63.8889 L101 56.1111 L100 56.1111 L99 56.1111 L99 63.8889 L100 63.8889 Z M100 52.2222 L101 52.2222 L101 44.4444 L100 44.4444 L99 44.4444 L99 52.2222 L100 52.2222 Z M100 40.5556 L101 40.5556 L101 32.7778 L100 32.7778 L99 32.7778 L99 40.5556 L100 40.5556 Z M100 28.8889 L101 28.8889 L101 25 L100 25 L99 25 L99 28.8889 L100 28.8889 Z M100 25 L100 24 L96.6667 24 L96.6667 25 L96.6667 26 L100 26 L100 25 Z M93.3333 25 L93.3333 24 L86.6667 24 L86.6667 25 L86.6667 26 L93.3333 26 L93.3333 25 Z M83.3333 25 L83.3333 24 L76.6667 24 L76.6667 25 L76.6667 26 L83.3333 26 L83.3333 25 Z M73.3333 25 L73.3333 24 L70 24 L70 25 L70 26 L73.3333 26 L73.3333 25 Z M30 70 L30 71 L34.4444 71 L34.4444 70 L34.4444 69 L30 69 L30 70 Z M38.8889 70 L38.8889 71 L47.7778 71 L47.7778 70 L47.7778 69 L38.8889 69 L38.8889 70 Z M52.2222 70 L52.2222 71 L61.1111 71 L61.1111 70 L61.1111 69 L52.2222 69 L52.2222 70 Z M65.5556 70 L65.5556 71 L70 71 L70 70 L70 69 L65.5556 69 L65.5556 70 Z M70 70 L71 70 L71 66.25 L70 66.25 L69 66.25 L69 70 L70 70 Z M70 62.5 L71 62.5 L71 55 L70 55 L69 55 L69 62.5 L70 62.5 Z M70 51.25 L71 51.25 L71 43.75 L70 43.75 L69 43.75 L69 51.25 L70 51.25 Z M70 40 L71 40 L71 32.5 L70 32.5 L69 32.5 L69 40 L70 40 Z M70 28.75 L71 28.75 L71 25 L70 25 L69 25 L69 28.75 L70 28.75 Z M30 70 L31 70 L31 66.25 L30 66.25 L29 66.25 L29 70 L30 70 Z M30 62.5 L31 62.5 L31 55 L30 55 L29 55 L29 62.5 L30 62.5 Z M30 51.25 L31 51.25 L31 43.75 L30 43.75 L29 43.75 L29 51.25 L30 51.25 Z M30 40 L31 40 L31 32.5 L30 32.5 L29 32.5 L29 40 L30 40 Z M30 28.75 L31 28.75 L31 25 L30 25 L29 25 L29 28.75 L30 28.75 Z M30 25 L30 26 L34.4444 26 L34.4444 25 L34.4444 24 L30 24 L30 25 Z M38.8889 25 L38.8889 26 L47.7778 26 L47.7778 25 L47.7778 24 L38.8889 24 L38.8889 25 Z M52.2222 25 L52.2222 26 L61.1111 26 L61.1111 25 L61.1111 24 L52.2222 24 L52.2222 25 Z M65.5556 25 L65.5556 26 L70 26 L70 25 L70 24 L65.5556 24 L65.5556 25 Z M30 70 L30 69 L26.6667 69 L26.6667 70 L26.6667 71 L30 71 L30 70 Z M23.3333 70 L23.3333 69 L16.6667 69 L16.6667 70 L16.6667 71 L23.3333 71 L23.3333 70 Z M13.3333 70 L13.3333 69 L6.66667 69 L6.66667 70 L6.66667 71 L13.3333 71 L13.3333 70 Z M3.33333 70 L3.33333 69 L0 69 L0 70 L0 71 L3.33333 71 L3.33333 70 Z M0 70 L1 70 L1 66.1111 L0 66.1111 L-1 66.1111 L-1 70 L0 70 Z M0 62.2222 L1 62.2222 L1 54.4444 L0 54.4444 L-1 54.4444 L-1 62.2222 L0 62.2222 Z M0 50.5556 L1 50.5556 L1 42.7778 L0 42.7778 L-1 42.7778 L-1 50.5556 L0 50.5556 Z M0 38.8889 L1 38.8889 L1 31.1111 L0 31.1111 L-1 31.1111 L-1 38.8889 L0 38.8889 Z M0 27.2222 L1 27.2222 L1 19.4444 L0 19.4444 L-1 19.4444 L-1 27.2222 L0 27.2222 Z M0 15.5556 L1 15.5556 L1 7.77777 L0 7.77777 L-1 7.77777 L-1 15.5556 L0 15.5556 Z M0 3.88889 L1 3.88889 L1 0 L0 0 L-1 0 L-1 3.88889 L0 3.88889 Z M0 0 L0 1 L3.88889 1 L3.88889 0 L3.88889 -1 L0 -1 L0 0 Z M7.77778 0 L7.77778 1 L15.5556 1 L15.5556 0 L15.5556 -1 L7.77778 -1 L7.77778 0 Z M19.4444 0 L19.4444 1 L27.2222 1 L27.2222 0 L27.2222 -1 L19.4444 -1 L19.4444 0 Z M31.1111 0 L31.1111 1 L38.8889 1 L38.8889 0 L38.8889 -1 L31.1111 -1 L31.1111 0 Z M42.7778 0 L42.7778 1 L50.5556 1 L50.5556 0 L50.5556 -1 L42.7778 -1 L42.7778 0 Z M54.4444 0 L54.4444 1 L62.2222 1 L62.2222 0 L62.2222 -1 L54.4444 -1 L54.4444 0 Z M66.1111 0 L66.1111 1 L70 1 L70 0 L70 -1 L66.1111 -1 L66.1111 0 Z M70 0 L69 0 L69 4.16667 L70 4.16667 L71 4.16667 L71 0 L70 0 Z M70 8.33333 L69 8.33333 L69 16.6667 L70 16.6667 L71 16.6667 L71 8.33333 L70 8.33333 Z M70 20.8333 L69 20.8333 L69 25 L70 25 L71 25 L71 20.8333 L70 20.8333 Z"
+        }
+      ],
+      "children": [
+        {
+          "id": "366:252",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 70,
+          "height": 70,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              20
+            ],
+            [
+              0,
+              1,
+              160
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "366:253",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 70,
+          "height": 70,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              50
+            ],
+            [
+              0,
+              1,
+              185
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        }
+      ]
+    },
+    {
+      "id": "366:259",
+      "name": "Nested subtraction",
+      "type": "BOOLEAN_OPERATION",
+      "width": 95,
+      "height": 75,
+      "relativeTransform": [
+        [
+          -1,
+          0.14834046363830566,
+          270
+        ],
+        [
+          0,
+          0.9889363646507263,
+          160
+        ]
+      ],
+      "fills": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0.699999988079071,
+                "g": 0.25,
+                "b": 0.699999988079071,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "booleanOperation": "SUBTRACT",
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M32.5 0 C47.2224 0 59.6568 10.5428 63.6523 25 L95 25 L95 75 L30 75 L30 69.8975 C13.2189 68.5227 0 53.4241 0 35 C0 15.67 14.5507 0 32.5 0 Z M37 20 C28.7157 20 22 26.7157 22 35 C22 43.2843 28.7157 50 37 50 C45.2843 50 52 43.2843 52 35 C52 26.7157 45.2843 20 37 20 Z"
+        }
+      ],
+      "children": [
+        {
+          "id": "366:257",
+          "name": "Nested union operand",
+          "type": "BOOLEAN_OPERATION",
+          "width": 95,
+          "height": 75,
+          "relativeTransform": [
+            [
+              -1,
+              0.14834046363830566,
+              270
+            ],
+            [
+              0,
+              0.9889363646507263,
+              160
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "booleanOperation": "UNION",
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M32.5 0 C47.2224 0 59.6568 10.5428 63.6523 25 L95 25 L95 75 L30 75 L30 69.8975 C13.2189 68.5227 0 53.4241 0 35 C0 15.67 14.5507 0 32.5 0 Z"
+            }
+          ],
+          "children": [
+            {
+              "id": "366:255",
+              "name": "Ellipse",
+              "type": "ELLIPSE",
+              "width": 65,
+              "height": 70,
+              "relativeTransform": [
+                [
+                  -1,
+                  0.14834046363830566,
+                  270
+                ],
+                [
+                  0,
+                  0.9889363646507263,
+                  160
+                ]
+              ],
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 1,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 0.20000000298023224,
+                    "g": 0.550000011920929,
+                    "b": 0.8500000238418579
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "cornerSmoothing": 0,
+              "cornerRadius": 0,
+              "strokeWeight": 1,
+              "strokeAlign": "INSIDE",
+              "strokeCap": "NONE",
+              "strokeJoin": "MITER",
+              "strokeMiterLimit": 4,
+              "dashPattern": []
+            },
+            {
+              "id": "366:256",
+              "name": "Rectangle",
+              "type": "RECTANGLE",
+              "width": 65,
+              "height": 50,
+              "relativeTransform": [
+                [
+                  -1,
+                  0.14834046363830566,
+                  243.70851159095764
+                ],
+                [
+                  0,
+                  0.9889363646507263,
+                  184.72340911626816
+                ]
+              ],
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 1,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 0.20000000298023224,
+                    "g": 0.550000011920929,
+                    "b": 0.8500000238418579
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "cornerSmoothing": 0,
+              "cornerRadius": 0,
+              "topLeftRadius": 0,
+              "topRightRadius": 0,
+              "bottomLeftRadius": 0,
+              "bottomRightRadius": 0,
+              "strokeWeight": 1,
+              "strokeAlign": "INSIDE",
+              "strokeCap": "NONE",
+              "strokeJoin": "MITER",
+              "strokeMiterLimit": 4,
+              "dashPattern": []
+            }
+          ]
+        },
+        {
+          "id": "366:258",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 30,
+          "height": 30,
+          "relativeTransform": [
+            [
+              -1,
+              0.14834046363830566,
+              250.9668092727661
+            ],
+            [
+              0,
+              0.9889363646507263,
+              179.77872729301453
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        }
+      ]
+    },
+    {
+      "id": "366:262",
+      "name": "Empty intersection",
+      "type": "BOOLEAN_OPERATION",
+      "width": 90,
+      "height": 90,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          320
+        ],
+        [
+          0,
+          1,
+          160
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.550000011920929,
+            "b": 0.8500000238418579
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "booleanOperation": "INTERSECT",
+      "fillGeometry": [],
+      "children": [
+        {
+          "id": "366:260",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 30,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              320
+            ],
+            [
+              0,
+              1,
+              160
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "366:261",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 30,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              380
+            ],
+            [
+              0,
+              1,
+              220
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "cornerRadius": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        }
+      ]
+    }
+  ]
+}
