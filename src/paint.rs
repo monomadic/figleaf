@@ -258,7 +258,11 @@ impl Shape {
     /// Use resolved stroke outlines instead of stroking centerlines. As in
     /// Figma's strokeGeometry, inside/outside outlines must already use twice
     /// the nominal width; the renderer clips them against the vector fill.
-    /// Requires a vector and a positive-width stroke; caps/dashes are baked in.
+    /// Requires a vector and a positive-width stroke. Caps, dashes, variable
+    /// width profiles and supported vector brushes are baked into these paths;
+    /// the nominal width never widens or rescales an already resolved outline.
+    /// Keep the source fill domain for inside/outside alignment. Centered
+    /// outlines need no filled domain and can accompany unfilled centerlines.
     pub fn stroke_geometry(mut self, paths: Vec<VectorPath>) -> Self {
         self.stroke_geometry = Some(paths);
         self

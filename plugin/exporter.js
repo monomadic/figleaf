@@ -172,7 +172,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const smoothing=n.cornerSmoothing ?? 0;
       if (typeof smoothing!=='number' || !Number.isFinite(smoothing) || smoothing<0 || smoothing>1) reject('Invalid corner smoothing.');
       const smoothed=smoothing>0;
-      const resolved=boolean || smoothed;
+      let resolved=boolean || smoothed;
+      let styledStroke=false, strokeNote=null;
       const transform = n.relativeTransform;
       if (!transform) throw Error('Missing relative transform.');
       inverse(transform);
@@ -195,8 +196,34 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if (!t || !t.flat().every(Number.isFinite) || Math.abs(t[0][0]*t[1][1]-t[0][1]*t[1][0]) < 1e-12) reject('Degenerate gradient transforms are unsupported.');
         }
       }
-      if (strokes.length && n.variableWidthStrokeProperties && n.variableWidthStrokeProperties.widthProfile !== 'UNIFORM') reject('Variable-width strokes are unsupported.');
-      if (strokes.length && n.complexStrokeProperties && n.complexStrokeProperties.type !== 'BASIC') reject('Brush and dynamic strokes are unsupported.');
+      if (strokes.length) {
+        const profile=n.variableWidthStrokeProperties, complex=n.complexStrokeProperties;
+        const nonuniform=profile && profile.widthProfile!=='UNIFORM';
+        if (profile && !['UNIFORM','WEDGE','TAPER','QUARTER_TAPER','EYE','MIRRORED_TAPER','CUSTOM'].includes(profile.widthProfile)) reject('Unsupported width profile.');
+        if (profile?.widthProfile==='CUSTOM') {
+          const points=profile.variableWidthPoints;
+          if (!Array.isArray(points) || points.length<2 || points.length>256 || points.some((p,i)=>!Number.isFinite(p.position)||p.position<0||p.position>1||!Number.isFinite(p.width)||p.width<0||p.width>1e7||(i>0&&p.position<=points[i-1].position))) reject('Invalid custom width profile.');
+        }
+        if (nonuniform) strokeNote=`Width profile: ${profile.widthProfile}${profile.widthProfile==='CUSTOM' ? ' '+JSON.stringify(profile.variableWidthPoints) : ''}`;
+        if (complex && complex.type!=='BASIC') {
+          if (complex.type==='BRUSH' && complex.brushType==='STRETCH' && ['HEIST','BLOCKBUSTER'].includes(complex.brushName)) {
+            if (!['FORWARD','BACKWARD'].includes(complex.direction)) reject('Unsupported brush direction.');
+            strokeNote=(strokeNote ? strokeNote+'; ' : '')+`Stretch brush: ${complex.brushName}, ${complex.direction}`;
+          } else if (complex.type==='DYNAMIC') {
+            if (nonuniform) reject('Dynamic strokes cannot combine with variable width profiles.');
+            if (!Number.isFinite(complex.frequency)||complex.frequency<.01||complex.frequency>20||!Number.isFinite(complex.wiggle)||complex.wiggle<0||complex.wiggle>1e7||!Number.isFinite(complex.smoothen)||complex.smoothen<0||complex.smoothen>1) reject('Invalid dynamic stroke parameters.');
+            strokeNote=`Dynamic stroke: frequency ${number(complex.frequency)}, wiggle ${number(complex.wiggle)}, smoothen ${number(complex.smoothen)}`;
+          } else reject('Unsupported brush type/name. Only HEIST and BLOCKBUSTER stretch brushes and resolved dynamic strokes are supported.');
+        }
+        styledStroke=!!nonuniform || !!(complex && complex.type!=='BASIC');
+        if (styledStroke) {
+          resolved=true;
+          if (!['VECTOR','LINE','RECTANGLE','ELLIPSE','POLYGON','STAR','BOOLEAN_OPERATION'].includes(n.type)) reject('Styled strokes require shape geometry.');
+          if (!Number.isFinite(n.strokeWeight)||n.strokeWeight<0) reject('Invalid styled stroke width.');
+          if (n.strokeWeight>0 && n.strokeAlign!=='CENTER' && (n.type==='LINE' || !n.fillGeometry?.length || n.vectorPaths?.some(p=>p.windingRule==='NONE'))) reject('Aligned styled strokes require a closed fill domain; open/mixed networks are unsupported.');
+          if (n.strokeWeight>0 && (!Array.isArray(n.strokeGeometry)||!n.strokeGeometry.some(p=>typeof p.data==='string' && /[LQC]/.test(p.data)))) reject('Styled stroke outlines are unavailable; no constant-width fallback.');
+        }
+      }
       if (strokes.length > 1) reject('Multiple strokes are unsupported.');
       if (boolean && strokes.length && (typeof n.strokeWeight !== 'number' || !Number.isFinite(n.strokeWeight) || n.strokeWeight < 0)) reject('Invalid boolean stroke width.');
       if (strokes.some(p => p.type !== 'SOLID')) reject('Only solid strokes are supported.');
@@ -206,7 +233,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(!resolved && 'strokeTopWeight' in n && [n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v!==n.strokeTopWeight)) reject('Dashed individual borders require uniform widths.');
       }
       const arc = n.type === 'ELLIPSE' && n.arcData && (n.arcData.startingAngle !== 0 || Math.abs(n.arcData.endingAngle - Math.PI*2) > 1e-6 || n.arcData.innerRadius !== 0);
-      const primitive = !smoothed && (arc || ['POLYGON','STAR'].includes(n.type));
+      const primitive = !resolved && (arc || ['POLYGON','STAR'].includes(n.type));
       if (strokes.length && !resolved && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
@@ -268,7 +295,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
         }
-      } else if (n.type === 'LINE') {
+      } else if (n.type === 'LINE' && !styledStroke) {
         if (fills.length || strokes.length !== 1 || effects.length) reject('Lines require one solid stroke, no fills, and no effects.');
         if (errors.length === before) expression = `Shape::vector(${rect(box)}, vec![VectorPath::new(WindingRule::None).move_to([0.0, 0.0]).line_to(${array([n.width,0])})]).stroke(${number(n.strokeWeight)}, ${color(strokes[0].color,strokes[0].opacity)}, StrokeAlign::Center)`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
@@ -322,6 +349,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (expression) for (const c of clip || []) expression += `.intersect_clip(${c.paths ? `Clip::paths(${c.paths})` : `Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)})`}.transform(${matrix(c.transform)}))`;
       if (expression && errors.length === before) {
         for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
+        if (strokeNote) lines.push(`    // ${comment(strokeNote)} (resolved Figma outlines).`);
         if (smoothed) lines.push(`    // Corner smoothing: ${number(smoothing)} (resolved Figma contours).`);
         lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }

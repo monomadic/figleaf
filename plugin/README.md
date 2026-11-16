@@ -156,3 +156,18 @@ bounds offscreen target pixels and reports errors for unsupported content.
 [Generated Rust beside Figma](../docs/masks-compare.png) covers all three types,
 primary-color luminance, zero-alpha vector paints, gradients and scope breaks.
 The plugin still only shows Rust and writes no files.
+
+
+## Variable-width and brush strokes
+
+Nonuniform preset and custom width profiles export Figma’s resolved stroke
+outlines. HEIST/BLOCKBUSTER stretch brushes and dynamic strokes are also supported.
+The code records their parameters in comments and emits `.stroke_geometry(...)`;
+changing the profile or brush requires re-exporting. The consumer retains solid
+paint, alpha, transforms, clips and supported shadows as normal figleaf calls.
+
+Scatter brushes, custom brushes, other brush names, aligned open/mixed networks,
+invalid profiles and missing outlines hard-error. No constant-width approximation, brush simulation, raster
+fallback or Figma mutation is used. Existing geometry/work limits still apply.
+[Generated output beside Figma](../docs/complex-strokes-compare.png) includes all
+nonuniform presets, custom widths, both brushes and transformed outlines.

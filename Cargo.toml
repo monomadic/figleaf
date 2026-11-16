@@ -100,3 +100,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "masks"
 required-features = ["wgpu"]
+
+[[example]]
+name = "complex_strokes"
+required-features = ["wgpu"]

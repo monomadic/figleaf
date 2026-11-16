@@ -185,8 +185,9 @@ network whose resolved filled regions differ from its stroked edges.
 
 The plugin traces non-branching vector networks exactly once and exports native
 stroke calls, including curved segments. Branches, isolated network vertices,
-per-vertex join overrides, rounded vector vertices and variable-width strokes
-remain hard errors. Endpoint overrides and dashes are supported below. Path effects remain unsupported.
+per-vertex join overrides and rounded vector vertices
+remain hard errors in the native centerline export. Resolved styled outlines and
+path shadows are supported as described below.
 
 `cargo run --example path_strokes --features wgpu` renders generated plugin code
 beside Figma's 2× export ([comparison](docs/path-strokes-compare.png)): curved caps,
@@ -220,8 +221,8 @@ transforms; triangle shafts are shortened, and decorations are unioned with the
 stroke before opacity. Closed contours have joins instead of decorations.
 
 The plugin emits these calls, including different caps at a vector's two ends.
-Unsupported/missing endpoint styles, mixed joins, branching networks and brush
-strokes still fail closed. A decorated zero-length path reports that it has no
+Unsupported/missing endpoint styles, mixed joins and branching networks
+still fail closed in native centerline export. A decorated zero-length path reports that it has no
 tangent. Patterns allow at most 32 finite, nonnegative entries; dash subdivision
 and stroke outlines retain explicit command, region, edge and GPU work limits.
 
@@ -391,3 +392,27 @@ Run `cargo run --example masks --features wgpu` for the generated fixture:
 covers rounded/elliptical boundaries, primary-color luminance, mask opacity,
 transparent vector paints, gradients, nesting and clipping-frame scope breaks.
 Synthetic tests also cover holes, strokes, reflected geometry, text and caching.
+
+
+## Variable-width and brush strokes
+
+The plugin exports WEDGE, TAPER, QUARTER_TAPER, EYE, MIRRORED_TAPER and CUSTOM
+width profiles through Figma’s resolved `strokeGeometry`. HEIST and BLOCKBUSTER
+stretch brushes (either direction) and dynamic strokes use the same mechanism.
+Profile/brush parameters stay in comments; editing them requires re-exporting.
+There is no brush simulation, texture fallback or new dependency.
+
+`Shape::stroke_geometry(paths)` already draws these filled outlines, preserving
+holes, overlap opacity, transforms, clips and supported shadows. The nominal
+stroke width does not widen the baked outline again. Centered outlines now omit
+the unused fill domain from coverage work; inside/outside outlines retain it.
+
+Scatter/custom brushes and other brush names remain hard errors. Positive-width
+styled strokes require nonempty resolved outlines; aligned open/mixed networks
+remain unsupported. Missing contours never fall
+back to constant width. Existing paint, path-size and renderer work limits apply.
+`cargo run --example complex_strokes --features wgpu` renders generated Rust
+[beside Figma](docs/complex-strokes-compare.png): every nonuniform preset, a custom
+profile, both supported brushes, dynamic geometry, reflection, shear and opacity.
+Mean difference is 0.12/255 at 1×; synthetic tests cover tips, holes, clipping,
+nominal-width independence, invalid data and unchanged uploads.

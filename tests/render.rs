@@ -1605,3 +1605,80 @@ fn alpha_text_masks_retain_glyph_coverage_and_clip() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0);
 }
+
+#[test]
+fn resolved_variable_width_and_brush_outlines_keep_tips_holes_and_cache() {
+    use figleaf::{Clip, Transform, VectorPath, WindingRule};
+    let rectangle = |x, y, w, h| {
+        VectorPath::new(WindingRule::EvenOdd)
+            .move_to([x, y])
+            .line_to([x + w, y])
+            .line_to([x + w, y + h])
+            .line_to([x, y + h])
+            .close()
+    };
+    let taper = VectorPath::new(WindingRule::NonZero)
+        .move_to([10., 10.])
+        .line_to([70., 25.])
+        .line_to([10., 40.])
+        .close();
+    let mut brush = rectangle(15., 15., 25., 20.);
+    brush
+        .commands
+        .extend(rectangle(20., 20., 10., 10.).commands);
+    let source = vec![rectangle(0., 0., 512., 512.)];
+    let shape = Shape::vector(Rect::new(0., 0., 512., 512.), source.clone())
+        .stroke(1., [1., 0., 0., 0.5], StrokeAlign::Center)
+        .stroke_geometry(vec![taper]);
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.shape(shape.clone());
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(15, 15)[3], 128);
+    assert_eq!(i.pixel(60, 15), CLEAR);
+    assert_eq!(i.pixel(65, 25)[3], 128);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    // Nominal width is metadata, not a second widening pass.
+    let mut wide = shape;
+    wide.stroke.as_mut().unwrap().width = 100.;
+    c.clear();
+    c.shape(wide);
+    let j = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.rgba, j.rgba);
+    c.clear();
+    let brush_shape = Shape::vector(Rect::new(0., 0., 512., 512.), source)
+        .stroke(10., [1., 0., 0., 0.5], StrokeAlign::Center)
+        .stroke_geometry(vec![brush; 100])
+        .transform(Transform::new([[-1., 0., 80.], [0., 1., 0.]]));
+    c.shape(brush_shape.clone());
+    // The huge unpainted fill domain must not inflate centered outline work.
+    let uncut = gpu.render(&mut r, &c, [512, 512], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(uncut.pixel(64, 18)[3], 128);
+    c.clear();
+    c.shape(brush_shape.intersect_clip(Clip::rect(Rect::new(0., 0., 62., 60.))));
+    let i = gpu.render(&mut r, &c, [512, 512], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(45, 18)[3], 128);
+    assert_eq!(i.pixel(55, 25), CLEAR);
+    assert_eq!(i.pixel(64, 18), CLEAR);
+    // Invalid outlines never fall back to a constant-width stroke.
+    c.clear();
+    c.shape(
+        Shape::vector(Rect::new(0., 0., 40., 40.), vec![])
+            .stroke(4., hex(0), StrokeAlign::Center)
+            .stroke_geometry(vec![
+                VectorPath::new(WindingRule::None)
+                    .move_to([0., 0.])
+                    .line_to([30., 30.]),
+            ]),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(r.problems().len(), 1);
+    assert!(i.rgba.iter().all(|v| *v == 0));
+}

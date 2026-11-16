@@ -397,3 +397,34 @@ test('mask bounds and unsupported vector sources fail before code is published',
   const vector=node({type:'GROUP',isMask:true,maskType:'VECTOR',children:[node({type:'TEXT'})]});
   assert.equal(exportHierarchy([node({type:'FRAME',children:[vector,node()]})]).code,null);
 });
+
+test('variable profiles and supported brushes export resolved outlines and compile',()=>{
+  const r=exportHierarchy([require('./complex-strokes-reference.json')]);assert.deepEqual(r.errors,[]);
+  for(const value of ['WEDGE','TAPER','CUSTOM','QUARTER_TAPER','EYE','MIRRORED_TAPER','HEIST','BLOCKBUSTER','Dynamic stroke'])assert.ok(r.code.includes(value));
+  assert.equal((r.code.match(/\.stroke_geometry\(/g)||[]).length,9);
+  assert.ok(!r.code.includes('.stroke_paths('));assert.ok(!r.code.includes('.stroke_cap('));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-complex-strokes-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for i in c.items(){if let figleaf::paint::Item::Shape(s)=i{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('styled strokes never fall back when outlines or style parameters are unsupported',()=>{
+  const n=require('./complex-strokes-reference.json').children[0];
+  for(const patch of [
+    {strokeGeometry:undefined},{strokeGeometry:[]},{strokeGeometry:[{windingRule:'NONZERO',data:''}]},{fillGeometry:undefined},
+    {strokeGeometry:[{windingRule:'NONE',data:'M0 0 L1 1'}]},
+    {strokeGeometry:[{windingRule:'NONZERO',data:'M0 0 A1 1 0 0 0 1 1'}]},
+    {strokeWeight:NaN},{strokeWeight:-1},{strokeAlign:'INSIDE'},
+    {variableWidthStrokeProperties:{widthProfile:'UNKNOWN'}},
+    ...[[],[{position:0,width:1}],[{position:0,width:1},{position:0,width:2}],[{position:0,width:-1},{position:1,width:1}],[{position:0,width:1},{position:2,width:1}]].map(variableWidthPoints=>({variableWidthStrokeProperties:{widthProfile:'CUSTOM',variableWidthPoints}})),
+    {complexStrokeProperties:{type:'BRUSH',brushType:'SCATTER',brushName:'BUBBLEGUM'}},
+    {complexStrokeProperties:{type:'BRUSH',brushType:'STRETCH',brushName:'CUSTOM',direction:'FORWARD'}},
+    {complexStrokeProperties:{type:'BRUSH',brushType:'STRETCH',brushName:'HEIST',direction:'UNKNOWN'}},
+    {complexStrokeProperties:{type:'DYNAMIC',frequency:1,wiggle:3,smoothen:.5}},
+  ]) {const r=exportHierarchy([node({type:'FRAME',children:[node(),{...n,...patch}]})]);assert.equal(r.code,null,JSON.stringify(patch));assert.ok(r.errors.length);}
+  const dynamic=require('./complex-strokes-reference.json').children[5];
+  for(const complexStrokeProperties of [{type:'DYNAMIC',frequency:0,wiggle:0,smoothen:0},{type:'DYNAMIC',frequency:1,wiggle:NaN,smoothen:0},{type:'DYNAMIC',frequency:1,wiggle:0,smoothen:2}])assert.equal(exportHierarchy([{...dynamic,complexStrokeProperties}]).code,null);
+  const line=exportHierarchy([{...n,type:'LINE'}]);assert.deepEqual(line.errors,[]);assert.match(line.code,/stroke_geometry/);
+});

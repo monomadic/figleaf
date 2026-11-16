@@ -496,7 +496,18 @@ impl Renderer {
                                 };
                                 stroked.map(|[closed, open, _]| [paths.to_vec(), closed, open])
                             } else if let Some(outlines) = l.stroke_geometry {
-                                Ok([outlines.to_vec(), Vec::new(), paths.to_vec()])
+                                // Centered resolved brushes need only their actual outline.
+                                // An unused fill domain can be much larger and would inflate
+                                // coverage work (or reject otherwise small brush marks).
+                                let domain = if l
+                                    .vector_stroke
+                                    .is_some_and(|(s, _)| s.align != crate::StrokeAlign::Center)
+                                {
+                                    paths.to_vec()
+                                } else {
+                                    Vec::new()
+                                };
+                                Ok([outlines.to_vec(), Vec::new(), domain])
                             } else if let Some((stroke, style)) = l.vector_stroke {
                                 path::stroke_outlines(
                                     paths,

@@ -86,10 +86,14 @@ Rust output; do not merely remove an exporter error.
    remain hard errors. Generated Rust reviewed beside Figma
    ([comparison](docs/masks-compare.png), mean 0.20/255 at 2×). Synthetic tests
    cover holes, stroke-only masks, nesting, text, invalid input and caching.
-10. **Variable-width and brush strokes.** Represent supported profiles/brush
-    geometry explicitly, including transformed outlines. Keep unsupported brush
-    types as hard errors rather than silently treating them as constant-width
-    strokes.
+10. **Variable-width and brush strokes — done 2026-11-17 (resolved outlines).**
+    All nonuniform presets and custom profiles, HEIST/BLOCKBUSTER stretch brushes
+    and dynamic strokes export resolved geometry; no stroke simulation. Centered
+    outline rendering excludes unused fill geometry from work limits. Generated
+    Rust reviewed beside Figma ([comparison](docs/complex-strokes-compare.png),
+    mean 0.12/255 at 1×), including reflection/shear. Tips, holes, opacity, clips,
+    invalid outlines and unchanged uploads have synthetic tests. Scatter/custom
+    brushes and unverified brush names remain hard errors, never uniform fallbacks.
 
 For each item: compile generated Rust, test invalid/degenerate geometry and
 unchanged-canvas uploads, run an example, and look at its render beside a Figma
