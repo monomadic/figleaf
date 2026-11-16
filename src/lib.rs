@@ -11,6 +11,7 @@
 pub mod clip;
 mod geom;
 pub mod layout;
+pub mod mask;
 pub mod paint;
 pub mod path;
 pub mod primitives;
@@ -21,6 +22,7 @@ pub mod render;
 
 pub use clip::{Clip, ClipGeometry};
 pub use geom::{Color, Error, Rect, Transform, hex, hexa};
+pub use mask::{Mask, MaskType, Masked};
 pub use paint::{Canvas, LinearGradient, Paint, Shadow, Shape, Stroke, StrokeAlign, Text};
 
 pub use path::{PathStroke, StrokeCap, StrokeJoin, VectorPath, WindingRule};

@@ -20,6 +20,8 @@ use crate::{
 };
 use std::{collections::HashMap, ops::Range};
 
+mod masked;
+
 const SHAPE_STRIDE: usize = 256;
 const TEXT_STRIDE: usize = 112;
 
@@ -90,6 +92,7 @@ struct MaskSlot {
 /// as one instance with its mask (and the mask's identity, for change
 /// detection).
 enum Draw {
+    Composite(wgpu::BindGroup, u64),
     Shapes(Range<u32>),
     Text(u32, wgpu::BindGroup, u64),
     /// Text followed by its inner shadow, which is the next instance.
@@ -148,6 +151,10 @@ impl Instances {
 }
 
 pub struct Renderer {
+    format: wgpu::TextureFormat,
+    composite_pipeline: wgpu::RenderPipeline,
+    composites: HashMap<usize, masked::Composite>,
+    failed_composites: HashMap<usize, masked::Failure>,
     linear: bool,
     shape_pipeline: wgpu::RenderPipeline,
     text_pipeline: wgpu::RenderPipeline,
@@ -286,6 +293,10 @@ impl Renderer {
             &clip_data.buffer,
         );
         Self {
+            format,
+            composite_pipeline: masked::pipeline(device, format),
+            composites: HashMap::new(),
+            failed_composites: HashMap::new(),
             clip_data,
             text_clip_group,
             path_edges,
@@ -324,7 +335,8 @@ impl Renderer {
     /// Gets the canvas ready to draw into a target of `target` physical pixels,
     /// with `scale` physical pixels per logical unit. Text is rasterized by
     /// `text` the first time a string is seen in a style and kept while it
-    /// stays on the canvas.
+    /// stays on the canvas. Mask scopes render to cached offscreen targets here;
+    /// this submits their GPU work before the host encodes its drawing pass.
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -366,9 +378,50 @@ impl Renderer {
         for slot in self.wraps.values_mut() {
             slot.1 = false;
         }
+        let mut mask_count = 0;
+        let mask_problem = masked::validate(canvas, 0, &mut mask_count)
+            .err()
+            .or_else(|| {
+                (mask_count > 0
+                    && (target
+                        .iter()
+                        .any(|d| *d > device.limits().max_texture_dimension_2d)
+                        || u64::from(target[0]) * u64::from(target[1]) * mask_count as u64
+                            > 32_000_000))
+                    .then_some(Error("mask target pixel budget exceeded"))
+            });
+        self.failed_composites
+            .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
+        self.composites
+            .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
         for (index, item) in canvas.items().iter().enumerate() {
             self.draws.push(Vec::new());
+            if let Item::Masked(masked) = item {
+                let result = if let Some(e) = &mask_problem {
+                    Err(Error(e.0))
+                } else {
+                    self.prepare_masked(
+                        device,
+                        queue,
+                        masked,
+                        index,
+                        target,
+                        scale,
+                        text,
+                        &mut report,
+                    )
+                };
+                if let Err(e) = result {
+                    self.composites.remove(&index);
+                    self.problems.push(Problem {
+                        item: index,
+                        reason: e.0,
+                    });
+                }
+                continue;
+            }
             let clips = match item {
+                Item::Masked(_) => unreachable!(),
                 Item::Shape(s) => &s.clips,
                 Item::Text(t) => &t.clips,
             };
@@ -384,6 +437,7 @@ impl Renderer {
                 }
             };
             match item {
+                Item::Masked(_) => unreachable!(),
                 Item::Shape(shape) => {
                     if let Some(reason) = shape.problem() {
                         self.problems.push(Problem {
@@ -967,6 +1021,7 @@ impl Renderer {
             .enumerate()
             .flat_map(|(item, draws)| {
                 draws.iter().map(move |d| match d {
+                    Draw::Composite(_, id) => [item as u64, 4, *id, 0],
                     Draw::Shapes(r) => [item as u64, 1, u64::from(r.start), u64::from(r.end)],
                     Draw::Text(instance, _, id) => [item as u64, 2, u64::from(*instance), *id],
                     Draw::ShadowedText(instance, _, id, _) => {
@@ -1209,6 +1264,12 @@ impl Renderer {
         };
         for draw in self.draws[items.start.min(end)..end].iter().flatten() {
             match draw {
+                Draw::Composite(group, _) => {
+                    flush(pass, &mut run);
+                    pass.set_pipeline(&self.composite_pipeline);
+                    pass.set_bind_group(0, group, &[]);
+                    pass.draw(0..3, 0..1);
+                }
                 // Instances of consecutive shapes are contiguous.
                 Draw::Shapes(range) => match &mut run {
                     Some(open) if open.end == range.start => open.end = range.end,

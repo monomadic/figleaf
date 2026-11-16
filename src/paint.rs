@@ -1057,6 +1057,7 @@ impl Text {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
+    Masked(crate::Masked),
     Shape(Shape),
     Text(Text),
 }
@@ -1081,6 +1082,12 @@ impl Canvas {
     }
     pub fn text(&mut self, text: Text) -> &mut Self {
         self.items.push(Item::Text(text));
+        self
+    }
+    /// Composite the content once through this mask. The mask itself is not painted.
+    pub fn masked(&mut self, mask: crate::Mask, content: Canvas) -> &mut Self {
+        self.items
+            .push(Item::Masked(crate::Masked { mask, content }));
         self
     }
     pub fn items(&self) -> &[Item] {

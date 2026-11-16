@@ -69,7 +69,7 @@ Rust output; do not merely remove an exporter error.
    Generated Rust reviewed beside Figma ([comparison](docs/clipping-compare.png),
    mean 1.01/255 at 2×); the circular clip also rendered through the path API.
    Holes, region unions, repeated clips, invalid inputs and unchanged uploads
-   have synthetic tests. Resource limits hard-error; Figma masks remain task 9.
+   have synthetic tests. Resource limits hard-error; mask compositing is covered by task 9.
 8. **Corner smoothing — done 2026-11-17 (resolved paths).** Smoothed rectangles,
    frames and rounded paths export Figma contours for fills, individual borders
    and child clips. Vector drop/inner shadows use the existing approximate blur
@@ -78,9 +78,14 @@ Rust output; do not merely remove an exporter error.
    ([comparison](docs/smoothing-compare.png), mean 0.78/255 at 2×); shadow edges
    still differ. Missing contours hard-error. Synthetic tests cover holes,
    transforms, invalid input and unchanged uploads.
-9. **Masks.** Geometric/vector masks first, then alpha and luminance masks with
-   correct sibling scope and nested intersections. Keep compositing in the
-   paint/render layer; do not introduce a scene or widget runtime.
+9. **Masks — done 2026-11-17.** Scoped vector, alpha and luminance masks composite
+   content once, with sibling boundaries and nested intersections in plugin output.
+   Cached offscreen rendering preserves the host render-pass API and zero uploads
+   on unchanged canvases. Mask-layer opacity, supported paints/shadows/text and
+   transformed geometry work; vector text/nested-mask sources, images and blurs
+   remain hard errors. Generated Rust reviewed beside Figma
+   ([comparison](docs/masks-compare.png), mean 0.20/255 at 2×). Synthetic tests
+   cover holes, stroke-only masks, nesting, text, invalid input and caching.
 10. **Variable-width and brush strokes.** Represent supported profiles/brush
     geometry explicitly, including transformed outlines. Keep unsupported brush
     types as hard errors rather than silently treating them as constant-width

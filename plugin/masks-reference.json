@@ -1,0 +1,2816 @@
+{
+  "id": "374:242",
+  "name": "Temporary figleaf masks reference",
+  "type": "FRAME",
+  "width": 720,
+  "height": 240,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      2400
+    ],
+    [
+      0,
+      1,
+      500
+    ]
+  ],
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "isMask": false,
+  "maskType": "ALPHA",
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeMiterLimit": 4,
+  "dashPattern": [],
+  "cornerRadius": 0,
+  "cornerSmoothing": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "strokeTopWeight": 1,
+  "strokeRightWeight": 1,
+  "strokeBottomWeight": 1,
+  "strokeLeftWeight": 1,
+  "clipsContent": false,
+  "fillGeometry": [
+    {
+      "windingRule": "NONZERO",
+      "data": "M0 0 L720 0 L720 240 L0 240 L0 0 Z"
+    }
+  ],
+  "strokeGeometry": [],
+  "children": [
+    {
+      "id": "374:243",
+      "name": "Vector alpha ignored",
+      "type": "FRAME",
+      "width": 110,
+      "height": 200,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          10
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 200 L0 200 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "374:244",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 90,
+          "height": 120,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              1,
+              5
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.25,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "VECTOR",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 0.5,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.5,
+                "g": 0.5,
+                "b": 0.5
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M90 60 C90 93.1371 69.8528 120 45 120 C20.1472 120 0 93.1371 0 60 C0 26.8629 20.1472 0 45 0 C69.8528 0 90 26.8629 90 60 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:245",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              15
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:246",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              25
+            ],
+            [
+              0,
+              1,
+              55
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.4000000059604645,
+                "b": 0.8999999761581421
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "374:247",
+      "name": "Alpha overlap",
+      "type": "FRAME",
+      "width": 110,
+      "height": 200,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          130
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 200 L0 200 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "374:248",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 90,
+          "height": 120,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              1,
+              5
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 0.5,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.5,
+                "g": 0.5,
+                "b": 0.5
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M90 60 C90 93.1371 69.8528 120 45 120 C20.1472 120 0 93.1371 0 60 C0 26.8629 20.1472 0 45 0 C69.8528 0 90 26.8629 90 60 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:249",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              15
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:250",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              25
+            ],
+            [
+              0,
+              1,
+              55
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.4000000059604645,
+                "b": 0.8999999761581421
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "374:251",
+      "name": "Luminance gray",
+      "type": "FRAME",
+      "width": 110,
+      "height": 200,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          250
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 200 L0 200 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "374:252",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 90,
+          "height": 120,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              1,
+              5
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.5,
+                "g": 0.5,
+                "b": 0.5
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M90 60 C90 93.1371 69.8528 120 45 120 C20.1472 120 0 93.1371 0 60 C0 26.8629 20.1472 0 45 0 C69.8528 0 90 26.8629 90 60 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:253",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              15
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:254",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              25
+            ],
+            [
+              0,
+              1,
+              55
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.4000000059604645,
+                "b": 0.8999999761581421
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "374:255",
+      "name": "Luminance red",
+      "type": "FRAME",
+      "width": 110,
+      "height": 200,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          370
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 200 L0 200 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "374:256",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 90,
+          "height": 120,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              1,
+              5
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M90 60 C90 93.1371 69.8528 120 45 120 C20.1472 120 0 93.1371 0 60 C0 26.8629 20.1472 0 45 0 C69.8528 0 90 26.8629 90 60 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:257",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              15
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:258",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              25
+            ],
+            [
+              0,
+              1,
+              55
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.4000000059604645,
+                "b": 0.8999999761581421
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "374:259",
+      "name": "Gradient alpha",
+      "type": "FRAME",
+      "width": 110,
+      "height": 200,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          490
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 200 L0 200 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "374:260",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 90,
+          "height": 120,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              1,
+              5
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "GRADIENT_LINEAR",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "gradientStops": [
+                {
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 0
+                  },
+                  "position": 0,
+                  "boundVariables": {}
+                },
+                {
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 1
+                  },
+                  "position": 1,
+                  "boundVariables": {}
+                }
+              ],
+              "gradientTransform": [
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ]
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M90 60 C90 93.1371 69.8528 120 45 120 C20.1472 120 0 93.1371 0 60 C0 26.8629 20.1472 0 45 0 C69.8528 0 90 26.8629 90 60 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:261",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              15
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:262",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 75,
+          "height": 95,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              25
+            ],
+            [
+              0,
+              1,
+              55
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.4000000059604645,
+                "b": 0.8999999761581421
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:252",
+          "name": "Clip breaks scope",
+          "type": "FRAME",
+          "width": 20,
+          "height": 20,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              80
+            ],
+            [
+              0,
+              1,
+              130
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "clipsContent": true,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L20 0 L20 20 L0 20 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": [],
+          "children": []
+        },
+        {
+          "id": "375:253",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 20,
+          "height": 20,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              55
+            ],
+            [
+              0,
+              1,
+              130
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L20 0 L20 20 L0 20 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "374:263",
+      "name": "Nested mask",
+      "type": "FRAME",
+      "width": 110,
+      "height": 200,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          610
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 200 L0 200 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "374:264",
+          "name": "Ellipse",
+          "type": "ELLIPSE",
+          "width": 90,
+          "height": 120,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              1,
+              5
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.5,
+                "g": 0.5,
+                "b": 0.5
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M90 60 C90 93.1371 69.8528 120 45 120 C20.1472 120 0 93.1371 0 60 C0 26.8629 20.1472 0 45 0 C69.8528 0 90 26.8629 90 60 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "374:265",
+          "name": "Frame",
+          "type": "FRAME",
+          "width": 110,
+          "height": 180,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "clipsContent": false,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L110 0 L110 180 L0 180 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": [],
+          "children": [
+            {
+              "id": "374:266",
+              "name": "Rectangle",
+              "type": "RECTANGLE",
+              "width": 60,
+              "height": 140,
+              "relativeTransform": [
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "isMask": true,
+              "maskType": "ALPHA",
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 0.5,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "strokeWeight": 1,
+              "strokeAlign": "INSIDE",
+              "strokeJoin": "MITER",
+              "strokeCap": "NONE",
+              "strokeMiterLimit": 4,
+              "dashPattern": [],
+              "cornerRadius": 0,
+              "cornerSmoothing": 0,
+              "topLeftRadius": 0,
+              "topRightRadius": 0,
+              "bottomRightRadius": 0,
+              "bottomLeftRadius": 0,
+              "strokeTopWeight": 1,
+              "strokeRightWeight": 1,
+              "strokeBottomWeight": 1,
+              "strokeLeftWeight": 1,
+              "fillGeometry": [
+                {
+                  "windingRule": "NONZERO",
+                  "data": "M0 0 L60 0 L60 140 L0 140 L0 0 Z"
+                }
+              ],
+              "strokeGeometry": []
+            },
+            {
+              "id": "374:267",
+              "name": "Rectangle",
+              "type": "RECTANGLE",
+              "width": 75,
+              "height": 95,
+              "relativeTransform": [
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  15
+                ]
+              ],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "isMask": false,
+              "maskType": "ALPHA",
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 1,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 0.8999999761581421,
+                    "g": 0.15000000596046448,
+                    "b": 0.30000001192092896
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "strokeWeight": 1,
+              "strokeAlign": "INSIDE",
+              "strokeJoin": "MITER",
+              "strokeCap": "NONE",
+              "strokeMiterLimit": 4,
+              "dashPattern": [],
+              "cornerRadius": 0,
+              "cornerSmoothing": 0,
+              "topLeftRadius": 0,
+              "topRightRadius": 0,
+              "bottomRightRadius": 0,
+              "bottomLeftRadius": 0,
+              "strokeTopWeight": 1,
+              "strokeRightWeight": 1,
+              "strokeBottomWeight": 1,
+              "strokeLeftWeight": 1,
+              "fillGeometry": [
+                {
+                  "windingRule": "NONZERO",
+                  "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+                }
+              ],
+              "strokeGeometry": []
+            },
+            {
+              "id": "374:268",
+              "name": "Rectangle",
+              "type": "RECTANGLE",
+              "width": 75,
+              "height": 95,
+              "relativeTransform": [
+                [
+                  1,
+                  0,
+                  25
+                ],
+                [
+                  0,
+                  1,
+                  55
+                ]
+              ],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "isMask": false,
+              "maskType": "ALPHA",
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 1,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 0.10000000149011612,
+                    "g": 0.4000000059604645,
+                    "b": 0.8999999761581421
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "strokeWeight": 1,
+              "strokeAlign": "INSIDE",
+              "strokeJoin": "MITER",
+              "strokeCap": "NONE",
+              "strokeMiterLimit": 4,
+              "dashPattern": [],
+              "cornerRadius": 0,
+              "cornerSmoothing": 0,
+              "topLeftRadius": 0,
+              "topRightRadius": 0,
+              "bottomRightRadius": 0,
+              "bottomLeftRadius": 0,
+              "strokeTopWeight": 1,
+              "strokeRightWeight": 1,
+              "strokeBottomWeight": 1,
+              "strokeLeftWeight": 1,
+              "fillGeometry": [
+                {
+                  "windingRule": "NONZERO",
+                  "data": "M0 0 L75 0 L75 95 L0 95 L0 0 Z"
+                }
+              ],
+              "strokeGeometry": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "378:243",
+      "name": "Luminance probe",
+      "type": "FRAME",
+      "width": 100,
+      "height": 30,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          10
+        ],
+        [
+          0,
+          1,
+          180
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "375:242",
+          "name": "Lower probe mask",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 15,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 15,
+          "topRightRadius": 15,
+          "bottomRightRadius": 15,
+          "bottomLeftRadius": 15,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 15 C0 6.71573 6.71573 0 15 0 L85 0 C93.2843 0 100 6.71573 100 15 L100 15 C100 23.2843 93.2843 30 85 30 L15 30 C6.71573 30 0 23.2843 0 15 L0 15 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:243",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "378:244",
+      "name": "Luminance probe",
+      "type": "FRAME",
+      "width": 100,
+      "height": 30,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          130
+        ],
+        [
+          0,
+          1,
+          180
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "375:244",
+          "name": "Lower probe mask",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 15,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 15,
+          "topRightRadius": 15,
+          "bottomRightRadius": 15,
+          "bottomLeftRadius": 15,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 15 C0 6.71573 6.71573 0 15 0 L85 0 C93.2843 0 100 6.71573 100 15 L100 15 C100 23.2843 93.2843 30 85 30 L15 30 C6.71573 30 0 23.2843 0 15 L0 15 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:245",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "378:245",
+      "name": "Luminance probe",
+      "type": "FRAME",
+      "width": 100,
+      "height": 30,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          250
+        ],
+        [
+          0,
+          1,
+          180
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "375:246",
+          "name": "Lower probe mask",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 15,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 15,
+          "topRightRadius": 15,
+          "bottomRightRadius": 15,
+          "bottomLeftRadius": 15,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 15 C0 6.71573 6.71573 0 15 0 L85 0 C93.2843 0 100 6.71573 100 15 L100 15 C100 23.2843 93.2843 30 85 30 L15 30 C6.71573 30 0 23.2843 0 15 L0 15 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:247",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "378:246",
+      "name": "Luminance probe",
+      "type": "FRAME",
+      "width": 100,
+      "height": 30,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          370
+        ],
+        [
+          0,
+          1,
+          180
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "375:248",
+          "name": "Lower probe mask",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "VECTOR",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 0,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 15,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 15,
+          "topRightRadius": 15,
+          "bottomRightRadius": 15,
+          "bottomLeftRadius": 15,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 15 C0 6.71573 6.71573 0 15 0 L85 0 C93.2843 0 100 6.71573 100 15 L100 15 C100 23.2843 93.2843 30 85 30 L15 30 C6.71573 30 0 23.2843 0 15 L0 15 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:249",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "378:247",
+      "name": "Luminance probe",
+      "type": "FRAME",
+      "width": 100,
+      "height": 30,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          490
+        ],
+        [
+          0,
+          1,
+          180
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "375:250",
+          "name": "Lower probe mask",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 15,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 15,
+          "topRightRadius": 15,
+          "bottomRightRadius": 15,
+          "bottomLeftRadius": 15,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 15 C0 6.71573 6.71573 0 15 0 L85 0 C93.2843 0 100 6.71573 100 15 L100 15 C100 23.2843 93.2843 30 85 30 L15 30 C6.71573 30 0 23.2843 0 15 L0 15 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:251",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    },
+    {
+      "id": "378:248",
+      "name": "Luminance probe",
+      "type": "FRAME",
+      "width": 100,
+      "height": 30,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          610
+        ],
+        [
+          0,
+          1,
+          180
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "isMask": false,
+      "maskType": "ALPHA",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "clipsContent": false,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [],
+      "children": [
+        {
+          "id": "375:254",
+          "name": "Lower probe mask",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": true,
+          "maskType": "LUMINANCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 15,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 15,
+          "topRightRadius": 15,
+          "bottomRightRadius": 15,
+          "bottomLeftRadius": 15,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 15 C0 6.71573 6.71573 0 15 0 L85 0 C93.2843 0 100 6.71573 100 15 L100 15 C100 23.2843 93.2843 30 85 30 L15 30 C6.71573 30 0 23.2843 0 15 L0 15 Z"
+            }
+          ],
+          "strokeGeometry": []
+        },
+        {
+          "id": "375:255",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 100,
+          "height": 30,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "isMask": false,
+          "maskType": "ALPHA",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.15000000596046448,
+                "b": 0.30000001192092896
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "cornerRadius": 0,
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "fillGeometry": [
+            {
+              "windingRule": "NONZERO",
+              "data": "M0 0 L100 0 L100 30 L0 30 L0 0 Z"
+            }
+          ],
+          "strokeGeometry": []
+        }
+      ]
+    }
+  ]
+}

@@ -121,7 +121,7 @@ independent transforms and are intersected without replacing any ancestor.
 `Clip::paths(paths)` supports arbitrary vector regions and winding-rule holes;
 regions union within a clip, while separate clips intersect. An empty path clip
 clips everything out. The plugin preserves every frame clip inside the selection;
-Figma masks remain a separate unsupported feature.
+Figma masks use scoped compositing, described below.
 
 Clip stacks apply to fills, strokes, gradients, text and their supported shadows.
 They share coverage samples, so duplicate clips do not compound edge opacity.
@@ -363,3 +363,31 @@ unequal frame borders and clipping, rounded stars/polygons, and shadows at 2×.
 Mean channel difference is 0.78/255; visible shadow-edge differences remain.
 Synthetic tests cover holes, reflected stroke-only shadows, invalid inputs and
 unchanged-canvas uploads.
+
+
+## Masks
+
+`canvas.masked(Mask::new(MaskType::Alpha, mask_canvas), content_canvas)` adds
+one atomic paint operation. `Vector` uses filled/stroked shape outlines,
+ignoring nonzero paint alpha; `Alpha` uses rendered opacity; `Luminance` uses
+perceived brightness in encoded sRGB. `Mask::opacity(value)` applies mask-layer
+opacity. Both canvases use their containing canvas’s coordinates. Nested scopes
+intersect, and overlapping content is composited before masking once.
+
+`prepare` renders changed scopes into two offscreen GPU textures and submits
+that work before the host’s render pass. `draw` and `draw_items` retain their
+existing API; a scope is one item. Unchanged scopes reuse their textures and
+upload nothing. No new dependencies; default builds remain dependency-free.
+Limits: eight nested scopes, 32 scopes and 32 million target pixels summed over
+scopes (two RGBA textures per scope), plus device texture limits. Invalid content
+suppresses its entire scope and appears in `Renderer::problems`.
+
+The plugin preserves sibling scope, mask replacements, clipping-frame breaks,
+and nested intersections. Supported shapes, gradients, shadows and text work
+in alpha/luminance masks. Vector masks containing text or other masks still
+hard-error, as do unsupported image fills, blurs and container effects.
+Run `cargo run --example masks --features wgpu` for the generated fixture:
+[Figma beside figleaf](docs/masks-compare.png), mean 0.20/255 at 2×. The comparison
+covers rounded/elliptical boundaries, primary-color luminance, mask opacity,
+transparent vector paints, gradients, nesting and clipping-frame scope breaks.
+Synthetic tests also cover holes, strokes, reflected geometry, text and caching.

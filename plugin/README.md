@@ -52,7 +52,7 @@ including individual frame borders. The smoothing value is recorded in a comment
 geometry must be re-exported after changing it. Drop/inner path shadows use
 figleaf’s existing approximate blur model. Missing contours are hard errors.
 
-Errors include per-region paint overrides, images, masks, layer opacity, blend modes,
+Errors include per-region paint overrides, images, general layer opacity, blend modes,
 singular transforms, unsupported gradients,
 multiple/gradient strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
@@ -138,4 +138,21 @@ operations. See `examples/booleans.rs` and the [comparison](../docs/booleans-com
 `clipping-reference.json` exercises per-corner and nested transformed frame clips
 on shapes and text; generated code runs in `examples/clipping.rs`. The host API
 also accepts arbitrary `Clip::paths`, with unions and winding-rule holes. This
-does not enable Figma mask nodes, which still hard-error.
+is independent of the scoped mask compositing described below.
+
+
+## Masks
+
+Vector, alpha and luminance masks emit explicit source/content canvases and
+`Canvas::masked` calls. A mask applies to following siblings until the next mask,
+a clipping frame/component or the parent boundary; nested scopes intersect.
+Mask-layer opacity is supported. The source is consumed as a mask, never painted
+again. Alpha/luminance sources can use supported shapes, gradients, shadows and
+text. Vector sources require shapes; text and nested masks in a vector source
+hard-error. Unsupported paints/effects still suppress all output.
+
+Limits are eight nested mask scopes and 32 scopes; the renderer additionally
+bounds offscreen target pixels and reports errors for unsupported content.
+[Generated Rust beside Figma](../docs/masks-compare.png) covers all three types,
+primary-color luminance, zero-alpha vector paints, gradients and scope breaks.
+The plugin still only shows Rust and writes no files.

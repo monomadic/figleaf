@@ -1422,3 +1422,186 @@ fn vector_shadows_preserve_holes_stroke_silhouettes_and_cache() {
     assert_eq!(r.problems().len(), 1);
     assert!(i.rgba.iter().all(|v| *v == 0));
 }
+
+#[test]
+fn masks_composite_siblings_once_nest_and_cache() {
+    use figleaf::{Mask, MaskType};
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut source = Canvas::new();
+    source.shape(Shape::rect(Rect::new(0., 0., 80., 50.)).fill([1., 0., 0., 0.5]));
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 40., 40.)).fill(hex(0xff0000)));
+    content.shape(Shape::rect(Rect::new(20., 0., 40., 40.)).fill(hex(0x0000ff)));
+    let mut c = Canvas::new();
+    c.masked(Mask::new(MaskType::Alpha, source.clone()), content.clone());
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty());
+    assert_eq!(i.pixel(10, 20), [128, 0, 0, 128]);
+    assert_eq!(i.pixel(30, 20), [0, 0, 128, 128]);
+    let r = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(r, figleaf::render::Preparation::default());
+    let mut nested = Canvas::new();
+    nested.masked(Mask::new(MaskType::Alpha, source.clone()), c);
+    let i = gpu.render(&mut renderer, &nested, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(30, 20), [0, 0, 64, 64]);
+    let mut vector = Canvas::new();
+    vector.masked(Mask::new(MaskType::Vector, source.clone()), content.clone());
+    let i = gpu.render(&mut renderer, &vector, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(30, 20), BLUE);
+    let mut luminance = Canvas::new();
+    luminance.masked(Mask::new(MaskType::Luminance, source).opacity(0.5), content);
+    let i = gpu.render(
+        &mut renderer,
+        &luminance,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut NoText,
+    );
+    assert!((i.pixel(30, 20)[3] as i32 - 35).abs() <= 1);
+    assert_eq!(i.pixel(90, 20), CLEAR);
+    let r = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &luminance,
+            [100, 60],
+            1.,
+            &mut NoText,
+        )
+        .unwrap();
+    assert!(!r.changed && r.uploaded_bytes == 0 && r.textures_created == 0);
+    let r = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &luminance,
+            [100, 60],
+            2.,
+            &mut NoText,
+        )
+        .unwrap();
+    assert!(r.changed && r.textures_created == 2);
+}
+
+#[test]
+fn masks_fail_closed_and_vector_masks_keep_holes_and_strokes() {
+    use figleaf::{Mask, MaskType, Transform, VectorPath, WindingRule};
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut source = Canvas::new();
+    let path = VectorPath::new(WindingRule::EvenOdd)
+        .move_to([0., 0.])
+        .line_to([40., 0.])
+        .line_to([40., 40.])
+        .line_to([0., 40.])
+        .close()
+        .move_to([10., 10.])
+        .line_to([30., 10.])
+        .line_to([30., 30.])
+        .line_to([10., 30.])
+        .close();
+    source.shape(
+        Shape::vector(Rect::new(0., 0., 40., 40.), vec![path])
+            .fill([1., 0., 0., 0.1])
+            .transform(Transform::new([[-1., 0., 50.], [0., 1., 10.]])),
+    );
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    let mut c = Canvas::new();
+    c.masked(Mask::new(MaskType::Vector, source.clone()), content.clone());
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(15, 15), RED);
+    assert_eq!(i.pixel(30, 30), CLEAR);
+    source.clear();
+    source.shape(
+        Shape::rect(Rect::new(10., 10., 30., 30.))
+            .fill([1., 0., 0., 0.])
+            .stroke(4., [0., 0., 1., 0.1], StrokeAlign::Inside),
+    );
+    c.clear();
+    c.masked(Mask::new(MaskType::Vector, source.clone()), content.clone());
+    let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(11, 20), RED);
+    assert_eq!(i.pixel(20, 20), CLEAR);
+    for bad in [
+        Mask::new(MaskType::Alpha, source.clone()).opacity(f32::NAN),
+        {
+            let mut invalid = Canvas::new();
+            invalid.shape(Shape::rect(Rect::new(0., 0., f32::NAN, 1.)));
+            Mask::new(MaskType::Alpha, invalid)
+        },
+        {
+            let mut text = Canvas::new();
+            text.text(Text::new("mask", Rect::new(0., 0., 20., 20.)));
+            Mask::new(MaskType::Vector, text)
+        },
+    ] {
+        c.clear();
+        c.masked(bad, content.clone());
+        let i = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(renderer.problems().len(), 1);
+        assert!(i.rgba.iter().all(|v| *v == 0));
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    }
+    let mut nested = content;
+    for _ in 0..9 {
+        let mut c = Canvas::new();
+        c.masked(Mask::new(MaskType::Alpha, source.clone()), nested);
+        nested = c;
+    }
+    let r = renderer
+        .prepare(&gpu.device, &gpu.queue, &nested, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert_eq!(r.textures_created, 0);
+    assert_eq!(
+        renderer.problems()[0].reason,
+        "mask nesting exceeds eight levels"
+    );
+}
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn alpha_text_masks_retain_glyph_coverage_and_clip() {
+    use figleaf::{
+        Clip, Mask, MaskType,
+        text::{FontSource, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let mut source = Canvas::new();
+    source.text(
+        Text::new("HHHH", Rect::new(10., 10., 80., 30.))
+            .size(20., 25.)
+            .color([1.; 4])
+            .intersect_clip(Clip::rect(Rect::new(0., 0., 40., 60.))),
+    );
+    let expected = gpu.render(&mut r, &source, [100, 60], 1., [0.; 4], &mut backend);
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    let mut c = Canvas::new();
+    c.masked(Mask::new(MaskType::Alpha, source), content);
+    let actual = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(r.problems().is_empty());
+    assert!(actual.rgba.as_chunks::<4>().0.iter().any(|p| p[3] > 0));
+    for y in 0..60 {
+        for x in 0..100 {
+            assert_eq!(actual.pixel(x, y)[3], expected.pixel(x, y)[3]);
+        }
+    }
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+}

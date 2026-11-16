@@ -96,3 +96,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "smoothing"
 required-features = ["wgpu"]
+
+[[example]]
+name = "masks"
+required-features = ["wgpu"]

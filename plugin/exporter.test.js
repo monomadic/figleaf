@@ -366,3 +366,34 @@ test('invalid smoothing and unavailable contours block all output',()=>{
   const zero={...n,strokeWeight:0,strokeTopWeight:0,strokeRightWeight:0,strokeBottomWeight:0,strokeLeftWeight:0,strokeGeometry:undefined};
   assert.deepEqual(exportHierarchy([zero]).errors,[]);
 });
+
+test('mask fixture exports scoped canvases and compiles without dependencies',()=>{
+  const result=exportHierarchy([require('./masks-reference.json')]);assert.deepEqual(result.errors,[]);
+  for(const kind of ['Vector','Alpha','Luminance'])assert.match(result.code,new RegExp(`MaskType::${kind}`));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-masks-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);assert!(c.items().iter().any(|i|matches!(i,figleaf::paint::Item::Masked(_))));}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('mask scope ends at a new mask, clipping frame or parent; hidden masks do not alter scope',()=>{
+  const mask=node({id:'m',isMask:true,maskType:'ALPHA',opacity:.5});
+  const r=exportHierarchy([node({type:'FRAME',fills:[],children:[mask,node({id:'a'}),node({id:'hidden',isMask:true,visible:false}),node({id:'b'}),{...mask,id:'m2'},node({id:'c'}),node({id:'clip',type:'FRAME',clipsContent:true}),node({id:'d'})]})]);
+  assert.deepEqual(r.errors,[]);assert.equal((r.code.match(/\.masked\(/g)||[]).length,2);
+  assert.equal((r.code.match(/masked_0.shape\(/g)||[]).length,2);assert.equal((r.code.match(/masked_1.shape\(/g)||[]).length,1);
+  assert.match(r.code,/MaskType::Alpha, mask_0\).opacity\(0.5\)/);
+  for(const patch of [{maskType:'OTHER'},{opacity:NaN},{opacity:2},{effects:[{type:'LAYER_BLUR'}]},{type:'TEXT',maskType:'VECTOR'}]) {
+    const r=exportHierarchy([node({type:'FRAME',children:[{...mask,...patch},node()]})]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+});
+
+test('mask bounds and unsupported vector sources fail before code is published',()=>{
+  const mask=()=>node({isMask:true,maskType:'ALPHA'});
+  const root=node({type:'FRAME',children:Array.from({length:33},mask)});
+  assert.equal(exportHierarchy([root]).code,null);
+  let nested=node();for(let i=0;i<9;i++)nested=node({type:'FRAME',children:[mask(),nested]});
+  assert.equal(exportHierarchy([nested]).code,null);
+  const vector=node({type:'GROUP',isMask:true,maskType:'VECTOR',children:[node({type:'TEXT'})]});
+  assert.equal(exportHierarchy([node({type:'FRAME',children:[vector,node()]})]).code,null);
+});

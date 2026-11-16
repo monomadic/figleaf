@@ -2,6 +2,7 @@
  * Kept independent of the UI so the same validator is exercised by tests. */
 function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map()) {
   const errors = [], lines = [], fonts = [];
+  let maskIndex = 0;
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
   if (selection.length !== 1) return { code: null, errors: [{ path: 'Selection', message: 'Select exactly one hierarchy root.' }] };
@@ -145,7 +146,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved operand binding (${comment(path)}): ${comment(note)}`);
     for (const child of n.children || []) operands(child,path+' / '+child.name,depth+1);
   }
-  function visit(n, path, parentTransform, clip, root = false, depth = 0) {
+  function visit(n, path, parentTransform, clip, root = false, depth = 0, target = 'canvas', asMask = false, maskDepth = 0) {
     if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
     // Invisible layers have no output, including their descendants.
     if (n.visible === false) return;
@@ -158,9 +159,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const boolean = n.type === 'BOOLEAN_OPERATION';
       if (boolean && !['UNION','SUBTRACT','INTERSECT','EXCLUDE'].includes(n.booleanOperation)) reject('Unsupported boolean operation.');
       if (!types.includes(n.type)) reject(`Unsupported node type: ${n.type}.`);
-      if (n.isMask) reject('Masks are unsupported.');
+      if (n.isMask && !asMask) reject('Select the mask’s containing hierarchy, not the mask alone.');
+      if (asMask && !['VECTOR','ALPHA','LUMINANCE'].includes(n.maskType)) reject('Unsupported mask type.');
+      if (maskDepth > 8) reject('Mask nesting exceeds eight levels.');
+      if (asMask && n.maskType==='VECTOR') {
+        const unsupported = (node, root=true) => node.visible !== false && (node.type==='TEXT' || (!root && node.isMask) || (node.children || []).some(c=>unsupported(c,false)));
+        if (unsupported(n)) reject('Vector masks containing text or nested masks require resolved outlines.');
+      }
       if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
-      if (n.opacity !== undefined && n.opacity !== 1) reject('Layer opacity requires compositing and is unsupported. Use paint opacity.');
+      if (!asMask && n.opacity !== undefined && n.opacity !== 1) reject('Layer opacity requires compositing and is unsupported. Use paint opacity.');
       if (n.blendMode && !['NORMAL', 'PASS_THROUGH'].includes(n.blendMode)) reject(`Unsupported layer blend mode: ${n.blendMode}.`);
       const smoothing=n.cornerSmoothing ?? 0;
       if (typeof smoothing!=='number' || !Number.isFinite(smoothing) || smoothing<0 || smoothing>1) reject('Invalid corner smoothing.');
@@ -316,7 +323,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (expression && errors.length === before) {
         for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
         if (smoothed) lines.push(`    // Corner smoothing: ${number(smoothing)} (resolved Figma contours).`);
-        lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    canvas.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
+        lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
         if (radii.some(r=>r<0)) reject('Invalid clip corner radius.');
@@ -328,10 +335,31 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     if (n.type === 'BOOLEAN_OPERATION') for (const child of n.children || []) operands(child,path+' / '+child.name,depth+1);
     let children = n.type === 'BOOLEAN_OPERATION' ? [] : n.children || [];
     if (n.itemReverseZIndex) children = [...children].reverse();
-    for (const child of children) visit(child, path + ' / ' + child.name, world, childClip, false, depth + 1);
+    let active = null;
+    const finishMask = () => {
+      if (!active) return;
+      const {id,kind,opacity} = active;
+      lines.push(`    ${target}.masked(Mask::new(MaskType::${kind}, mask_${id}).opacity(${number(opacity)}), masked_${id});`);
+      active = null;
+    };
+    for (const child of children) {
+      if (child.visible === false) continue;
+      if (child.isMask || child.clipsContent) finishMask();
+      if (child.isMask) {
+        const id=maskIndex++, kind={VECTOR:'Vector',ALPHA:'Alpha',LUMINANCE:'Luminance'}[child.maskType];
+        const opacity=child.opacity ?? 1;
+        if (!Number.isFinite(opacity) || opacity<0 || opacity>1) fail(child,path+' / '+child.name,'Invalid mask opacity.');
+        lines.push(`    let mut mask_${id} = Canvas::new();`);
+        visit(child,path+' / '+child.name,world,childClip,false,depth+1,`mask_${id}`,true,maskDepth+1);
+        lines.push(`    let mut masked_${id} = Canvas::new();`);
+        active={id,kind,opacity};
+      } else visit(child,path+' / '+child.name,world,childClip,false,depth+1,active ? `masked_${active.id}` : target,false,maskDepth+(active?1:0));
+    }
+    finishMask();
   }
   try { visit(selection[0], selection[0].name, identity, null, true); }
   catch (e) { fail(selection[0], selection[0].name, e.message); }
+  if (maskIndex > 32) fail(selection[0],selection[0].name,'Hierarchy exceeds 32 mask scopes.');
   if (errors.length) return { code: null, errors };
   const preamble = [
     '// Generated by figleaf. Current dimensions and resolved values; no responsive layout or interactions.',
@@ -339,7 +367,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };
