@@ -49,6 +49,16 @@ impl Mask {
                 .fills
                 .iter()
                 .filter(|p| match p {
+                    Paint::Image(p) => {
+                        p.opacity > 0.
+                            && p.image
+                                .rgba
+                                .as_chunks::<4>()
+                                .0
+                                .iter()
+                                .any(|pixel| pixel[3] > 0)
+                    }
+                    Paint::Pattern(p) => p.opacity > 0.,
                     Paint::Solid(c) => c[3] > 0.,
                     Paint::Linear(g) | Paint::Gradient(g) => {
                         g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.)
@@ -60,6 +70,16 @@ impl Mask {
                 shape.stroke.is_some_and(|s| s.color[3] > 0.)
             } else {
                 shape.stroke_paints.iter().any(|p| match p {
+                    Paint::Image(p) => {
+                        p.opacity > 0.
+                            && p.image
+                                .rgba
+                                .as_chunks::<4>()
+                                .0
+                                .iter()
+                                .any(|pixel| pixel[3] > 0)
+                    }
+                    Paint::Pattern(p) => p.opacity > 0.,
                     Paint::Solid(c) => c[3] > 0.,
                     Paint::Linear(g) | Paint::Gradient(g) => {
                         g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.)

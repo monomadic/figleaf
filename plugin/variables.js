@@ -1,7 +1,7 @@
 /* Read-only verification of bindings. Figma's node/paint getters already expose
  * values in the consumer's mode; resolveForConsumer verifies that they are not
  * stale fallback values from an unavailable variable. Never assign to the node. */
-async function exportWithVariables(selection, colorProfile, variables) {
+async function exportWithVariables(selection, colorProfile, variables, resources = {}) {
   const verified = new Map(), lookups = new Map(), errors = [];
   let count = 0;
   async function visit(node, path, depth) {
@@ -58,8 +58,9 @@ async function exportWithVariables(selection, colorProfile, variables) {
   }
   try {
     if (selection.length === 1) await visit(selection[0], selection[0].name, 0);
+    for (const source of resources.patterns?.values() || []) await visit(source,`Pattern source / ${source.name}`,0);
   } catch (e) { errors.push({path:'Selection',message:e.message}); }
   if (errors.length) return {code:null,errors};
-  return exportHierarchy(selection, colorProfile, verified);
+  return exportHierarchy(selection, colorProfile, verified, resources);
 }
 if (typeof module !== 'undefined') module.exports = { exportWithVariables };

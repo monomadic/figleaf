@@ -56,6 +56,17 @@ pub(super) fn validate(canvas: &Canvas, depth: usize, count: &mut usize) -> Resu
         return Err(Error("mask nesting exceeds eight levels"));
     }
     for item in canvas.items() {
+        if let Item::Shape(s) = item {
+            for paint in s.fills.iter().chain(&s.stroke_paints) {
+                if let crate::Paint::Pattern(p) = paint {
+                    *count += 1;
+                    if *count > 32 {
+                        return Err(Error("canvas exceeds 32 mask/pattern scopes"));
+                    }
+                    validate(&p.source, depth + 1, count)?;
+                }
+            }
+        }
         if let Item::Masked(m) = item {
             *count += 1;
             if *count > 32 {

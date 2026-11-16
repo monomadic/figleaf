@@ -210,6 +210,8 @@ pub enum Paint {
     Solid(Color),
     Linear(LinearGradient),
     Gradient(Gradient),
+    Image(crate::ImagePaint),
+    Pattern(crate::Pattern),
 }
 
 impl Paint {
@@ -400,6 +402,10 @@ impl Shape {
         self
     }
     /// Adds a solid fill over any the shape already has.
+    pub fn paint(mut self, paint: Paint) -> Self {
+        self.fills.push(paint);
+        self
+    }
     pub fn fill(mut self, color: Color) -> Self {
         self.fills.push(Paint::Solid(color));
         self
@@ -620,6 +626,16 @@ impl Shape {
         let mut bad_gradient = false;
         for (index, fill) in self.fills.iter().chain(&self.stroke_paints).enumerate() {
             match fill {
+                Paint::Image(p) => {
+                    if let Err(e) = crate::image::TexturePaint::Image(p).mapping(self.rect) {
+                        return Some(e.0);
+                    }
+                }
+                Paint::Pattern(p) => {
+                    if let Err(e) = crate::image::TexturePaint::Pattern(p).mapping(self.rect) {
+                        return Some(e.0);
+                    }
+                }
                 Paint::Solid(color) => numbers.extend(color),
                 Paint::Linear(g) | Paint::Gradient(g) => {
                     numbers.push(g.opacity);
@@ -769,6 +785,7 @@ impl Shape {
                 color[3] * self.opacity.clamp(0., 1.),
             ],
             ramp: None,
+            texture: None,
             sigma,
             clip,
         };
@@ -817,6 +834,7 @@ impl Shape {
                 s.color[3] >= 1.
             } else {
                 self.stroke_paints.iter().any(|p| match p {
+                    Paint::Image(_) | Paint::Pattern(_) => false,
                     Paint::Solid(c) => c[3] >= 1.,
                     Paint::Linear(g) | Paint::Gradient(g) => {
                         g.opacity >= 1. && g.stops.iter().all(|s| s.color[3] >= 1.)
@@ -831,6 +849,14 @@ impl Shape {
         });
         for fill in &self.fills {
             match fill {
+                Paint::Image(p) => out.push(Layer {
+                    texture: Some(crate::image::TexturePaint::Image(p)),
+                    ..layer(Mode::Band, under, None, [1., 1., 1., p.opacity], 0.)
+                }),
+                Paint::Pattern(p) => out.push(Layer {
+                    texture: Some(crate::image::TexturePaint::Pattern(p)),
+                    ..layer(Mode::Band, under, None, [1., 1., 1., p.opacity], 0.)
+                }),
                 Paint::Solid(color) => out.push(layer(Mode::Band, under, None, *color, 0.)),
                 Paint::Linear(g) | Paint::Gradient(g) => {
                     // The gradient is placed on the shape's own box, whatever
@@ -875,7 +901,14 @@ impl Shape {
                 out.push(stroke_layer);
             } else {
                 for paint in &self.stroke_paints {
+                    let texture = match paint {
+                        Paint::Image(p) => Some(crate::image::TexturePaint::Image(p)),
+                        Paint::Pattern(p) => Some(crate::image::TexturePaint::Pattern(p)),
+                        _ => None,
+                    };
                     let (color, ramp) = match paint {
+                        Paint::Image(p) => ([1., 1., 1., p.opacity], None),
+                        Paint::Pattern(p) => ([1., 1., 1., p.opacity], None),
                         Paint::Solid(c) => (*c, None),
                         Paint::Linear(g) | Paint::Gradient(g) => {
                             ([1., 1., 1., g.opacity.clamp(0., 1.)], g.ramp(self.rect))
@@ -889,6 +922,7 @@ impl Shape {
                             color[3] * self.opacity.clamp(0., 1.),
                         ],
                         ramp,
+                        texture,
                         ..stroke_layer
                     });
                 }
@@ -981,6 +1015,7 @@ pub struct Layer<'a> {
     /// only this alpha is used, as an opacity over it.
     pub color: Color,
     pub ramp: Option<Ramp>,
+    pub texture: Option<crate::image::TexturePaint<'a>>,
     /// Gaussian standard deviation: half of Figma's blur value.
     pub sigma: f32,
     pub clip: Option<Outline>,

@@ -218,9 +218,11 @@ test('async variable lookup cannot publish after selection changes or a newer re
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'dist/code.js'),'utf8'),{figma});
   const variable={name:'Width',resolveForConsumer:()=>({resolvedType:'FLOAT',value:100})};
   const first=figma.ui.onmessage({type:'generate'});
+  await new Promise(setImmediate);
   events.selectionchange(); pending.shift()(variable); await first;
   assert.equal(messages.at(-1).type,'invalidated');
   const older=figma.ui.onmessage({type:'generate'}), newer=figma.ui.onmessage({type:'generate'});
+  await new Promise(setImmediate);
   pending.pop()(variable); await newer;
   const length=messages.length;
   pending.shift()(variable); await older;
@@ -470,4 +472,52 @@ test('nonlinear gradients reject malformed transforms and oversized stop lists',
     assert.equal(exportHierarchy([node({height:0,fills:[paint]})]).code,null);
     assert.deepEqual(exportHierarchy([node({fills:[{...paint,gradientStops:[paint.gradientStops[0]]}]})]).errors,[]);
   }
+});
+
+function imageResources() {
+  const f=require('./images-reference.json');
+  return {images:new Map([[f.root.children[0].fills[0].imageHash,require('./image-pixels.json')]]),patterns:new Map([[f.source.id,f.source]])};
+}
+test('image and native pattern output compiles and embeds each image once',()=>{
+  const f=require('./images-reference.json'), result=exportHierarchy([f.root],'SRGB',new Map(),imageResources());
+  assert.deepEqual(result.errors,[]);assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/images.rs'),'utf8'));
+  assert.equal((result.code.match(/let image_0 =/g)||[]).length,1);
+  assert.match(result.code,/ImageScaleMode::Crop/);assert.match(result.code,/TileType::VerticalHexagonal/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-images-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for i in c.items(){if let figleaf::paint::Item::Shape(s)=i{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('missing images, adjustments, invalid placement and pattern sources fail closed',()=>{
+  const f=require('./images-reference.json'), image=f.root.children[0],pattern=f.root.children[8];
+  assert.equal(exportHierarchy([image]).code,null);
+  for(const patch of [{filters:{contrast:.2}},{rotation:45},{opacity:-1},{scaleMode:'CROP',imageTransform:[[0,0,0],[0,0,0]]},{scaleMode:'TILE',scalingFactor:0},{scaleMode:'UNKNOWN'}])assert.equal(exportHierarchy([{...image,fills:[{...image.fills[0],...patch}]}],'SRGB',new Map(),imageResources()).code,null);
+  for(const patch of [{tileType:'UNKNOWN'},{spacing:{x:-.1,y:0}},{horizontalAlignment:'UNKNOWN'},{verticalAlignment:'UNKNOWN'},{sourceNodeId:'missing'}])assert.equal(exportHierarchy([{...pattern,fills:[{...pattern.fills[0],...patch}]}],'SRGB',new Map(),imageResources()).code,null);
+  for(const source of [{...f.source,visible:false},{...f.source,width:0},{...f.source,relativeTransform:[[0,-1,0],[1,0,0]]},{...f.source,children:[node({type:'UNKNOWN'})]},{...f.source,fills:pattern.fills}]) {
+    const resources=imageResources();resources.patterns.set(f.source.id,source);assert.equal(exportHierarchy([pattern],'SRGB',new Map(),resources).code,null);
+  }
+});
+const assetContext={exportWithVariables,module:{exports:{}}};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'assets.js'),'utf8'),assetContext);
+const {exportWithAssets}=assetContext.module.exports;
+test('asset resolution reads and decodes once, rejects missing assets and cycles',async()=>{
+  const f=require('./images-reference.json');let reads=0,decodes=0;
+  const api={getImageByHash:()=>({getSizeAsync:async()=>({width:40,height:20}),getBytesAsync:async()=>{reads++;return new Uint8Array([137,80,78,71,13,10,26,10]);}}),getNodeByIdAsync:async id=>id===f.source.id?f.source:null};
+  const decode=async()=>{decodes++;return require('./image-pixels.json');};
+  const result=await exportWithAssets([f.root],'SRGB',api,decode);assert.equal(result.errors.length,0);assert.equal(reads,1);assert.equal(decodes,1);
+  for(const badApi of [{...api,getImageByHash:()=>null},{...api,getNodeByIdAsync:async()=>null},{...api,getNodeByIdAsync:async()=>({...f.source,fills:f.root.children[8].fills})}])assert.equal((await exportWithAssets([f.root],'SRGB',badApi,decode)).code,null);
+  assert.equal((await exportWithAssets([f.root],'SRGB',api,async()=>{throw Error('bad image');})).code,null);
+  assert.equal((await exportWithAssets([f.root],'SRGB',api,async()=>({width:1,height:1,rgba:[0,0,0,0]}))).code,null);
+});
+test('image decoding replies cannot publish stale output',async()=>{
+  const f=require('./images-reference.json'),events={},messages=[];
+  const page={selection:[f.root.children[0]],on:()=>{},off:()=>{}};
+  const figma={root:{documentColorProfile:'SRGB'},currentPage:page,showUI:()=>{},on:(key,fn)=>events[key]=fn,ui:{postMessage:m=>messages.push(m)},getImageByHash:()=>({getSizeAsync:async()=>({width:40,height:20}),getBytesAsync:async()=>new Uint8Array([137,80,78,71,13,10,26,10])})};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'dist/code.js'),'utf8'),{figma});
+  const request=figma.ui.onmessage({type:'generate'});await new Promise(setImmediate);
+  const decode=messages.find(m=>m.type==='decode-image');assert.ok(decode);
+  events.selectionchange();await figma.ui.onmessage({type:'decoded-image',id:decode.id,image:require('./image-pixels.json')});await request;
+  assert.equal(messages.at(-1).type,'invalidated');
 });

@@ -112,3 +112,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "gradients"
 required-features = ["wgpu"]
+
+[[example]]
+name = "images"
+required-features = ["wgpu"]

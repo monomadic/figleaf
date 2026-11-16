@@ -20,6 +20,7 @@ use crate::{
 };
 use std::{collections::HashMap, ops::Range};
 
+mod images;
 mod masked;
 
 const SHAPE_STRIDE: usize = 256;
@@ -94,6 +95,7 @@ struct MaskSlot {
 enum Draw {
     Composite(wgpu::BindGroup, u64),
     Shapes(Range<u32>),
+    Image(Range<u32>, wgpu::BindGroup, u64),
     Text(u32, wgpu::BindGroup, u64),
     /// Text followed by its inner shadow, which is the next instance.
     ShadowedText(u32, wgpu::BindGroup, u64, wgpu::BindGroup),
@@ -157,6 +159,9 @@ pub struct Renderer {
     failed_composites: HashMap<usize, masked::Failure>,
     linear: bool,
     shape_pipeline: wgpu::RenderPipeline,
+    images: Vec<images::Slot>,
+    failed_images: HashMap<String, (&'static str, bool)>,
+    empty_image: wgpu::BindGroup,
     text_pipeline: wgpu::RenderPipeline,
     view: wgpu::Buffer,
     view_group: wgpu::BindGroup,
@@ -256,6 +261,11 @@ impl Renderer {
             SHAPE_STRIDE,
             &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4,9=>Float32x4,10=>Float32x4,11=>Float32x4,12=>Uint32x4,13=>Uint32x4,14=>Float32x4,15=>Float32x4],
         );
+        let empty_image = images::group(
+            device,
+            &shape_pipeline,
+            &images::texture(device, [1, 1]).create_view(&Default::default()),
+        );
         let text_pipeline = pipeline(
             device,
             "figleaf text",
@@ -308,6 +318,9 @@ impl Renderer {
             path_group,
             linear: format.is_srgb(),
             shape_pipeline,
+            images: Vec::new(),
+            failed_images: HashMap::new(),
+            empty_image,
             text_pipeline,
             view,
             view_group,
@@ -377,6 +390,12 @@ impl Renderer {
         self.transforms.bytes.clear();
         self.draws.clear();
         self.problems.clear();
+        for failure in self.failed_images.values_mut() {
+            failure.1 = false;
+        }
+        for slot in &mut self.images {
+            slot.used = false;
+        }
         for slot in self.masks.values_mut() {
             slot.used = false;
         }
@@ -451,7 +470,20 @@ impl Renderer {
                         });
                         continue;
                     }
-                    let first = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
+                    if let Some(e) = &mask_problem
+                        && shape
+                            .fills
+                            .iter()
+                            .chain(&shape.stroke_paints)
+                            .any(|p| matches!(p, crate::Paint::Pattern(_)))
+                    {
+                        self.problems.push(Problem {
+                            item: index,
+                            reason: e.0,
+                        });
+                        continue;
+                    }
+                    let image_start = self.shapes.bytes.len();
                     let mut layers = Vec::new();
                     shape.layers(&mut layers);
                     let gradient_bytes: usize = layers
@@ -793,52 +825,103 @@ impl Renderer {
                                 });
                                 align + 4. * f32::from(l.shadow_has_fill)
                             } else {
-                                f32::from(u8::from(l.ramp.is_some()))
+                                if l.texture.is_some() {
+                                    2.
+                                } else {
+                                    f32::from(u8::from(l.ramp.is_some()))
+                                }
                             },
                         ]);
                         self.shapes.push(&clip_rect);
                         self.shapes.push(&edges(quad, 1.));
                         self.shapes.push(&clip_radii);
-                        match l.ramp {
-                            Some(ramp) => {
-                                let start = self.gradient_data.bytes.len() / 16;
-                                for (row, metadata) in
-                                    [(ramp.axis, ramp.kind), (ramp.axis_y, ramp.count as f32)]
-                                {
-                                    let [x, y, c] = row;
-                                    let a = x / scale;
-                                    let b = y / scale;
-                                    self.gradient_data.push(&[
-                                        a * inverse.0[0][0] + b * inverse.0[1][0],
-                                        a * inverse.0[0][1] + b * inverse.0[1][1],
-                                        c + a * inverse.0[0][2] + b * inverse.0[1][2],
-                                        metadata,
-                                    ]);
+                        let image = if let Some(paint) = l.texture {
+                            let transform_scale = shape.transform.max_scale();
+                            match self.prepare_image(
+                                device,
+                                queue,
+                                paint,
+                                scale * transform_scale,
+                                text,
+                                &mut report,
+                            ) {
+                                Ok(image) => Some(image),
+                                Err(e) => {
+                                    self.problems.push(Problem {
+                                        item: index,
+                                        reason: e.0,
+                                    });
+                                    self.draws[index].clear();
+                                    self.shapes.bytes.truncate(image_start);
+                                    break;
                                 }
-                                for stop in &ramp.stops[..ramp.count] {
-                                    self.gradient_data.push(&[stop.offset, 0., 0., 0.]);
-                                    self.gradient_data.push(
-                                        &stop
-                                            .color
-                                            .map(|v| ((v * 255.).round() as u8) as f32 / 255.),
-                                    );
-                                }
-                                self.shapes
-                                    .push(&[start as f32, 0., 0., transform_index as f32]);
-                                self.shapes.bytes.extend_from_slice(&[0; 64]);
                             }
-                            None => {
-                                self.shapes.push(&[0., 0., 0., transform_index as f32]);
-                                self.shapes.bytes.extend_from_slice(&[0; 64]);
+                        } else {
+                            None
+                        };
+                        if let Some(paint) = l.texture {
+                            let (map, params) = paint
+                                .mapping(shape.rect)
+                                .expect("validated texture mapping");
+                            for (i, [x, y, c]) in map.0.into_iter().enumerate() {
+                                let a = x / scale;
+                                let b = y / scale;
+                                self.shapes.push(&[
+                                    a * inverse.0[0][0] + b * inverse.0[1][0],
+                                    a * inverse.0[0][1] + b * inverse.0[1][1],
+                                    c + a * inverse.0[0][2] + b * inverse.0[1][2],
+                                    if i == 0 { transform_index as f32 } else { 0. },
+                                ]);
+                            }
+                            self.shapes.push(&params);
+                            self.shapes.bytes.extend_from_slice(&[0; 32]);
+                        } else {
+                            match l.ramp {
+                                Some(ramp) => {
+                                    let start = self.gradient_data.bytes.len() / 16;
+                                    for (row, metadata) in
+                                        [(ramp.axis, ramp.kind), (ramp.axis_y, ramp.count as f32)]
+                                    {
+                                        let [x, y, c] = row;
+                                        let a = x / scale;
+                                        let b = y / scale;
+                                        self.gradient_data.push(&[
+                                            a * inverse.0[0][0] + b * inverse.0[1][0],
+                                            a * inverse.0[0][1] + b * inverse.0[1][1],
+                                            c + a * inverse.0[0][2] + b * inverse.0[1][2],
+                                            metadata,
+                                        ]);
+                                    }
+                                    for stop in &ramp.stops[..ramp.count] {
+                                        self.gradient_data.push(&[stop.offset, 0., 0., 0.]);
+                                        self.gradient_data.push(
+                                            &stop
+                                                .color
+                                                .map(|v| ((v * 255.).round() as u8) as f32 / 255.),
+                                        );
+                                    }
+                                    self.shapes.push(&[
+                                        start as f32,
+                                        0.,
+                                        0.,
+                                        transform_index as f32,
+                                    ]);
+                                    self.shapes.bytes.extend_from_slice(&[0; 64]);
+                                }
+                                None => {
+                                    self.shapes.push(&[0., 0., 0., transform_index as f32]);
+                                    self.shapes.bytes.extend_from_slice(&[0; 64]);
+                                }
                             }
                         }
                         self.shapes.push(&l.a.radii_y.map(|v| v * scale));
                         self.shapes
                             .push(&l.b.map_or([0.; 4], |b| b.radii_y.map(|v| v * scale)));
-                    }
-                    let end = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
-                    if end > first {
-                        self.draws[index].push(Draw::Shapes(first..end));
+                        let end = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
+                        self.draws[index].push(match image {
+                            Some((group, id)) => Draw::Image(end - 1..end, group, id),
+                            None => Draw::Shapes(end - 1..end),
+                        });
                     }
                 }
                 Item::Text(t) => {
@@ -1062,6 +1145,7 @@ impl Renderer {
             .enumerate()
             .flat_map(|(item, draws)| {
                 draws.iter().map(move |d| match d {
+                    Draw::Image(r, _, id) => [item as u64, 5, *id, u64::from(r.start)],
                     Draw::Composite(_, id) => [item as u64, 4, *id, 0],
                     Draw::Shapes(r) => [item as u64, 1, u64::from(r.start), u64::from(r.end)],
                     Draw::Text(instance, _, id) => [item as u64, 2, u64::from(*instance), *id],
@@ -1072,6 +1156,8 @@ impl Renderer {
             })
             .flatten()
             .collect();
+        self.images.retain(|s| s.used);
+        self.failed_images.retain(|_, failure| failure.1);
         self.masks.retain(|_, slot| slot.used);
         self.wraps.retain(|_, slot| slot.1);
 
@@ -1299,7 +1385,7 @@ impl Renderer {
 
     /// Draws only the canvas items in `items`, by index. A host with its own
     /// ordered display list uses this to put its drawing between ours. This
-    /// sets the pipeline, bind groups 0/1 and vertex buffer 0; the host restores
+    /// sets the pipeline, bind groups 0/1/2 and vertex buffer 0; the host restores
     /// its own afterwards. The scissor rectangle is left as the host set it.
     pub fn draw_items(&self, pass: &mut wgpu::RenderPass<'_>, items: Range<usize>) {
         let end = items.end.min(self.draws.len());
@@ -1309,12 +1395,22 @@ impl Renderer {
                 pass.set_pipeline(&self.shape_pipeline);
                 pass.set_bind_group(0, &self.view_group, &[]);
                 pass.set_bind_group(1, &self.path_group, &[]);
+                pass.set_bind_group(2, &self.empty_image, &[]);
                 pass.set_vertex_buffer(0, self.shapes.buffer.slice(..));
                 pass.draw(0..6, range);
             }
         };
         for draw in self.draws[items.start.min(end)..end].iter().flatten() {
             match draw {
+                Draw::Image(range, group, _) => {
+                    flush(pass, &mut run);
+                    pass.set_pipeline(&self.shape_pipeline);
+                    pass.set_bind_group(0, &self.view_group, &[]);
+                    pass.set_bind_group(1, &self.path_group, &[]);
+                    pass.set_bind_group(2, group, &[]);
+                    pass.set_vertex_buffer(0, self.shapes.buffer.slice(..));
+                    pass.draw(0..6, range.clone());
+                }
                 Draw::Composite(group, _) => {
                     flush(pass, &mut run);
                     pass.set_pipeline(&self.composite_pipeline);

@@ -286,7 +286,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 ## Not supported yet
 
-Gradients on text, more than 64 gradient stops, images, blurs, blend modes, flattened layer opacity, multisampled targets, layout
+Gradients on text, more than 64 gradient stops, image adjustments/animation, blurs, blend modes, flattened layer opacity, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
@@ -385,7 +385,7 @@ suppresses its entire scope and appears in `Renderer::problems`.
 The plugin preserves sibling scope, mask replacements, clipping-frame breaks,
 and nested intersections. Supported shapes, gradients, shadows and text work
 in alpha/luminance masks. Vector masks containing text or other masks still
-hard-error, as do unsupported image fills, blurs and container effects.
+hard-error, as do blurs and container effects.
 Run `cargo run --example masks --features wgpu` for the generated fixture:
 [Figma beside figleaf](docs/masks-compare.png), mean 0.20/255 at 2×. The comparison
 covers rounded/elliptical boundaries, primary-color luminance, mask opacity,
@@ -430,7 +430,7 @@ An axis along a zero-height line works; an axis spanning a zero-sized dimension
 is rejected. The plugin uses resolved outlines for gradient/multi-paint LINE
 nodes, preserving Figma’s supplied placement. Native vector paths, resolved
 outlines, individual borders, dashes and masks retain stroke paint stacks.
-Gradients allow 1–64 stops; image/pattern strokes remain hard errors.
+Gradients allow 1–64 stops; image and pattern strokes use the same geometry.
 No new dependencies or shader variants.
 
 `cargo run --example stroke_paints --features wgpu` renders generated Rust
@@ -456,3 +456,31 @@ samples per pixel. Figma dithering is not reproduced.
 [beside Figma](docs/gradients-compare.png): identity and sheared transforms,
 translucent stops, borders and a 64-stop strip. Visually checked at 1×; mean
 channel difference 0.58/255. Synthetic tests cover rejection and upload caching.
+
+## Image and pattern paints
+
+`Image::new([width, height], rgba_bytes)` holds immutable, shared straight-alpha
+sRGB RGBA8 pixels supplied by the host; no decoder or I/O dependency is added.
+Use `.paint(Paint::Image(ImagePaint::new(image).scale_mode(ImageScaleMode::Fit)))`.
+Modes are `Fill` (default), `Fit`, `Crop(Transform)` and `Tile(scaling_factor)`;
+`.rotation(degrees)` accepts quarter turns outside Crop. Crop takes Figma’s
+full image transform. Paint opacity and image alpha are preserved.
+
+`Pattern::new(source_canvas, [width, height])` repeats native figleaf drawing.
+It supports `.scaling_factor(..)`, `.spacing([x, y])` (fractions of tile size),
+`.tile_type(TileType::Rectangular/HorizontalHexagonal/VerticalHexagonal)`,
+horizontal/vertical alignment and opacity. Use `Paint::Pattern(..)` in fills
+or stroke paint stacks. The renderer caches the native source in an offscreen
+tile at the requested drawing scale; no Figma raster fallback is involved.
+
+Images and pattern tiles share shape/path coverage, clips, transforms and masks.
+Unchanged sources upload nothing; invalid sources report problems and suppress
+the whole shape. Limits: 16 million pixels per texture, 32 million active pixels
+per renderer, plus device limits and the existing eight-level/32-scope budget.
+Negative pattern spacing is unsupported.
+
+`cargo run --example images --features wgpu` renders plugin-generated Rust
+[beside Figma](docs/images-compare.png): placement modes, quarter turns, crop
+transparency, rounded clips, image borders and all three pattern layouts. Mean
+channel difference is 2.37/255 at 1×; bilinear image edges are softer than this
+Figma export. Synthetic tests cover errors, placement, staggering and caching.

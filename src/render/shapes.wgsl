@@ -10,6 +10,31 @@ struct Transforms { shape_x:vec4f, shape_y:vec4f, clip_x:vec4f, clip_y:vec4f, cl
 @group(1) @binding(2) var<storage, read> clip_data: array<vec4f>;
 // Each ramp stores two mapping rows (kind/count in w), then offset/color pairs.
 @group(1) @binding(3) var<storage, read> gradients: array<vec4f>;
+@group(2) @binding(0) var paint_image: texture_2d<f32>;
+@group(2) @binding(1) var paint_sampler: sampler;
+fn image_color(v:Vertex,p:vec2f)->vec4f {
+    var uv=mapped(p,v.axis,v.offsets_a);
+    let period=v.offsets_b.xy;
+    let kind=v.offsets_b.z;
+    if (kind>1.5) {
+        if (kind>3.5) {uv.y-=0.5*period.y*(floor(uv.x/period.x)-2.0*floor(uv.x/period.x/2.0));}
+        else if (kind>2.5) {uv.x-=0.5*period.x*(floor(uv.y/period.y)-2.0*floor(uv.y/period.y/2.0));}
+        uv=uv-floor(uv/period)*period;
+    }
+    let half_texel=0.5/vec2f(textureDimensions(paint_image));
+    let wraps=vec2<bool>(kind>1.5) & (period==vec2f(1.0));
+    let sample_uv=select(clamp(uv,half_texel,1.0-half_texel),uv,wraps);
+    var color=textureSampleLevel(paint_image,paint_sampler,sample_uv,0.0);
+    if (kind>0.5) {
+        let width=max(vec2f(length(v.axis.xy),length(v.offsets_a.xy)),vec2f(0.000001));
+        let coverage=clamp(min(uv,1.0-uv)/width+0.5,vec2f(0.0),vec2f(1.0));
+        let covered=select(coverage,vec2f(1.0),wraps);
+        color*=covered.x*covered.y;
+    }
+    var rgb=color.rgb/max(color.a,0.000001);
+    if (view.size.z>0.5) {rgb=to_linear(rgb);}
+    return vec4f(rgb,color.a);
+}
 fn mapped(p:vec2f, x:vec4f, y:vec4f) -> vec2f { return vec2f(dot(x.xy,p)+x.z,dot(y.xy,p)+y.z); }
 fn pixel_width(d:f32, transformed:f32) -> f32 {
     let width=max(length(vec2f(dpdx(d),dpdy(d))),0.000001);
@@ -318,7 +343,8 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     }
     var color = v.color;
     if (v.params.w > 0.5 && kind < 4.5) {
-        let r = ramp(v, p);
+        var r=vec4f(0.0);
+        if (v.params.w>1.5) {r=image_color(v,p);} else {r=ramp(v,p);}
         color = vec4f(r.rgb, r.a * v.color.a);
     }
     return vec4f(color.rgb, figma_alpha(color.rgb, color.a * alpha * clipped));

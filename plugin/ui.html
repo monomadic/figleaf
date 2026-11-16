@@ -35,9 +35,22 @@
       status.textContent = 'Copied Rust code.';
     } catch { output.focus(); output.select(); status.textContent = 'Press ⌘C / Ctrl+C to copy the selected code.'; }
   };
-  window.onmessage = event => {
+  window.onmessage = async event => {
     const m = event.data.pluginMessage;
     if (!m) return;
+    if(m.type==='decode-image') {
+      let bitmap;
+      try {
+        bitmap=await createImageBitmap(new Blob([m.bytes]));
+        if(bitmap.width*bitmap.height>1000000)throw Error('Image exceeds the export pixel limit.');
+        const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+        const context=canvas.getContext('2d',{colorSpace:'srgb'});context.drawImage(bitmap,0,0);
+        const rgba=context.getImageData(0,0,canvas.width,canvas.height).data;
+        parent.postMessage({pluginMessage:{type:'decoded-image',id:m.id,image:{width:canvas.width,height:canvas.height,rgba:Array.from(rgba)}}},'*');
+      }catch(e){parent.postMessage({pluginMessage:{type:'decoded-image',id:m.id,error:'Image decoding failed: '+e.message}},'*');}
+      finally {bitmap?.close();}
+      return;
+    }
     if (m.type === 'invalidated') {
       revision = m.revision; output.value = ''; copy.disabled = true; errors.hidden = true; output.hidden = false;
       generate.disabled = m.selection.length !== 1;

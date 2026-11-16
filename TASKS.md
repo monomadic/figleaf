@@ -82,7 +82,7 @@ Rust output; do not merely remove an exporter error.
    content once, with sibling boundaries and nested intersections in plugin output.
    Cached offscreen rendering preserves the host render-pass API and zero uploads
    on unchanged canvases. Mask-layer opacity, supported paints/shadows/text and
-   transformed geometry work; vector text/nested-mask sources, images and blurs
+   transformed geometry work; vector text/nested-mask sources and blurs
    remain hard errors. Generated Rust reviewed beside Figma
    ([comparison](docs/masks-compare.png), mean 0.20/255 at 2×). Synthetic tests
    cover holes, stroke-only masks, nesting, text, invalid input and caching.
@@ -111,13 +111,24 @@ Rust output; do not merely remove an exporter error.
     transformed and translucent paints, borders and a 64-stop strip. Synthetic
     tests cover invalid inputs and unchanged uploads.
 
+13. **Image and pattern fills/strokes — done for supported assets 2026-11-17.**
+    Host-owned RGBA8 images support Fill/Fit/Crop/Tile and quarter turns. Native
+    Canvas pattern sources support rectangular/staggered layouts, scale, fractional
+    spacing and alignment. Cached textures preserve zero uploads when unchanged.
+    The plugin embeds decoded image pixels and exports source drawing calls, with
+    no filesystem writes or raster fallback. Generated Rust [reviewed beside
+    Figma](docs/images-compare.png), mean 2.37/255 at 1×; image filtering remains
+    softer. Synthetic tests cover asset resolution, invalid inputs and caching.
+    Image adjustments/animation, negative spacing and transformed/hidden source
+    roots remain hard errors; the plugin UI lifecycle was tested with mocks.
+
 For each item: compile generated Rust, test invalid/degenerate geometry and
 unchanged-canvas uploads, run an example, and look at its render beside a Figma
 export. Until supported end to end, retain layer-specific hard errors and emit
 no partial Rust. No plugin filesystem writes, raster fallbacks, or host edits.
 
 Paint and layout gaps are separate from this geometry queue. After geometry,
-prioritize: image and pattern fills; flattened opacity, blend modes and container effects;
+prioritize: flattened opacity, blend modes and container effects;
 layer/background blur; remaining text styling/shaping; responsive layout export
 and solver gaps; wide-gamut color and multisampled targets.
 These remain unsupported where documented; listing them does not authorize a

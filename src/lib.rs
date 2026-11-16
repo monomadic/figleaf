@@ -29,3 +29,6 @@ pub use paint::{
 
 pub use path::{PathStroke, StrokeCap, StrokeJoin, VectorPath, WindingRule};
 pub use primitives::{ArcData, Primitive};
+
+pub mod image;
+pub use image::{Image, ImagePaint, ImageScaleMode, Pattern, PatternAlignment, TileType};

@@ -1,8 +1,9 @@
 /* Read-only Figma selection -> Rust. No Figma mutations, network, or storage.
  * Kept independent of the UI so the same validator is exercised by tests. */
-function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map()) {
+function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map(), resources = {}) {
   const errors = [], lines = [], fonts = [];
   let maskIndex = 0;
+  const imageNames=new Map(), patternNames=new Map(), patternStack=new Set();
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
   if (selection.length !== 1) return { code: null, errors: [{ path: 'Selection', message: 'Select exactly one hierarchy root.' }] };
@@ -29,7 +30,34 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const rect = r => `Rect::new(${r.map(number).join(', ')})`;
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
   const gradientCode = p => (p.type==='GRADIENT_LINEAR' ? `LinearGradient::transform(${array(p.gradientTransform[0])})` : `Gradient::${p.type.slice(9).toLowerCase()}([${p.gradientTransform.map(array).join(', ')}])`) + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
-  const paintCode = p => p.type==='SOLID' ? `Paint::Solid(${color(p.color,p.opacity)})` : p.type.startsWith('GRADIENT_') ? `Paint::${p.type==='GRADIENT_LINEAR'?'Linear':'Gradient'}(${gradientCode(p)})` : (()=>{throw Error('Unsupported stroke paint.');})();
+  function imageCode(p) {
+    const pixels=resources.images?.get(p.imageHash);
+    if (!pixels || !Number.isInteger(pixels.width) || !Number.isInteger(pixels.height) || pixels.width<=0 || pixels.height<=0 || pixels.width*pixels.height>1000000 || pixels.rgba.length!==pixels.width*pixels.height*4 || Array.from(pixels.rgba).some(v=>!Number.isInteger(v)||v<0||v>255)) throw Error('Image pixels are missing, invalid or exceed the 1-million-pixel export limit.');
+    if (!imageNames.has(p.imageHash)) {const name=`image_${imageNames.size}`;imageNames.set(p.imageHash,name);lines.push(`    let ${name} = Image::new([${pixels.width}, ${pixels.height}], vec![${Array.from(pixels.rgba).join(',')}]);`);}
+    const mode=p.scaleMode==='CROP' ? `ImageScaleMode::Crop(${matrix(p.imageTransform)})` : p.scaleMode==='TILE' ? `ImageScaleMode::Tile(${number(p.scalingFactor ?? 1)})` : `ImageScaleMode::${p.scaleMode==='FIT'?'Fit':'Fill'}`;
+    return `Paint::Image(ImagePaint::new(${imageNames.get(p.imageHash)}.clone()).scale_mode(${mode}).rotation(${number(p.rotation ?? 0)}).opacity(${number(p.opacity ?? 1)}))`;
+  }
+  function patternCode(p) {
+    const source=resources.patterns?.get(p.sourceNodeId);
+    if (!source) throw Error('Pattern source is unavailable.');
+    if(source.visible===false || !(source.width>0 && source.height>0))throw Error('Pattern source must be visible and have nonzero dimensions.');
+    if (patternStack.has(p.sourceNodeId) || patternStack.size>=8) throw Error('Cyclic or deeply nested pattern source.');
+    if (!patternNames.has(p.sourceNodeId)) {
+      if(patternNames.size>=32) throw Error('More than 32 pattern sources.');
+      const name=`pattern_${patternNames.size}`;patternNames.set(p.sourceNodeId,name);patternStack.add(p.sourceNodeId);
+      const m=source.relativeTransform;
+      if (!m || m[0][0]!==1 || m[0][1]!==0 || m[1][0]!==0 || m[1][1]!==1) throw Error('Transformed pattern source roots are unsupported; use an untransformed containing frame.');
+      lines.push(`    let mut ${name} = Canvas::new();`);
+      visit(source,`Pattern source / ${source.name}`,identity,null,true,0,name);
+      patternStack.delete(p.sourceNodeId);
+    }
+    const tile={RECTANGULAR:'Rectangular',HORIZONTAL_HEXAGONAL:'HorizontalHexagonal',VERTICAL_HEXAGONAL:'VerticalHexagonal'}[p.tileType];
+    const alignment={START:'Start',CENTER:'Center',END:'End'}[p.horizontalAlignment];
+    const vertical={START:'Start',CENTER:'Center',END:'End'}[p.verticalAlignment ?? 'START'];
+    if (!vertical || !tile || !alignment || !p.spacing || p.spacing.x<0 || p.spacing.y<0 || !(p.scalingFactor>0)) throw Error('Unsupported pattern tiling, alignment, spacing or scale.');
+    return `Paint::Pattern(Pattern::new(${patternNames.get(p.sourceNodeId)}.clone(), ${array([source.width,source.height])}).scaling_factor(${number(p.scalingFactor)}).spacing(${array([p.spacing.x,p.spacing.y])}).tile_type(TileType::${tile}).horizontal_alignment(PatternAlignment::${alignment}).vertical_alignment(PatternAlignment::${vertical}).opacity(${number(p.opacity ?? 1)}))`;
+  }
+  const paintCode = p => p.type==='IMAGE' ? imageCode(p) : p.type==='PATTERN' ? patternCode(p) : p.type==='SOLID' ? `Paint::Solid(${color(p.color,p.opacity)})` : p.type.startsWith('GRADIENT_') ? `Paint::${p.type==='GRADIENT_LINEAR'?'Linear':'Gradient'}(${gradientCode(p)})` : (()=>{throw Error('Unsupported stroke paint.');})();
   const strokeColor = p => p.type==='SOLID' ? color(p.color,p.opacity) : '[1.0, 1.0, 1.0, 1.0]';
   const visible = list => {
     if (!Array.isArray(list)) throw Error('Mixed paints or effects are unsupported.');
@@ -196,7 +224,16 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       for (const p of [...fills, ...strokes]) {
         if ([p, ...(p.gradientStops || [])].some(v => Object.keys(v.boundVariables || {}).length) && !verifiedBindings.has(n)) reject('Paint variable bindings must be resolved before export.');
         if (p.blendMode && p.blendMode !== 'NORMAL') reject(`Unsupported paint blend mode: ${p.blendMode}.`);
-        if (!['SOLID', 'GRADIENT_LINEAR', 'GRADIENT_RADIAL', 'GRADIENT_ANGULAR', 'GRADIENT_DIAMOND'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
+        if (!['SOLID', 'GRADIENT_LINEAR', 'GRADIENT_RADIAL', 'GRADIENT_ANGULAR', 'GRADIENT_DIAMOND', 'IMAGE', 'PATTERN'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
+        if (['IMAGE','PATTERN'].includes(p.type) && (p.opacity!==undefined && (!Number.isFinite(p.opacity)||p.opacity<0||p.opacity>1))) reject('Invalid image/pattern opacity.');
+        if (p.type==='IMAGE') {
+          if (!['FILL','FIT','CROP','TILE'].includes(p.scaleMode)) reject('Unsupported image scale mode.');
+          if (Object.values(p.filters || {}).some(v=>v!==0)) reject('Image adjustments are unsupported.');
+          if (p.rotation!==undefined && (!Number.isFinite(p.rotation)||p.rotation%90!==0)) reject('Image rotation must be a multiple of 90 degrees.');
+          if (p.scaleMode==='CROP') {try {inverse(p.imageTransform);}catch{reject('Invalid image crop transform.');} if(p.rotation)reject('Crop rotation must be in the image transform.');}
+          if (p.scaleMode==='TILE' && !(p.scalingFactor>0)) reject('Invalid image tile scale.');
+          if (!(n.width>0 && n.height>0)) reject('Images require nonzero paint bounds.');
+        }
         if (p.type.startsWith('GRADIENT_')) {
           if (p.gradientStops.length < 1 || p.gradientStops.length > 64) reject('Gradients require 1–64 stops.');
           const t = p.gradientTransform;
@@ -320,6 +357,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if (!primitive && !resolved && radii.some(r => r)) expression += `.radii(${array(radii)})`;
         // Figma's paint arrays are in drawing order, bottom to top.
         for (const p of fills) {
+          if (p.type==='IMAGE' || p.type==='PATTERN') expression += `.paint(${paintCode(p)})`;
           if (p.type === 'SOLID') expression += `.fill(${color(p.color,p.opacity)})`;
           if (p.type.startsWith('GRADIENT_') && p.gradientTransform) expression += `.gradient(${gradientCode(p)})`;
         }
@@ -400,7 +438,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

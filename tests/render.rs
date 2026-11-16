@@ -1823,3 +1823,131 @@ fn all_gradient_types_and_large_stop_buffers() {
         assert!(image.rgba.iter().all(|v| *v == 0));
     }
 }
+
+#[test]
+fn image_placement_transparency_strokes_and_upload_cache() {
+    use figleaf::{ImagePaint, ImageScaleMode, Paint, Transform};
+    let image = figleaf::Image::new([2, 1], vec![255, 0, 0, 255, 0, 0, 255, 255]);
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut canvas = Canvas::new();
+    let paint = ImagePaint::new(image.clone()).scale_mode(ImageScaleMode::Fit);
+    canvas.shape(Shape::rect(Rect::new(10., 10., 80., 40.)).paint(Paint::Image(paint)));
+    let actual = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(actual.pixel(15, 30), RED);
+    assert_eq!(actual.pixel(85, 30), BLUE);
+    assert_eq!(actual.pixel(5, 30), CLEAR);
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &canvas, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    canvas.clear();
+    canvas.shape(
+        Shape::rect(Rect::new(10., 10., 80., 40.)).paint(Paint::Image(
+            ImagePaint::new(image.clone()).scale_mode(ImageScaleMode::Crop(Transform::new([
+                [2., 0., -0.5],
+                [0., 2., -0.5],
+            ]))),
+        )),
+    );
+    let actual = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(actual.pixel(15, 30), CLEAR);
+    assert_eq!(actual.pixel(35, 30), RED);
+    canvas.clear();
+    canvas.shape(
+        Shape::rect(Rect::new(10., 10., 80., 40.))
+            .stroke(6., [1.; 4], StrokeAlign::Inside)
+            .stroke_paints(vec![Paint::Image(ImagePaint::new(image.clone()))]),
+    );
+    let actual = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(actual.pixel(12, 30), RED);
+    assert_eq!(actual.pixel(87, 30), BLUE);
+    assert_eq!(actual.pixel(50, 30), CLEAR);
+    for invalid in [
+        ImagePaint::new(figleaf::Image::new([2, 2], vec![0; 3])),
+        ImagePaint::new(image.clone()).rotation(45.),
+        ImagePaint::new(image).scale_mode(ImageScaleMode::Tile(0.)),
+    ] {
+        canvas.clear();
+        canvas.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).paint(Paint::Image(invalid)));
+        let actual = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(renderer.problems().len(), 1);
+        assert!(actual.rgba.iter().all(|p| *p == 0));
+    }
+}
+
+#[test]
+fn pattern_tiles_stagger_spacing_and_cache_native_source() {
+    use figleaf::{Paint, Pattern, TileType};
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut source = Canvas::new();
+    source.shape(Shape::rect(Rect::new(0., 0., 8., 8.)).fill(hex(0xff0000)));
+    for tile_type in [
+        TileType::Rectangular,
+        TileType::HorizontalHexagonal,
+        TileType::VerticalHexagonal,
+    ] {
+        let mut canvas = Canvas::new();
+        canvas.shape(
+            Shape::rect(Rect::new(0., 0., 100., 60.)).paint(Paint::Pattern(
+                Pattern::new(source.clone(), [8., 8.])
+                    .spacing([1., 1.])
+                    .tile_type(tile_type),
+            )),
+        );
+        let actual = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+        assert!(renderer.problems().is_empty());
+        assert_eq!(actual.pixel(3, 3), RED);
+        assert_eq!(actual.pixel(11, 11), CLEAR);
+        match tile_type {
+            TileType::Rectangular => assert_eq!(actual.pixel(3, 19), RED),
+            TileType::HorizontalHexagonal => {
+                assert_eq!(actual.pixel(3, 19), CLEAR);
+                assert_eq!(actual.pixel(11, 19), RED);
+            }
+            TileType::VerticalHexagonal => {
+                assert_eq!(actual.pixel(19, 3), CLEAR);
+                assert_eq!(actual.pixel(19, 11), RED);
+            }
+        }
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &canvas, [100, 60], 1., &mut NoText)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    }
+    let mut nested = source;
+    for _ in 0..10 {
+        let mut outer = Canvas::new();
+        outer.shape(
+            Shape::rect(Rect::new(0., 0., 10., 10.))
+                .paint(Paint::Pattern(Pattern::new(nested, [10., 10.]))),
+        );
+        nested = outer;
+    }
+    let actual = gpu.render(&mut renderer, &nested, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(!renderer.problems().is_empty());
+    assert!(actual.rgba.iter().all(|p| *p == 0));
+}
+
+#[test]
+fn invalid_pattern_sources_cache_the_failure_without_partial_paint() {
+    use figleaf::{Paint, Pattern};
+    let mut source = Canvas::new();
+    source.shape(Shape::rect(Rect::new(0., 0., 8., 8.)).gradient(LinearGradient::horizontal()));
+    let mut canvas = Canvas::new();
+    canvas.shape(
+        Shape::rect(Rect::new(0., 0., 100., 60.))
+            .fill(hex(0xff0000))
+            .paint(Paint::Pattern(Pattern::new(source, [8., 8.]))),
+    );
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let actual = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(actual.rgba.iter().all(|p| *p == 0));
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &canvas, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+}
