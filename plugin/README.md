@@ -47,8 +47,13 @@ no topology reconstruction. Regions share the node’s paints and are unioned
 before filling; differing per-region paints are rejected. The limits are 256
 regions and 4,096 commands; scale-dependent renderer limits also apply.
 
-Errors include vector effects/paint overrides, images, masks, layer opacity, blend modes, corner
-smoothing, singular transforms, unsupported gradients,
+Smoothed corners export Figma’s resolved fill/stroke contours and path clips,
+including individual frame borders. The smoothing value is recorded in a comment;
+geometry must be re-exported after changing it. Drop/inner path shadows use
+figleaf’s existing approximate blur model. Missing contours are hard errors.
+
+Errors include per-region paint overrides, images, masks, layer opacity, blend modes,
+singular transforms, unsupported gradients,
 multiple/gradient strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds

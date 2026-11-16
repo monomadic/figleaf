@@ -70,9 +70,14 @@ Rust output; do not merely remove an exporter error.
    mean 1.01/255 at 2×); the circular clip also rendered through the path API.
    Holes, region unions, repeated clips, invalid inputs and unchanged uploads
    have synthetic tests. Resource limits hard-error; Figma masks remain task 9.
-8. **Corner smoothing.** Figma's smoothed corners on rectangles, frames, and
-   supported rounded paths; carry the geometry through borders, clips, and
-   shadows. Ordinary circular corner radii already work.
+8. **Corner smoothing — done 2026-11-17 (resolved paths).** Smoothed rectangles,
+   frames and rounded paths export Figma contours for fills, individual borders
+   and child clips. Vector drop/inner shadows use the existing approximate blur
+   model, including spread and stroke-only silhouettes. No parametric squircle
+   API; changed smoothing needs re-export. Generated Rust reviewed beside Figma
+   ([comparison](docs/smoothing-compare.png), mean 0.78/255 at 2×); shadow edges
+   still differ. Missing contours hard-error. Synthetic tests cover holes,
+   transforms, invalid input and unchanged uploads.
 9. **Masks.** Geometric/vector masks first, then alpha and luminance masks with
    correct sibling scope and nested intersections. Keep compositing in the
    paint/render layer; do not introduce a scene or widget runtime.

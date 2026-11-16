@@ -153,7 +153,7 @@ unfilled network branches. Open filled contours close implicitly. Regions are
 unioned before each fill, so overlaps do not accumulate opacity.
 
 The plugin reads Figma's resolved `fillGeometry` plus unfilled `vectorPaths`.
-Path effects and per-region paint overrides remain hard errors. Solid path
+Per-region paint overrides and blur effects remain hard errors. Solid path
 strokes are supported as described below. Run `cargo run --example vector_paths --features wgpu` for the person
 icon from [Switchblade's design](https://www.figma.com/design/p01oYypZrTOjxe4Pi2Ytxe?node-id=336-1230).
 Its bound color was explicitly resolved for the saved fixture. The plugin now resolves bindings in the consumer’s active
@@ -286,7 +286,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Radial, angular and diamond gradients, gradients on strokes and text, more
-than eight gradient stops, images, vector effects, blurs, blend modes, flattened layer opacity, corner smoothing, multisampled targets, layout
+than eight gradient stops, images, blurs, blend modes, flattened layer opacity, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
@@ -334,10 +334,32 @@ The outlines already contain caps, joins and dashes. Like Figma's `strokeGeometr
 inside/outside outlines must be expanded to twice the nominal width; the renderer
 masks them against the vector fill, including its holes. Regions paint once even
 where outlines overlap. Mixing resolved outlines with centerline styles is an error.
-Effects and unsupported paints still hard-error; missing geometry never falls
+Unsupported effects and paints still hard-error; missing geometry never falls
 back to operands or a bounding box. No new dependencies.
 
 `cargo run --example booleans --features wgpu` renders plugin-generated code
 beside [Figma's export](docs/booleans-compare.png): all four operations, aligned
 and dashed outlines, a nested reflected gradient and an empty intersection.
 Mean difference 0.22/255 at 1×; other validation and caching cases are synthetic.
+
+
+## Corner smoothing
+
+The plugin preserves Figma's smoothed rectangles, frames and rounded paths as
+resolved `VectorPath` contours, with resolved stroke outlines for borders and
+`Clip::paths` for clipped children. Smoothing values remain in code comments;
+changing a radius or smoothing value requires exporting the geometry again.
+There is no parametric squircle approximation or new dependency.
+
+Vector paths now support drop and inner shadows, including spread, transformed
+outlines and stroke-only silhouettes. They use the existing signed-distance
+blur approximation, not an exact Gaussian convolution; overlapping contours and
+narrow features can differ from Figma. General container effects remain errors.
+Missing fill/stroke geometry and unsupported effects block the entire export.
+
+Run `cargo run --example smoothing --features wgpu` for the generated fixture.
+[Figma beside figleaf](docs/smoothing-compare.png) covers smoothing 0/0.6/1,
+unequal frame borders and clipping, rounded stars/polygons, and shadows at 2×.
+Mean channel difference is 0.78/255; visible shadow-edge differences remain.
+Synthetic tests cover holes, reflected stroke-only shadows, invalid inputs and
+unchanged-canvas uploads.

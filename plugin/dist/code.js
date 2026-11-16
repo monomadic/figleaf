@@ -164,7 +164,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
       if (n.opacity !== undefined && n.opacity !== 1) reject('Layer opacity requires compositing and is unsupported. Use paint opacity.');
       if (n.blendMode && !['NORMAL', 'PASS_THROUGH'].includes(n.blendMode)) reject(`Unsupported layer blend mode: ${n.blendMode}.`);
-      if (n.cornerSmoothing) reject('Corner smoothing is unsupported.');
+      const smoothing=n.cornerSmoothing ?? 0;
+      if (typeof smoothing!=='number' || !Number.isFinite(smoothing) || smoothing<0 || smoothing>1) reject('Invalid corner smoothing.');
+      const smoothed=smoothing>0;
+      const resolved=boolean || smoothed;
       const transform = n.relativeTransform;
       if (!transform) throw Error('Missing relative transform.');
       inverse(transform);
@@ -194,12 +197,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (strokes.some(p => p.type !== 'SOLID')) reject('Only solid strokes are supported.');
       if(strokes.length && n.dashPattern?.length) {
         if(!Array.isArray(n.dashPattern) || n.dashPattern.length>32 || n.dashPattern.some(v=>typeof v!=='number' || !Number.isFinite(v) || v<0 || v>1e7)) reject('Invalid dash pattern.');
-        if(effects.length) reject('Dashed stroke effects are unsupported.');
-        if('strokeTopWeight' in n && [n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v!==n.strokeTopWeight)) reject('Dashed individual borders require uniform widths.');
+        if(effects.length && !resolved) reject('Dashed stroke effects are unsupported.');
+        if(!resolved && 'strokeTopWeight' in n && [n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v!==n.strokeTopWeight)) reject('Dashed individual borders require uniform widths.');
       }
       const arc = n.type === 'ELLIPSE' && n.arcData && (n.arcData.startingAngle !== 0 || Math.abs(n.arcData.endingAngle - Math.PI*2) > 1e-6 || n.arcData.innerRadius !== 0);
-      const primitive = arc || ['POLYGON','STAR'].includes(n.type);
-      if (strokes.length && !boolean && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
+      const primitive = !smoothed && (arc || ['POLYGON','STAR'].includes(n.type));
+      if (strokes.length && !resolved && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
@@ -264,9 +267,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if (fills.length || strokes.length !== 1 || effects.length) reject('Lines require one solid stroke, no fills, and no effects.');
         if (errors.length === before) expression = `Shape::vector(${rect(box)}, vec![VectorPath::new(WindingRule::None).move_to([0.0, 0.0]).line_to(${array([n.width,0])})]).stroke(${number(n.strokeWeight)}, ${color(strokes[0].color,strokes[0].opacity)}, StrokeAlign::Center)`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
-        if (n.type === 'VECTOR' || boolean) {
-
-          if (effects.length) reject('Vector path effects are unsupported.');
+        if (n.type === 'VECTOR' || resolved) {
           expression = `Shape::vector(${rect(box)}, ${vectorCode(n)})`;
         } else if (primitive) {
           expression = arc ? `Shape::ellipse_arc(${rect(box)}, ArcData::new(${number(n.arcData.startingAngle)}, ${number(n.arcData.endingAngle)}, ${number(n.arcData.innerRadius)}))`
@@ -276,7 +277,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         } else {
           expression = `Shape::${n.type === 'ELLIPSE' ? 'ellipse' : 'rect'}(${rect(box)})`;
         }
-        if (!primitive && !boolean && radii.some(r => r)) expression += `.radii(${array(radii)})`;
+        if (!primitive && !resolved && radii.some(r => r)) expression += `.radii(${array(radii)})`;
         // Figma's paint arrays are in drawing order, bottom to top.
         for (const p of fills) {
           if (p.type === 'SOLID') expression += `.fill(${color(p.color,p.opacity)})`;
@@ -290,15 +291,17 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const p = strokes[0];
           const align = { INSIDE:'Inside', CENTER:'Center', OUTSIDE:'Outside' }[n.strokeAlign];
           if (!align) reject('Unsupported stroke alignment.');
-          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive && !boolean) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
+          const weight='strokeTopWeight' in n ? Math.max(n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight) : n.strokeWeight;
+          if (resolved && (!Number.isFinite(weight) || weight < 0 || ('strokeTopWeight' in n && [n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(w=>!Number.isFinite(w)||w<0)))) reject('Invalid resolved border width.');
+          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive && !boolean && (!resolved || weight > 0)) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
           else expression += `.stroke(${number(n.strokeWeight)}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
-          if (boolean && n.strokeWeight > 0) expression += `.stroke_geometry(${vectorCode(n, true)})`;
+          if (resolved && weight > 0) expression += `.stroke_geometry(${vectorCode(n, true)})`;
         }
         for (const e of effects) if (['DROP_SHADOW','INNER_SHADOW'].includes(e.type)) {
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
       }
-      if (strokes.length && !boolean && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
+      if (strokes.length && !resolved && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
         const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' && !primitive ? n.strokeTopWeight : n.strokeWeight;
         if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
         const cap=caps[n.strokeCap] || (n.type==='VECTOR' && (typeof n.strokeCap==='symbol' || n.strokeCap===undefined) ? 'Butt' : undefined) || (!['VECTOR','LINE'].includes(n.type) && n.strokeCap===undefined ? 'Butt' : undefined);
@@ -311,14 +314,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(n.dashPattern?.length) expression+=`.dash_pattern(vec!${array(n.dashPattern)})`;
       }
       if (expression) expression += `.transform(${matrix(world)})`;
-      if (expression) for (const c of clip || []) expression += `.intersect_clip(Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)}).transform(${matrix(c.transform)}))`;
+      if (expression) for (const c of clip || []) expression += `.intersect_clip(${c.paths ? `Clip::paths(${c.paths})` : `Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)})`}.transform(${matrix(c.transform)}))`;
       if (expression && errors.length === before) {
         for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
+        if (smoothed) lines.push(`    // Corner smoothing: ${number(smoothing)} (resolved Figma contours).`);
         lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    canvas.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
         if (radii.some(r=>r<0)) reject('Invalid clip corner radius.');
-        childClip = [...(clip || []), { rect: box, radii, transform: world }];
+        childClip = [...(clip || []), { rect: box, radii, transform: world, paths: smoothed ? vectorCode(n) : null }];
         if (childClip.length>128) reject('Clip stack exceeds 128 clips.');
       }
     } catch (e) { reject(e.message); }

@@ -50,6 +50,27 @@ fn path_coverage(p: vec2f, range: vec4f, open: vec4f, domain: vec4f, align: f32,
     return coverage;
 }
 
+// Same signed-distance shadow model as primitive shadows, evaluated against
+// the actual path silhouette in local space before the affine transform.
+fn path_distance(p:vec2f, range:vec4f) -> f32 {
+    var distance=1e7;
+    for (var i=u32(range.x); i<u32(range.x+range.y); i++) {
+        let edge=path_edges[i].points; let d=edge.zw-edge.xy;
+        let t=clamp(dot(p-edge.xy,d)/max(dot(d,d),1e-12),0.0,1.0);
+        distance=min(distance,length(p-edge.xy-t*d));
+    }
+    return select(distance,-distance,path_inside(p,u32(range.x),u32(range.y)));
+}
+fn silhouette_distance(p:vec2f, fill:vec4f, closed:vec4f, open:vec4f, flags:f32) -> f32 {
+    let domain=path_distance(p,fill);
+    var stroke=path_distance(p,closed);
+    let align=flags%4.0;
+    if (align>0.5) { stroke=max(stroke,select(domain,-domain,align>1.5)); }
+    var distance=min(stroke,path_distance(p,open));
+    if (flags>=4.0) { distance=min(distance,domain); }
+    return distance;
+}
+
 struct Vertex {
     @builtin(position) position: vec4f,
     @location(0) @interpolate(flat) a_rect: vec4f,
@@ -238,7 +259,7 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     let clip_point = mapped(p,transform.clip_x,transform.clip_y);
     let dc = sd_round(clip_point,v.clip,v.clip_radii);
     var clipped = cover(dc / pixel_width(dc,transform.clip_x.w));
-    if (v.params.z < 2.5) { clipped *= clips_coverage(p,transform.clip_range.xy); }
+    if (v.params.z < 2.5 || v.params.z > 4.5) { clipped *= clips_coverage(p,transform.clip_range.xy); }
     let kind = v.params.z;
     let da = sd(local, v.a_rect, v.a_radii, v.a_radii_y, kind);
     var b = 0.0;
@@ -248,7 +269,16 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     let bw = pixel_width(db,transform.shape_x.w);
     b = cover(db / bw);
     var alpha = 0.0;
-    if (kind > 2.5) {
+    if (kind > 4.5) {
+        let original=silhouette_distance(local,v.b_rect,v.a_radii,v.b_radii,v.params.w);
+        let shifted=silhouette_distance(local-v.a_rect.yz,v.b_rect,v.a_radii,v.b_radii,v.params.w);
+        let spread=select(v.a_rect.x,-v.a_rect.x,v.params.y>1.5);
+        let d=shifted-spread;
+        let source=blurred(d,v.params.x,pixel_width(d,transform.shape_x.w));
+        let base=cover(original/pixel_width(original,transform.shape_x.w));
+        if (v.params.y>1.5) { alpha=base*(1.0-source); }
+        else { alpha=source*select(1.0-base,1.0,v.a_rect.w>0.5); }
+    } else if (kind > 2.5) {
         alpha = path_coverage(p, v.b_rect, v.a_radii, v.b_radii, select(0.0,v.params.y,kind>3.5),transform.clip_range.xy);
     } else if (v.params.y < 0.5) {
         alpha = max(cover(da / aw) - b, 0.0);
@@ -258,7 +288,7 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
         alpha = b * (1.0 - blurred(da, v.params.x, aw));
     }
     var color = v.color;
-    if (v.params.w > 0.5) {
+    if (v.params.w > 0.5 && kind < 4.5) {
         let r = ramp(v, p);
         color = vec4f(r.rgb, r.a * v.color.a);
     }

@@ -425,7 +425,23 @@ impl Renderer {
                             None
                         };
                         if let Some(paths) = l.vector_paths.or(primitive.as_deref()) {
-                            let groups = if let Some(outlines) = l.stroke_geometry {
+                            let groups = if l.path_shadow.is_some() {
+                                let stroked = if let Some(outlines) = &shape.stroke_geometry {
+                                    Ok([outlines.clone(), Vec::new(), Vec::new()])
+                                } else if let Some(stroke) = shape.stroke {
+                                    path::stroke_outlines(
+                                        shape.stroke_paths.as_deref().unwrap_or(paths),
+                                        stroke.width,
+                                        shape.path_stroke,
+                                        stroke.align,
+                                        scale * shape.transform.max_scale(),
+                                        &shape.dash_pattern,
+                                    )
+                                } else {
+                                    Ok(Default::default())
+                                };
+                                stroked.map(|[closed, open, _]| [paths.to_vec(), closed, open])
+                            } else if let Some(outlines) = l.stroke_geometry {
                                 Ok([outlines.to_vec(), Vec::new(), paths.to_vec()])
                             } else if let Some((stroke, style)) = l.vector_stroke {
                                 path::stroke_outlines(
@@ -455,7 +471,11 @@ impl Renderer {
                                             l.vector_origin
                                         },
                                         scale,
-                                        l.transform,
+                                        if l.path_shadow.is_some() {
+                                            crate::Transform::IDENTITY
+                                        } else {
+                                            l.transform
+                                        },
                                     )?;
                                     ranges[i] = [
                                         (edge_start + pending_edges.len() + all.len()) as f32,
@@ -491,7 +511,20 @@ impl Renderer {
                                     } else {
                                         Rect::new(lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1])
                                     };
-                                    let visible = r
+                                    let extent = if l.path_shadow.is_some() {
+                                        {
+                                            let e = l.extent();
+                                            Rect::new(
+                                                e.x * scale,
+                                                e.y * scale,
+                                                e.w * scale,
+                                                e.h * scale,
+                                            )
+                                        }
+                                    } else {
+                                        r
+                                    };
+                                    let visible = extent
                                         .inflate(1.)
                                         .intersect(clip_px(
                                             l.clip.map(|c| l.clip_transform.bounds(c.rect)),
@@ -500,13 +533,17 @@ impl Renderer {
                                     let work = f64::from(visible.w.ceil())
                                         * f64::from(visible.h.ceil())
                                         * edges.len() as f64
-                                        * 16.;
+                                        * if l.path_shadow.is_some() { 4. } else { 16. };
                                     path_work += work;
                                     if path_work > 512_000_000. {
                                         path_error = Some("vector coverage work limit exceeded");
                                         break;
                                     }
-                                    bounds = Some(r);
+                                    bounds = if l.path_shadow.is_some() {
+                                        None
+                                    } else {
+                                        Some(r)
+                                    };
                                     if pending_edges.len() + edges.len() > 8192 {
                                         path_error = Some("vector exceeds 8192 flattened edges");
                                         break;
@@ -626,7 +663,14 @@ impl Renderer {
                             Some(_) => l.color,
                             None => self.color(l.color),
                         };
-                        self.shapes.push(&a_rect);
+                        self.shapes.push(&l.path_shadow.map_or(a_rect, |s| {
+                            [
+                                s.spread * scale,
+                                s.offset[0] * scale,
+                                s.offset[1] * scale,
+                                f32::from(s.behind),
+                            ]
+                        }));
                         self.shapes.push(&if path_range.is_some() {
                             ranges[1]
                         } else {
@@ -646,7 +690,9 @@ impl Renderer {
                                 crate::StrokeAlign::Inside => 1.,
                                 crate::StrokeAlign::Outside => 2.,
                             }),
-                            if l.vector_stroke.is_some() {
+                            if l.path_shadow.is_some() {
+                                5.
+                            } else if l.vector_stroke.is_some() {
                                 4.
                             } else if path_range.is_some() {
                                 3.
@@ -655,7 +701,16 @@ impl Renderer {
                             } else {
                                 f32::from(u8::from(l.ellipse))
                             },
-                            f32::from(u8::from(l.ramp.is_some())),
+                            if l.path_shadow.is_some() {
+                                let align = l.shadow_stroke.map_or(0., |s| match s.align {
+                                    crate::StrokeAlign::Center => 0.,
+                                    crate::StrokeAlign::Inside => 1.,
+                                    crate::StrokeAlign::Outside => 2.,
+                                });
+                                align + 4. * f32::from(l.shadow_has_fill)
+                            } else {
+                                f32::from(u8::from(l.ramp.is_some()))
+                            },
                         ]);
                         self.shapes.push(&clip_rect);
                         self.shapes.push(&edges(quad, 1.));

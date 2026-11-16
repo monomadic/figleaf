@@ -444,7 +444,12 @@ impl Shape {
         }
         if let Some(paths) = &self.stroke_geometry {
             if self.vector_paths.is_none()
-                || self.stroke.is_none_or(|s| s.width <= 0.)
+                || self.stroke.is_none_or(|s| {
+                    self.stroke_weights
+                        .unwrap_or([s.width; 4])
+                        .iter()
+                        .all(|w| *w <= 0.)
+                })
                 || self.stroke_paths.is_some()
                 || !self.dash_pattern.is_empty()
                 || self.path_stroke != path::PathStroke::default()
@@ -487,11 +492,10 @@ impl Shape {
             if self.ellipse
                 || self.line.is_some()
                 || self.radii != [0.; 4]
-                || self.stroke_weights.is_some()
-                || !self.shadows.is_empty()
+                || (self.stroke_weights.is_some() && self.stroke_geometry.is_none())
             {
                 return Some(
-                    "vector paths do not support individual widths, corner radii or effects",
+                    "vector paths require resolved outlines for individual borders and cannot have corner radii",
                 );
             }
             if let Err(e) = path::bounds(paths) {
@@ -601,6 +605,30 @@ impl Shape {
         }
     }
 
+    fn path_shadow_bounds(&self, shadow: Shadow) -> Rect {
+        let mut bounds =
+            path::bounds(self.vector_paths.as_deref().unwrap_or_default()).unwrap_or_default();
+        if let Some(paths) = &self.stroke_geometry {
+            let other = path::bounds(paths).unwrap_or_default();
+            let x = bounds.x.min(other.x);
+            let y = bounds.y.min(other.y);
+            bounds = Rect::new(
+                x,
+                y,
+                (bounds.x + bounds.w).max(other.x + other.w) - x,
+                (bounds.y + bounds.h).max(other.y + other.h) - y,
+            );
+        } else if let Some(stroke) = self.stroke {
+            bounds = bounds.inflate(stroke.width * self.path_stroke.miter_limit.max(6.));
+        }
+        bounds.translate([self.rect.x, self.rect.y]).inflate(
+            shadow.spread.abs()
+                + shadow.blur * 1.5
+                + shadow.offset[0].abs().max(shadow.offset[1].abs())
+                + 1.,
+        )
+    }
+
     /// The shape as coverage layers, back to front: drop shadows, fill,
     /// stroke, inner shadows. Nothing for a shape with a [`problem`](Self::problem).
     pub fn layers<'a>(&'a self, out: &mut Vec<Layer<'a>>) {
@@ -637,6 +665,10 @@ impl Shape {
             vector_origin: [self.rect.x, self.rect.y],
             vector_stroke: None,
             stroke_geometry: None,
+            path_shadow: None,
+            shadow_stroke: None,
+            shadow_has_fill: false,
+            shadow_bounds: None,
             dash_pattern: &self.dash_pattern,
             a,
             b,
@@ -680,7 +712,14 @@ impl Shape {
             let mut a = self.outline_sides(outside.map(|w| w + s.spread));
             a.rect = a.rect.translate(s.offset);
             let knockout = (!s.behind).then_some(silhouette);
-            out.push(layer(Mode::Drop, a, knockout, s.color, s.blur / 2.));
+            let mut l = layer(Mode::Drop, a, knockout, s.color, s.blur / 2.);
+            if self.vector_paths.is_some() {
+                l.path_shadow = Some(*s);
+                l.shadow_stroke = self.stroke;
+                l.shadow_has_fill = !self.fills.is_empty();
+                l.shadow_bounds = Some(self.path_shadow_bounds(*s));
+            }
+            out.push(l);
         }
         // Two antialiased edges that meet let the background through.
         // Under an opaque stroke the fill can run on to the middle of
@@ -738,13 +777,14 @@ impl Shape {
         for s in self.shadows.iter().filter(|s| s.inner) {
             let mut a = self.outline_sides(outside.map(|w| w - s.spread));
             a.rect = a.rect.translate(s.offset);
-            out.push(layer(
-                Mode::Inner,
-                a,
-                Some(silhouette),
-                s.color,
-                s.blur / 2.,
-            ));
+            let mut l = layer(Mode::Inner, a, Some(silhouette), s.color, s.blur / 2.);
+            if self.vector_paths.is_some() {
+                l.path_shadow = Some(*s);
+                l.shadow_stroke = self.stroke;
+                l.shadow_has_fill = !self.fills.is_empty();
+                l.shadow_bounds = Some(self.path_shadow_bounds(*s));
+            }
+            out.push(l);
         }
         let mut i = 0;
         out.retain(|l| {
@@ -799,6 +839,14 @@ pub struct Layer<'a> {
     pub vector_stroke: Option<(Stroke, path::PathStroke)>,
     /// Pre-expanded stroke outlines; fill paths provide the alignment domain.
     pub stroke_geometry: Option<&'a [VectorPath]>,
+    /// Vector shadow parameters; distance is evaluated before the layer transform.
+    pub path_shadow: Option<Shadow>,
+    /// Stroke alignment contributing to a vector shadow silhouette.
+    pub shadow_stroke: Option<Stroke>,
+    /// Whether filled regions contribute to the vector shadow silhouette.
+    pub shadow_has_fill: bool,
+    /// Conservative local bounds including vector shadow spread and blur.
+    pub shadow_bounds: Option<Rect>,
     pub dash_pattern: &'a [f32],
     pub mode: Mode,
     pub a: Outline,
@@ -821,6 +869,9 @@ impl Layer<'_> {
         self.transform.bounds(self.local_extent())
     }
     fn local_extent(&self) -> Rect {
+        if let Some(bounds) = self.shadow_bounds {
+            return bounds;
+        }
         if let Some(paths) = self.stroke_geometry {
             return path::bounds(paths)
                 .ok()

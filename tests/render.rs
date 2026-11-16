@@ -1360,3 +1360,65 @@ fn arbitrary_clips_preserve_holes_union_regions_and_clip_text_and_shadows() {
     }
     assert_eq!(r.problems().len(), 2);
 }
+
+#[test]
+fn vector_shadows_preserve_holes_stroke_silhouettes_and_cache() {
+    use figleaf::{Transform, VectorPath, WindingRule};
+    let rectangle = |x, y, w, h| {
+        VectorPath::new(WindingRule::EvenOdd)
+            .move_to([x, y])
+            .line_to([x + w, y])
+            .line_to([x + w, y + h])
+            .line_to([x, y + h])
+            .close()
+    };
+    let mut path = rectangle(10., 10., 30., 30.);
+    path.commands.extend(rectangle(20., 20., 10., 10.).commands);
+    let base = Shape::vector(Rect::new(0., 0., 50., 50.), vec![path]).fill(hex(0xff0000));
+    let mut c = Canvas::new();
+    c.shape(
+        base.clone()
+            .shadow(Shadow::drop(hex(0x0000ff), [40., 0.], 0.).show_behind()),
+    );
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(15, 15), RED);
+    assert_eq!(i.pixel(55, 15), BLUE);
+    assert_eq!(i.pixel(65, 25), CLEAR);
+    assert_eq!(i.pixel(25, 25), CLEAR);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    c.clear();
+    c.shape(
+        base.clone()
+            .shadow(Shadow::inner(hex(0x0000ff), [0., 4.], 0.)),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.pixel(15, 11), BLUE);
+    assert_eq!(i.pixel(15, 16), RED);
+    assert_eq!(i.pixel(25, 25), CLEAR);
+    let stroke = Shape::vector(
+        Rect::new(0., 0., 50., 50.),
+        vec![rectangle(10., 10., 30., 30.)],
+    )
+    .strokes([0., 4., 0., 0.], hex(0xff0000), StrokeAlign::Center)
+    .stroke_geometry(vec![rectangle(38., 10., 4., 30.)])
+    .shadow(Shadow::drop(hex(0x0000ff), [10., 0.], 0.).show_behind())
+    .transform(Transform::new([[-1., 0., 90.], [0., 1., 0.]]));
+    c.clear();
+    c.shape(stroke);
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(50, 25), RED);
+    assert_eq!(i.pixel(40, 25), BLUE);
+    assert_eq!(i.pixel(65, 25), CLEAR);
+    c.clear();
+    c.shape(base.shadow(Shadow::drop(hex(0), [0., 0.], f32::NAN)));
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(r.problems().len(), 1);
+    assert!(i.rgba.iter().all(|v| *v == 0));
+}

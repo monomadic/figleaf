@@ -127,7 +127,7 @@ test('resolved network regions, holes and unfilled branches survive export', () 
 test('vector errors block output instead of dropping features or malformed commands', () => {
   const n=node({type:'VECTOR',fillGeometry:[{windingRule:'NONZERO',data:'M0 0 L10 0 L0 10 Z'}]});
   for(const overrides of [
-    {strokes:[solid]}, {effects:[{type:'DROP_SHADOW',radius:2,color:{r:0,g:0,b:0,a:1},offset:{x:0,y:1}}]},
+    {strokes:[solid]}, {effects:[{type:'LAYER_BLUR',radius:2}]},
     {vectorNetwork:{regions:[{fills:[]}]}},
     ...['M0 0 A10 10 0 0 0 20 20','L0 0','M0 C1 2 3 4 5 6','M0 0 Q1 2','M0 0 LNaN 10','M0 0 L1e99 10'].map(data=>({fillGeometry:[{windingRule:'NONZERO',data}]})),
     {fillGeometry:[{windingRule:'UNKNOWN',data:'M0 0'}]},
@@ -342,4 +342,27 @@ test('clipping fixture keeps every ancestor on shapes and text and compiles',()=
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
   const bad=structuredClone(require('./clipping-reference.json'));bad.children[0].topLeftRadius=-1;assert.equal(exportHierarchy([bad]).code,null);
+});
+
+test('smoothing exports resolved fills, borders, clips and shadows and compiles',()=>{
+  const fixture=require('./smoothing-reference.json');
+  const r=exportHierarchy([fixture]);assert.deepEqual(r.errors,[]);
+  assert.match(r.code,/Corner smoothing: 0.6/);assert.match(r.code,/Clip::paths/);
+  assert.match(r.code,/\.strokes\(\[0.0, 5.0, 3.0, 1.0\]/);
+  assert.match(r.code,/Shadow::inner/);assert.match(r.code,/Shadow::drop/);
+  assert.equal(r.code,fs.readFileSync(path.join(__dirname,'../examples/generated/smoothing.rs'),'utf8'));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-smoothing-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for item in c.items(){if let figleaf::paint::Item::Shape(s)=item{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('invalid smoothing and unavailable contours block all output',()=>{
+  const n=require('./smoothing-reference.json').children[1];
+  for(const patch of [{cornerSmoothing:NaN},{cornerSmoothing:-1},{cornerSmoothing:1.1},{fillGeometry:undefined},{strokeGeometry:undefined},{strokeTopWeight:-1},{effects:[{type:'LAYER_BLUR',radius:2}]}]) {
+    const r=exportHierarchy([node(),{...n,...patch}]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  const zero={...n,strokeWeight:0,strokeTopWeight:0,strokeRightWeight:0,strokeBottomWeight:0,strokeLeftWeight:0,strokeGeometry:undefined};
+  assert.deepEqual(exportHierarchy([zero]).errors,[]);
 });
