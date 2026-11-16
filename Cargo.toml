@@ -88,3 +88,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "booleans"
 required-features = ["wgpu"]
+
+[[example]]
+name = "clipping"
+required-features = ["wgpu", "text-coretext"]

@@ -43,31 +43,6 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     return result;
   }
   const compose = (parent,child) => parent.map(r => [r[0]*child[0][0]+r[1]*child[1][0],r[0]*child[0][1]+r[1]*child[1][1],r[0]*child[0][2]+r[1]*child[1][2]+r[2]]);
-  const point = (m,p) => m.map(r=>r[0]*p[0]+r[1]*p[1]+r[2]);
-  const bounds = (m,r) => {
-    const points = [[r[0],r[1]],[r[0]+r[2],r[1]],[r[0],r[1]+r[3]],[r[0]+r[2],r[1]+r[3]]].map(p=>point(m,p));
-    const lo=[0,1].map(i=>Math.min(...points.map(p=>p[i]))), hi=[0,1].map(i=>Math.max(...points.map(p=>p[i])));
-    return [lo[0],lo[1],hi[0]-lo[0],hi[1]-lo[1]];
-  };
-  const contains = (a, b) => a[0] <= b[0] && a[1] <= b[1] && a[0]+a[2] >= b[0]+b[2] && a[1]+a[3] >= b[1]+b[3];
-  const combineClip = (a, b) => {
-    if (!a) return b;
-    const relative = compose(inverse(a.transform), b.transform);
-    if (relative[0][0] !== 1 || relative[0][1] !== 0 || relative[1][0] !== 0 || relative[1][1] !== 1) {
-      if (!a.radius && contains(a.rect, bounds(relative,b.rect))) return b;
-      if (!b.radius && contains(b.rect, bounds(compose(inverse(b.transform),a.transform),a.rect))) return a;
-      throw Error('Intersecting independently transformed clips are unsupported.');
-    }
-    b = { ...b, rect: [b.rect[0]+relative[0][2],b.rect[1]+relative[1][2],b.rect[2],b.rect[3]], transform: a.transform };
-    if (a.radius || b.radius) {
-      // A rectangular ancestor containing the entire rounded clip is redundant.
-      if (!a.radius && contains(a.rect, b.rect)) return b;
-      if (!b.radius && contains(b.rect, a.rect)) return a;
-      throw Error('Intersecting rounded clips are unsupported.');
-    }
-    const x = Math.max(a.rect[0], b.rect[0]), y = Math.max(a.rect[1], b.rect[1]);
-    return { rect: [x, y, Math.max(0, Math.min(a.rect[0]+a.rect[2], b.rect[0]+b.rect[2])-x), Math.max(0, Math.min(a.rect[1]+a.rect[3], b.rect[1]+b.rect[3])-y)], radius: 0, transform: a.transform };
-  };
   // Figma's documented absolute path command subset. Use resolved fillGeometry
   // so branched networks retain every filled region and hole. Never reconstruct
   // network topology from bounding boxes or silently turn strokes into fills.
@@ -246,7 +221,6 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       let expression = null;
       if (n.type === 'TEXT') {
-        if (clip?.radius) reject('Rounded clipping of text is unsupported.');
         if (fills.length !== 1 || fills[0]?.type !== 'SOLID') reject('Text requires exactly one solid fill.');
         if (strokes.length) reject('Text strokes are unsupported.');
         if (typeof n.fontName !== 'object' || typeof n.fontSize !== 'number' || typeof n.letterSpacing !== 'object' || typeof n.lineHeight !== 'object') reject('Mixed text styles are unsupported.');
@@ -283,7 +257,6 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           expression = `Text::new(${string(text)}, ${rect(box)}).font(fonts[${font}]).size(${number(n.fontSize)}, ${number(height)}).letter_spacing(${number(tracking)}).color(${color(fills[0].color, fills[0].opacity)})`;
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
-          if (clip) expression += `.clip_transformed(${rect(clip.rect)}, ${matrix(clip.transform)})`;
         }
       } else if (n.type === 'LINE') {
         if (fills.length || strokes.length !== 1 || effects.length) reject('Lines require one solid stroke, no fills, and no effects.');
@@ -336,14 +309,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(n.dashPattern?.length) expression+=`.dash_pattern(vec!${array(n.dashPattern)})`;
       }
       if (expression) expression += `.transform(${matrix(world)})`;
-      if (expression && n.type !== 'TEXT' && clip) expression += `.clip_transformed(${rect(clip.rect)}, ${number(clip.radius)}, ${matrix(clip.transform)})`;
+      if (expression) for (const c of clip || []) expression += `.intersect_clip(Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)}).transform(${matrix(c.transform)}))`;
       if (expression && errors.length === before) {
         for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
         lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    canvas.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
-        if (!radii.every(r => r === radii[0])) reject('Clipping with unequal corner radii is unsupported.');
-        childClip = combineClip(clip, { rect: box, radius: radii[0], transform: world });
+        if (radii.some(r=>r<0)) reject('Invalid clip corner radius.');
+        childClip = [...(clip || []), { rect: box, radii, transform: world }];
+        if (childClip.length>128) reject('Clip stack exceeds 128 clips.');
       }
     } catch (e) { reject(e.message); }
     // Boolean operands are consumed by Figma’s resolved paths, not painted again.
@@ -361,7 +335,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

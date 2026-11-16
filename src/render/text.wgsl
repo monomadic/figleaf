@@ -4,6 +4,8 @@ struct View { size: vec4f }
 @group(0) @binding(0) var mask: texture_2d<f32>;
 @group(0) @binding(1) var<uniform> view: View;
 
+@group(1) @binding(0) var<storage, read> clip_data: array<vec4f>;
+
 struct Vertex {
     @builtin(position) position: vec4f,
     @location(0) @interpolate(flat) rect: vec4f,
@@ -12,6 +14,7 @@ struct Vertex {
     @location(3) local: vec2f,
     @location(4) @interpolate(flat) clip_x: vec4f,
     @location(5) @interpolate(flat) clip_y: vec4f,
+    @location(6) @interpolate(flat) clip_range: vec2f,
 }
 
 @vertex fn vs(@builtin(vertex_index) i: u32,
@@ -25,6 +28,7 @@ struct Vertex {
     let p = vec2f(dot(shape_x.xy,local)+shape_x.z,dot(shape_y.xy,local)+shape_y.z);
     var v: Vertex;
     v.position = vec4f(p.x / view.size.x * 2 - 1, 1 - p.y / view.size.y * 2, 0, 1);
+    v.clip_range = vec2f(shape_x.w,shape_y.w);
     v.rect = rect;
     v.clip = clip;
     v.color = color;
@@ -52,5 +56,5 @@ fn figma_alpha(color: vec3f, a: f32) -> f32 {
     let a = mix(textureLoad(mask,base,0).r,textureLoad(mask,base+vec2i(1,0),0).r,t.x);
     let b = mix(textureLoad(mask,base+vec2i(0,1),0).r,textureLoad(mask,base+vec2i(1,1),0).r,t.x);
     let alpha = mix(a,b,t.y);
-    return vec4f(v.color.rgb, figma_alpha(v.color.rgb, v.color.a * alpha));
+    return vec4f(v.color.rgb, figma_alpha(v.color.rgb, v.color.a * alpha * clips_coverage(p,v.clip_range)));
 }

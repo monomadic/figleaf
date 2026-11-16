@@ -60,13 +60,13 @@ test('unsupported features never produce partial Rust', () => {
   ];
   for (const n of cases) { const r = exportHierarchy([n]); assert.equal(r.code,null,JSON.stringify(n)); assert.ok(r.errors.length); }
 });
-test('clips are intersected or rejected, never overwritten', () => {
+test('ancestor clips are retained for shapes and text', () => {
   const r = exportHierarchy([node({type:'FRAME',clipsContent:true,width:50,height:50,children:[node({type:'FRAME',width:50,height:50,relativeTransform:[[1,0,20],[0,1,20]],clipsContent:true,children:[node()]})]})]);
-  assert.deepEqual(r.errors,[]); assert.match(r.code,/clip_transformed\(Rect::new\(20.0, 20.0, 30.0, 30.0\), 0.0, Transform::new/);
+  assert.deepEqual(r.errors,[]); assert.equal((r.code.match(/intersect_clip\(/g)||[]).length,3);
   const round = node({type:'FRAME',clipsContent:true,topLeftRadius:8,topRightRadius:8,bottomLeftRadius:8,bottomRightRadius:8,children:[text()]});
-  assert.equal(exportHierarchy([round]).code,null);
+  assert.deepEqual(exportHierarchy([round]).errors,[]);
   round.children=[node({...round,children:[node()],relativeTransform:[[1,0,20],[0,1,20]]})];
-  assert.equal(exportHierarchy([round]).code,null);
+  assert.deepEqual(exportHierarchy([round]).errors,[]);
 });
 test('selection validation, hidden subtrees, and hostile names', () => {
   assert.equal(exportHierarchy([]).code,null); assert.equal(exportHierarchy([node(),node()]).code,null);
@@ -155,12 +155,13 @@ test('affine hierarchy composes local geometry and preserves root linear transfo
   assert.match(bad.errors[0].message,/singular/);
 });
 
-test('crossing transformed clips fail closed', () => {
+test('crossing transformed clips retain both transforms', () => {
   const r=exportHierarchy([node({type:'FRAME',clipsContent:true,children:[
     node({type:'FRAME',clipsContent:true,relativeTransform:[[1,0.5,0],[0,1,0]],children:[node()]})
   ]})]);
-  assert.equal(r.code,null);
-  assert.ok(r.errors.some(e=>/transformed clips/.test(e.message)));
+  assert.deepEqual(r.errors,[]);
+  assert.equal((r.code.match(/intersect_clip\(/g)||[]).length,3);
+  assert.match(r.code,/0.5/);
 });
 
 // Load the resolver with the same lexical exporter dependency as the bundle.
@@ -327,4 +328,18 @@ test('resolved boolean operands still obey hierarchy limits',()=>{
   const n=structuredClone(require('./boolean-reference.json').children[0]);
   let child=node();for(let i=0;i<130;i++)child=node({children:[child]});n.children=[child];
   const result=exportHierarchy([n]);assert.equal(result.code,null);assert.ok(result.errors.some(e=>/limit/.test(e.message)));
+});
+
+test('clipping fixture keeps every ancestor on shapes and text and compiles',()=>{
+  const r=exportHierarchy([require('./clipping-reference.json')]);assert.deepEqual(r.errors,[]);
+  assert.match(r.code,/Clip::rounded_rect\(Rect::new\(0.0, 0.0, 110.0, 100.0\), \[30.0, 0.0, 18.0, 8.0\]/);
+  const rotated=r.code.split('\n').filter(l=>l.includes('canvas.text('))[1];assert.equal((rotated.match(/intersect_clip/g)||[]).length,2);
+  assert.ok(!r.code.includes('.clip_transformed('));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-clips-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);for item in c.items(){if let figleaf::paint::Item::Shape(s)=item{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+  const bad=structuredClone(require('./clipping-reference.json'));bad.children[0].topLeftRadius=-1;assert.equal(exportHierarchy([bad]).code,null);
 });

@@ -8,6 +8,7 @@
 //! Colours are straight-alpha encoded sRGB, as Figma shows them. Lengths are
 //! logical units; the renderer multiplies by the scale it is given.
 
+pub mod clip;
 mod geom;
 pub mod layout;
 pub mod paint;
@@ -18,6 +19,7 @@ pub mod text;
 #[cfg(feature = "wgpu")]
 pub mod render;
 
+pub use clip::{Clip, ClipGeometry};
 pub use geom::{Color, Error, Rect, Transform, hex, hexa};
 pub use paint::{Canvas, LinearGradient, Paint, Shadow, Shape, Stroke, StrokeAlign, Text};
 

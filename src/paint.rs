@@ -166,6 +166,8 @@ pub struct Shape {
     /// Local geometry/effects to canvas; clips have an independent transform.
     pub transform: Transform,
     pub clip_transform: Transform,
+    /// Additional clips, intersected in canvas space; each has its own transform.
+    pub clips: Vec<crate::Clip>,
     /// The shape's box. For a line: from its start (`x`, `y`) to its end
     /// (`x + w`, `y + h`), so `w` and `h` may be negative.
     pub rect: Rect,
@@ -204,6 +206,7 @@ impl Shape {
             rect,
             transform: Transform::IDENTITY,
             clip_transform: Transform::IDENTITY,
+            clips: Vec::new(),
             vector_paths: None,
             primitive: None,
             stroke_paths: None,
@@ -309,6 +312,11 @@ impl Shape {
         self
     }
     /// Clip coordinates belong to this independent ancestor transform.
+    /// Intersect another clip without replacing any earlier clip.
+    pub fn intersect_clip(mut self, clip: crate::Clip) -> Self {
+        self.clips.push(clip);
+        self
+    }
     pub fn clip_transformed(mut self, rect: Rect, radius: f32, transform: Transform) -> Self {
         self = self.clip_rounded(rect, radius);
         self.clip_transform = transform;
@@ -419,6 +427,14 @@ impl Shape {
 
     /// Why the shape can't be drawn, if it can't.
     pub fn problem(&self) -> Option<&'static str> {
+        if self.clips.len() > 128 {
+            return Some("clip stack exceeds 128 clips");
+        }
+        for clip in &self.clips {
+            if let Err(e) = clip.validate() {
+                return Some(e.0);
+            }
+        }
         if let Err(e) = self
             .transform
             .inverse()
@@ -858,6 +874,7 @@ pub enum Align {
 pub struct Text {
     pub transform: Transform,
     pub clip_transform: Transform,
+    pub clips: Vec<crate::Clip>,
     pub string: String,
     /// The line is `line_height` tall and placed in this box by the alignments.
     pub rect: Rect,
@@ -887,6 +904,7 @@ impl Text {
         Self {
             transform: Transform::IDENTITY,
             clip_transform: Transform::IDENTITY,
+            clips: Vec::new(),
             string: string.into(),
             rect,
             font: 0,
@@ -940,6 +958,11 @@ impl Text {
     }
     pub fn transform(mut self, transform: Transform) -> Self {
         self.transform = transform;
+        self
+    }
+    /// Intersect another clip without replacing any earlier clip.
+    pub fn intersect_clip(mut self, clip: crate::Clip) -> Self {
+        self.clips.push(clip);
         self
     }
     pub fn clip_transformed(mut self, clip: Rect, transform: Transform) -> Self {

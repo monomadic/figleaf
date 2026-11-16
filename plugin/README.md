@@ -34,7 +34,8 @@ Supported: affine-transformed rectangles, frames/components/instances/groups,
 full ellipses, filled vector paths, stroked straight lines, solid and linear-gradient fills
 (up to eight stops), solid uniform/individual borders, and shape shadows.
 Nested transforms compose; the root translation is omitted but its linear matrix is retained.
-Rectangular clips sharing axes can intersect; one rounded clip is supported for shapes.
+All ancestor frame clips are retained, including unequal corner radii and crossing
+transforms. The same clip stack applies to shapes and text.
 Simple Latin text needs one solid fill, one style, explicit line height, and
 caller-supplied font indices. Code comments identify each required family/style;
 the host must supply the exact font and variable-font configuration. Normal
@@ -50,9 +51,8 @@ Errors include vector effects/paint overrides, images, masks, layer opacity, ble
 smoothing, singular transforms, unsupported gradients,
 multiple/gradient strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
-text, rounded text clipping, and intersecting rounded or independently transformed clips. Unequal corner radii
-are supported on shapes, but not clipping frames. The size limit is 5,000 nodes
-and 128 levels. New Figma features may need additional validation rules.
+text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds
+clip edges and coverage work. New Figma features may need additional validation rules.
 
 Generated code targets figleaf's supported semantics, not pixel identity.
 Existing antialiasing, shadow, text, and sRGB-target blending differences remain.
@@ -129,3 +129,8 @@ bindings are still verified and included as provenance comments. Stroke outlines
 retain alignment, caps, joins and dashes; effects/unsupported paints remain errors.
 Missing geometry hard-errors. This exports a static result, not live boolean
 operations. See `examples/booleans.rs` and the [comparison](../docs/booleans-compare.png).
+
+`clipping-reference.json` exercises per-corner and nested transformed frame clips
+on shapes and text; generated code runs in `examples/clipping.rs`. The host API
+also accepts arbitrary `Clip::paths`, with unions and winding-rule holes. This
+does not enable Figma mask nodes, which still hard-error.

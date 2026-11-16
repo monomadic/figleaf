@@ -85,7 +85,7 @@ canvas.text(Text::new("Sync to grid", Rect::new(56., 4., 120., 16.)).size(13., 1
 | "Show behind transparent areas" | `.show_behind()` |
 | Inner shadow | `.shadow(Shadow::inner(color, [x, y], blur))` |
 | A vector's straight stroke with round caps (icons) | `Shape::line(from, to, width).fill(color)` |
-| Clip content on a frame | `.clip(rect)` / `.clip_rounded(rect, radius)` |
+| Clip content on a frame | `.intersect_clip(Clip::rounded_rect(rect, radii))` |
 | Text, size / line height, alignment | `Text::new(..).size(13., 16.).align(..)` |
 | Letter spacing (pixels) | `.letter_spacing(0.7)` |
 | Fixed-width text box, line breaks | `.wrap()`; `text::wrap(..)` gives the lines, for the height |
@@ -113,12 +113,27 @@ the child first, then the parent. Rotation, reflection, nonuniform scale and
 skew work on primitives, filled paths and text; singular/non-finite matrices
 are reported in `Renderer::problems`.
 
-Plain `.clip(...)` remains in canvas coordinates. Use
-`Shape::clip_transformed(rect, radius, ancestor_transform)` or
-`Text::clip_transformed(rect, ancestor_transform)` for an ancestor's local clip.
-The plugin composes nested matrices and omits only the selection root's
-translation. Crossing independently transformed clips and rounded text clips
-still fail closed; complete clip intersections are a separate task.
+Plain `.clip(...)` remains in canvas coordinates. Single-clip helpers remain
+available, including `clip_transformed`. For nested clips, both `Shape` and
+`Text` accept repeated `.intersect_clip(Clip::rounded_rect(rect, radii).transform(m))`
+calls. Radii are top-left, top-right, bottom-right, bottom-left. Clips have
+independent transforms and are intersected without replacing any ancestor.
+`Clip::paths(paths)` supports arbitrary vector regions and winding-rule holes;
+regions union within a clip, while separate clips intersect. An empty path clip
+clips everything out. The plugin preserves every frame clip inside the selection;
+Figma masks remain a separate unsupported feature.
+
+Clip stacks apply to fills, strokes, gradients, text and their supported shadows.
+They share coverage samples, so duplicate clips do not compound edge opacity.
+Limits are 128 clips and 8,192 flattened edges per item, plus a coverage-work and
+GPU-buffer budget; invalid or excessive clips report `Renderer::problems` and
+suppress the whole item. No new dependencies.
+
+`cargo run --example clipping --all-features` renders generated code beside
+[Figma](docs/clipping-compare.png): unequal corners, crossing rotated rounded
+clips and clipped text (mean 1.01/255 at 2×, largest 121/255 on text).
+A second render uses a circular path clip for the same reference. Path holes,
+region unions, invalid geometry, shadows and caching have synthetic tests.
 
 Run `cargo run --example affine --features wgpu` for rotation/reflection/skew
 beside Figma ([comparison](docs/affine-compare.png)): mean difference 0.23/255,
@@ -271,8 +286,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Radial, angular and diamond gradients, gradients on strokes and text, more
-than eight gradient stops, images, vector effects, blurs, blend modes, clipped text
-with rounded corners, drop shadows on text, flattened layer opacity, corner smoothing, multisampled targets, layout
+than eight gradient stops, images, vector effects, blurs, blend modes, flattened layer opacity, corner smoothing, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 

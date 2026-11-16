@@ -1,0 +1,571 @@
+{
+  "id": "370:242",
+  "name": "Temporary figleaf clipping reference",
+  "type": "FRAME",
+  "width": 460,
+  "height": 150,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      2400
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "cornerSmoothing": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "bottomRightRadius": 0,
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeCap": "NONE",
+  "strokeJoin": "MITER",
+  "strokeMiterLimit": 4,
+  "dashPattern": [],
+  "clipsContent": false,
+  "children": [
+    {
+      "id": "370:243",
+      "name": "Unequal corners",
+      "type": "FRAME",
+      "width": 110,
+      "height": 100,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "topLeftRadius": 30,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 8,
+      "bottomRightRadius": 18,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "clipsContent": true,
+      "children": [
+        {
+          "id": "370:244",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 180,
+          "height": 130,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              -20
+            ],
+            [
+              0,
+              1,
+              -15
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "370:245",
+          "name": "Clipping ROUND CORNERS",
+          "type": "TEXT",
+          "width": 180,
+          "height": 115,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              -12
+            ],
+            [
+              0,
+              1,
+              -4
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 1,
+                "b": 1
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "strokeWeight": 1,
+          "strokeAlign": "OUTSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "characters": "Clipping\nROUND\nCORNERS",
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "fontSize": 20,
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 24
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "textCase": "ORIGINAL",
+          "textDecoration": "NONE",
+          "textAlignHorizontal": "LEFT",
+          "textAlignVertical": "TOP",
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "hangingPunctuation": false,
+          "hangingList": false,
+          "textTruncation": "DISABLED",
+          "maxLines": null,
+          "hasMissingFont": false
+        }
+      ]
+    },
+    {
+      "id": "370:246",
+      "name": "Outer rounded clip",
+      "type": "FRAME",
+      "width": 110,
+      "height": 100,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          170
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "topLeftRadius": 24,
+      "topRightRadius": 24,
+      "bottomLeftRadius": 24,
+      "bottomRightRadius": 24,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "clipsContent": true,
+      "children": [
+        {
+          "id": "370:247",
+          "name": "Crossing rotated clip",
+          "type": "FRAME",
+          "width": 110,
+          "height": 110,
+          "relativeTransform": [
+            [
+              0.9510565400123596,
+              -0.30901700258255005,
+              15
+            ],
+            [
+              0.30901700258255005,
+              0.9510565400123596,
+              -12
+            ]
+          ],
+          "fills": [],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "topLeftRadius": 4,
+          "topRightRadius": 26,
+          "bottomLeftRadius": 20,
+          "bottomRightRadius": 8,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "clipsContent": true,
+          "children": [
+            {
+              "id": "370:248",
+              "name": "Rectangle",
+              "type": "RECTANGLE",
+              "width": 180,
+              "height": 130,
+              "relativeTransform": [
+                [
+                  1,
+                  0,
+                  -20
+                ],
+                [
+                  0,
+                  1,
+                  -15
+                ]
+              ],
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 1,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 0.75,
+                    "g": 0.25,
+                    "b": 0.550000011920929
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "cornerSmoothing": 0,
+              "topLeftRadius": 0,
+              "topRightRadius": 0,
+              "bottomLeftRadius": 0,
+              "bottomRightRadius": 0,
+              "strokeWeight": 1,
+              "strokeAlign": "INSIDE",
+              "strokeCap": "NONE",
+              "strokeJoin": "MITER",
+              "strokeMiterLimit": 4,
+              "dashPattern": []
+            },
+            {
+              "id": "370:249",
+              "name": "Clipping ROUND CORNERS",
+              "type": "TEXT",
+              "width": 180,
+              "height": 115,
+              "relativeTransform": [
+                [
+                  1,
+                  0,
+                  -12
+                ],
+                [
+                  0,
+                  1,
+                  -4
+                ]
+              ],
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "visible": true,
+                  "opacity": 1,
+                  "blendMode": "NORMAL",
+                  "color": {
+                    "r": 1,
+                    "g": 1,
+                    "b": 1
+                  },
+                  "boundVariables": {}
+                }
+              ],
+              "strokes": [],
+              "effects": [],
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "PASS_THROUGH",
+              "strokeWeight": 1,
+              "strokeAlign": "OUTSIDE",
+              "strokeCap": "NONE",
+              "strokeJoin": "MITER",
+              "strokeMiterLimit": 4,
+              "dashPattern": [],
+              "characters": "Clipping\nROUND\nCORNERS",
+              "fontName": {
+                "family": "JetBrains Mono",
+                "style": "Regular",
+                "variationSettings": {
+                  "wght": 400
+                }
+              },
+              "fontSize": 20,
+              "lineHeight": {
+                "unit": "PIXELS",
+                "value": 24
+              },
+              "letterSpacing": {
+                "unit": "PERCENT",
+                "value": 0
+              },
+              "textCase": "ORIGINAL",
+              "textDecoration": "NONE",
+              "textAlignHorizontal": "LEFT",
+              "textAlignVertical": "TOP",
+              "paragraphSpacing": 0,
+              "paragraphIndent": 0,
+              "hangingPunctuation": false,
+              "hangingList": false,
+              "textTruncation": "DISABLED",
+              "maxLines": null,
+              "hasMissingFont": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "370:250",
+      "name": "Circle clip",
+      "type": "FRAME",
+      "width": 80,
+      "height": 80,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          340
+        ],
+        [
+          0,
+          1,
+          25
+        ]
+      ],
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "cornerSmoothing": 0,
+      "topLeftRadius": 40,
+      "topRightRadius": 40,
+      "bottomLeftRadius": 40,
+      "bottomRightRadius": 40,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "clipsContent": true,
+      "children": [
+        {
+          "id": "370:251",
+          "name": "Rectangle",
+          "type": "RECTANGLE",
+          "width": 180,
+          "height": 130,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              -20
+            ],
+            [
+              0,
+              1,
+              -15
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.550000011920929,
+                "b": 0.8500000238418579
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": []
+        },
+        {
+          "id": "370:252",
+          "name": "Clipping ROUND CORNERS",
+          "type": "TEXT",
+          "width": 180,
+          "height": 115,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              -12
+            ],
+            [
+              0,
+              1,
+              -4
+            ]
+          ],
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 1,
+                "b": 1
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "strokeWeight": 1,
+          "strokeAlign": "OUTSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "strokeMiterLimit": 4,
+          "dashPattern": [],
+          "characters": "Clipping\nROUND\nCORNERS",
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "fontSize": 20,
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 24
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "textCase": "ORIGINAL",
+          "textDecoration": "NONE",
+          "textAlignHorizontal": "LEFT",
+          "textAlignVertical": "TOP",
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "hangingPunctuation": false,
+          "hangingList": false,
+          "textTruncation": "DISABLED",
+          "maxLines": null,
+          "hasMissingFont": false
+        }
+      ]
+    }
+  ]
+}

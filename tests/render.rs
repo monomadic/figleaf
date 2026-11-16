@@ -1218,3 +1218,145 @@ fn resolved_stroke_geometry_masks_holes_unions_alpha_and_tracks_changes() {
     assert_eq!(r.problems().len(), 1);
     assert!(i.rgba.iter().all(|v| *v == 0));
 }
+
+#[test]
+fn clip_stacks_intersect_transforms_and_do_not_double_antialias() {
+    use figleaf::{Clip, Transform};
+    let a = Clip::rounded_rect(Rect::new(10., 10., 50., 40.), [12., 0., 0., 0.]);
+    let b = Clip::rect(Rect::new(0., 0., 35., 50.))
+        .transform(Transform::new([[1., 0.4, 20.], [0., 1., 5.]]));
+    let shape = Shape::rect(Rect::new(0., 0., 100., 60.))
+        .fill(hex(0xff0000))
+        .intersect_clip(a.clone())
+        .intersect_clip(b.clone());
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.shape(shape.clone());
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    for p in [[10, 10], [20, 20], [30, 40], [60, 30]] {
+        assert_eq!(i.pixel(p[0], p[1]), CLEAR);
+    }
+    for p in [[30, 20], [58, 20], [40, 40]] {
+        assert_eq!(i.pixel(p[0], p[1]), RED);
+    }
+    c.clear();
+    c.shape(shape.clone().intersect_clip(a.clone()).intersect_clip(b));
+    let twice = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(i.rgba, twice.rgba);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    let mut changed = shape;
+    changed.clips[0] = Clip::rounded_rect(Rect::new(10., 10., 50., 40.), [0., 20., 0., 0.]);
+    c.clear();
+    c.shape(changed);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(report.changed && report.uploaded_bytes > 0);
+    // A path and an identical clip share coverage samples at their boundary.
+    let p = figleaf::Primitive::Arc(figleaf::ArcData::new(0., std::f32::consts::TAU, 0.))
+        .paths(Rect::new(10., 10., 40., 40.), 0.)
+        .unwrap();
+    c.clear();
+    c.shape(Shape::vector(Rect::default(), p.clone()).fill(hex(0xff0000)));
+    let unclipped = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    c.clear();
+    c.shape(
+        Shape::vector(Rect::default(), p.clone())
+            .fill(hex(0xff0000))
+            .intersect_clip(Clip::paths(p)),
+    );
+    let clipped = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(unclipped.rgba, clipped.rgba);
+}
+
+#[test]
+fn arbitrary_clips_preserve_holes_union_regions_and_clip_text_and_shadows() {
+    use figleaf::{
+        Clip, Error, Transform, VectorPath, WindingRule,
+        text::{Backend, Mask, Metrics, Style},
+    };
+    struct SolidText;
+    impl Backend for SolidText {
+        fn measure(&mut self, _: &str, _: Style) -> Result<Metrics, Error> {
+            Ok(Metrics {
+                advance: 100.,
+                lines: 1,
+                ..Default::default()
+            })
+        }
+        fn raster(
+            &mut self,
+            text: &str,
+            style: Style,
+            width: f32,
+            scale: f32,
+        ) -> Result<Mask, Error> {
+            let [width, height] = figleaf::text::validate(text, style, width, scale)?;
+            Ok(Mask {
+                width,
+                height,
+                alpha: vec![255; (width * height) as usize],
+                metrics: self.measure(text, style)?,
+            })
+        }
+    }
+    let rect = |x, y, w, h| {
+        VectorPath::new(WindingRule::EvenOdd)
+            .move_to([x, y])
+            .line_to([x + w, y])
+            .line_to([x + w, y + h])
+            .line_to([x, y + h])
+            .close()
+    };
+    let mut hole = rect(10., 10., 50., 40.);
+    hole.commands.extend(rect(25., 20., 20., 20.).commands);
+    let clip = Clip::paths(vec![hole, rect(30., 25., 10., 10.)])
+        .transform(Transform::new([[-1., 0., 100.], [0., 1., 0.]]));
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.text(
+        Text::new("test", Rect::new(0., 0., 100., 60.))
+            .size(20., 60.)
+            .color(hex(0xff0000))
+            .drop_shadow(hex(0xff0000), [5., 5.], 4.)
+            .intersect_clip(clip.clone()),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut SolidText);
+    assert!(r.problems().is_empty());
+    assert_eq!(i.pixel(45, 30), RED);
+    assert_eq!(i.pixel(57, 30), CLEAR);
+    assert_eq!(i.pixel(65, 30), RED);
+    assert_eq!(i.pixel(95, 30), CLEAR);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut SolidText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    // Empty and malformed clips suppress the whole item, including its shadow.
+    for clip in [
+        Clip::paths(vec![]),
+        Clip::rounded_rect(Rect::new(0., 0., 100., 60.), [f32::NAN; 4]),
+    ] {
+        c.clear();
+        c.text(
+            Text::new("test", Rect::new(0., 0., 100., 60.))
+                .size(20., 60.)
+                .color(hex(0xff0000))
+                .intersect_clip(clip.clone()),
+        );
+        c.shape(
+            Shape::rect(Rect::new(0., 0., 100., 60.))
+                .fill(hex(0xff0000))
+                .shadow(Shadow::drop(hex(0), [2., 2.], 4.))
+                .intersect_clip(clip),
+        );
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut SolidText);
+        assert!(i.rgba.iter().all(|v| *v == 0));
+    }
+    assert_eq!(r.problems().len(), 2);
+}

@@ -5,8 +5,9 @@ struct View { size: vec4f }
 @group(0) @binding(0) var<uniform> view: View;
 struct PathEdge { points: vec4f, flags: vec4f }
 @group(1) @binding(0) var<storage, read> path_edges: array<PathEdge>;
-struct Transforms { shape_x:vec4f, shape_y:vec4f, clip_x:vec4f, clip_y:vec4f }
+struct Transforms { shape_x:vec4f, shape_y:vec4f, clip_x:vec4f, clip_y:vec4f, clip_range:vec4f }
 @group(1) @binding(1) var<storage, read> transforms: array<Transforms>;
+@group(1) @binding(2) var<storage, read> clip_data: array<vec4f>;
 fn mapped(p:vec2f, x:vec4f, y:vec4f) -> vec2f { return vec2f(dot(x.xy,p)+x.z,dot(y.xy,p)+y.z); }
 fn pixel_width(d:f32, transformed:f32) -> f32 {
     let width=max(length(vec2f(dpdx(d),dpdy(d))),0.000001);
@@ -32,7 +33,7 @@ fn path_inside(p: vec2f, first: u32, count: u32) -> bool {
     }
     return false;
 }
-fn path_coverage(p: vec2f, range: vec4f, open: vec4f, domain: vec4f, align: f32) -> f32 {
+fn path_coverage(p: vec2f, range: vec4f, open: vec4f, domain: vec4f, align: f32, clips: vec2f) -> f32 {
     var coverage = 0.0;
     for (var y = 0u; y < 4u; y++) {
         for (var x = 0u; x < 4u; x++) {
@@ -43,7 +44,7 @@ fn path_coverage(p: vec2f, range: vec4f, open: vec4f, domain: vec4f, align: f32)
                 inside=inside && select(filled,!filled,align>1.5);
             }
             inside=inside || path_inside(sample_at,u32(open.x),u32(open.y));
-            if (inside) { coverage += 1.0 / 16.0; }
+            if (inside && clips_inside(sample_at,clips)) { coverage += 1.0 / 16.0; }
         }
     }
     return coverage;
@@ -236,7 +237,8 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     let local = mapped(p,transform.shape_x,transform.shape_y);
     let clip_point = mapped(p,transform.clip_x,transform.clip_y);
     let dc = sd_round(clip_point,v.clip,v.clip_radii);
-    let clipped = cover(dc / pixel_width(dc,transform.clip_x.w));
+    var clipped = cover(dc / pixel_width(dc,transform.clip_x.w));
+    if (v.params.z < 2.5) { clipped *= clips_coverage(p,transform.clip_range.xy); }
     let kind = v.params.z;
     let da = sd(local, v.a_rect, v.a_radii, v.a_radii_y, kind);
     var b = 0.0;
@@ -247,7 +249,7 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
     b = cover(db / bw);
     var alpha = 0.0;
     if (kind > 2.5) {
-        alpha = path_coverage(p, v.b_rect, v.a_radii, v.b_radii, select(0.0,v.params.y,kind>3.5));
+        alpha = path_coverage(p, v.b_rect, v.a_radii, v.b_radii, select(0.0,v.params.y,kind>3.5),transform.clip_range.xy);
     } else if (v.params.y < 0.5) {
         alpha = max(cover(da / aw) - b, 0.0);
     } else if (v.params.y < 1.5) {

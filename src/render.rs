@@ -157,6 +157,8 @@ pub struct Renderer {
     shapes: Instances,
     texts: Instances,
     path_edges: Instances,
+    clip_data: Instances,
+    text_clip_group: wgpu::BindGroup,
     transforms: Instances,
     path_group: wgpu::BindGroup,
     masks: HashMap<MaskKey, MaskSlot>,
@@ -237,7 +239,11 @@ impl Renderer {
         let shape_pipeline = pipeline(
             device,
             "figleaf shapes",
-            include_str!("render/shapes.wgsl"),
+            &format!(
+                "{}\n{}",
+                include_str!("render/clips.wgsl"),
+                include_str!("render/shapes.wgsl")
+            ),
             format,
             SHAPE_STRIDE,
             &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4,8=>Float32x4,9=>Float32x4,10=>Float32x4,11=>Float32x4,12=>Uint32x4,13=>Uint32x4,14=>Float32x4,15=>Float32x4],
@@ -245,7 +251,11 @@ impl Renderer {
         let text_pipeline = pipeline(
             device,
             "figleaf text",
-            include_str!("render/text.wgsl"),
+            &format!(
+                "{}\n{}",
+                include_str!("render/clips.wgsl"),
+                include_str!("render/text.wgsl")
+            ),
             format,
             TEXT_STRIDE,
             &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x4,2=>Float32x4,3=>Float32x4,4=>Float32x4,5=>Float32x4,6=>Float32x4],
@@ -265,14 +275,19 @@ impl Renderer {
             }],
         });
         let path_edges = Instances::new(device, "figleaf vector edges", 32);
-        let transforms = Instances::new(device, "figleaf transforms", 64);
+        let transforms = Instances::new(device, "figleaf transforms", 80);
+        let clip_data = Instances::new(device, "figleaf clips", 16);
+        let text_clip_group = Self::text_clip_group(device, &text_pipeline, &clip_data.buffer);
         let path_group = Self::path_group(
             device,
             &shape_pipeline,
             &path_edges.buffer,
             &transforms.buffer,
+            &clip_data.buffer,
         );
         Self {
+            clip_data,
+            text_clip_group,
             path_edges,
             transforms,
             path_group,
@@ -341,6 +356,7 @@ impl Renderer {
         self.shapes.bytes.clear();
         self.texts.bytes.clear();
         self.path_edges.bytes.clear();
+        self.clip_data.bytes.clear();
         self.transforms.bytes.clear();
         self.draws.clear();
         self.problems.clear();
@@ -352,6 +368,21 @@ impl Renderer {
         }
         for (index, item) in canvas.items().iter().enumerate() {
             self.draws.push(Vec::new());
+            let clips = match item {
+                Item::Shape(s) => &s.clips,
+                Item::Text(t) => &t.clips,
+            };
+            let (clip_range, stack_bounds) = match self.prepare_clips(device, clips, scale, screen)
+            {
+                Ok(value) => value,
+                Err(e) => {
+                    self.problems.push(Problem {
+                        item: index,
+                        reason: e.0,
+                    });
+                    continue;
+                }
+            };
             match item {
                 Item::Shape(shape) => {
                     if let Some(reason) = shape.problem() {
@@ -460,9 +491,12 @@ impl Renderer {
                                     } else {
                                         Rect::new(lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1])
                                     };
-                                    let visible = r.inflate(1.).intersect(clip_px(
-                                        l.clip.map(|c| l.clip_transform.bounds(c.rect)),
-                                    ));
+                                    let visible = r
+                                        .inflate(1.)
+                                        .intersect(clip_px(
+                                            l.clip.map(|c| l.clip_transform.bounds(c.rect)),
+                                        ))
+                                        .intersect(stack_bounds);
                                     let work = f64::from(visible.w.ceil())
                                         * f64::from(visible.h.ceil())
                                         * edges.len() as f64
@@ -532,8 +566,8 @@ impl Renderer {
                             continue;
                         }
                     };
-                    let transform_index = self.transforms.bytes.len() / 64;
-                    if (self.transforms.bytes.len() + 64).next_power_of_two()
+                    let transform_index = self.transforms.bytes.len() / 80;
+                    if (self.transforms.bytes.len() + 80).next_power_of_two()
                         > device.limits().max_storage_buffer_binding_size as usize
                     {
                         self.problems.push(Problem {
@@ -555,12 +589,14 @@ impl Renderer {
                         ]);
                         self.transforms.push(&[m.0[1][0], m.0[1][1], m.0[1][2], 0.]);
                     }
+                    self.transforms.push(&clip_range);
                     for (l, (ranges, path_bounds)) in layers.into_iter().zip(prepared) {
                         let path_range = (l.vector_paths.is_some()
                             || l.primitive.is_some()
                             || l.vector_stroke.is_some())
                         .then_some(ranges[0]);
-                        let clip = clip_px(l.clip.map(|c| l.clip_transform.bounds(c.rect)));
+                        let clip = clip_px(l.clip.map(|c| l.clip_transform.bounds(c.rect)))
+                            .intersect(stack_bounds);
                         // The clip's own outline, for its antialiased edge.
                         const OPEN: [f32; 4] = [-1e6, -1e6, 1e6, 1e6];
                         let (clip_rect, clip_radii) = l.clip.map_or((OPEN, [0.; 4]), outline);
@@ -680,8 +716,10 @@ impl Renderer {
                             continue;
                         }
                     };
-                    let text_transforms =
+                    let mut text_transforms =
                         [forward, clip_inverse].map(|m| m.0.map(|r| [r[0], r[1], r[2], 0.]));
+                    text_transforms[0][0][3] = clip_range[0];
+                    text_transforms[0][1][3] = clip_range[1];
                     let text_clip = t
                         .clip
                         .map_or([-1e7, -1e7, 1e7, 1e7], |r| edges(r, raster_scale));
@@ -888,17 +926,28 @@ impl Renderer {
 
         let transform_capacity = self.transforms.capacity;
         let transforms_uploaded = self.transforms.upload(device, queue);
+        let clip_capacity = self.clip_data.capacity;
+        let clips_uploaded = self.clip_data.upload(device, queue);
+        if clip_capacity != self.clip_data.capacity {
+            self.text_clip_group =
+                Self::text_clip_group(device, &self.text_pipeline, &self.clip_data.buffer);
+        }
         let capacity = self.path_edges.capacity;
         let paths_uploaded = self.path_edges.upload(device, queue);
-        if capacity != self.path_edges.capacity || transform_capacity != self.transforms.capacity {
+        if capacity != self.path_edges.capacity
+            || transform_capacity != self.transforms.capacity
+            || clip_capacity != self.clip_data.capacity
+        {
             self.path_group = Self::path_group(
                 device,
                 &self.shape_pipeline,
                 &self.path_edges.buffer,
                 &self.transforms.buffer,
+                &self.clip_data.buffer,
             );
         }
         for uploaded in [
+            clips_uploaded,
             paths_uploaded,
             transforms_uploaded,
             self.shapes.upload(device, queue),
@@ -915,11 +964,97 @@ impl Renderer {
         Ok(report)
     }
 
+    fn text_clip_group(
+        device: &wgpu::Device,
+        pipeline: &wgpu::RenderPipeline,
+        buffer: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("figleaf text clips"),
+            layout: &pipeline.get_bind_group_layout(1),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+        })
+    }
+
+    fn prepare_clips(
+        &mut self,
+        device: &wgpu::Device,
+        clips: &[crate::Clip],
+        scale: f32,
+        screen: Rect,
+    ) -> Result<([f32; 4], Rect), Error> {
+        if clips.len() > 128 {
+            return Err(Error("clip stack exceeds 128 clips"));
+        }
+        let mut data = Vec::new();
+        let mut visible = screen;
+        let mut total = 0;
+        for clip in clips {
+            let edges = clip.edges(scale)?;
+            total += edges.len();
+            if total > 8192 {
+                return Err(Error("clip stack exceeds 8192 flattened edges"));
+            }
+            let mut lo = [f32::INFINITY; 2];
+            let mut hi = [f32::NEG_INFINITY; 2];
+            for edge in &edges {
+                for p in [
+                    [edge.points[0], edge.points[1]],
+                    [edge.points[2], edge.points[3]],
+                ] {
+                    for i in 0..2 {
+                        lo[i] = lo[i].min(p[i]);
+                        hi[i] = hi[i].max(p[i]);
+                    }
+                }
+            }
+            let bounds = if edges.is_empty() {
+                Rect::default()
+            } else {
+                Rect::new(lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1])
+            };
+            bounds.validate()?;
+            visible = visible.intersect(bounds.inflate(1.));
+            data.push([edges.len() as f32, 0., 0., 0.]);
+            data.push([bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h]);
+            for edge in edges {
+                data.push(edge.points);
+                data.push([f32::from(edge.even_odd), f32::from(edge.end_region), 0., 0.]);
+            }
+        }
+        if f64::from(visible.w.ceil()) * f64::from(visible.h.ceil()) * total as f64 * 16.
+            > 512_000_000.
+        {
+            return Err(Error("clip coverage work limit exceeded"));
+        }
+        if (self.clip_data.bytes.len() + data.len() * 16)
+            .max(16)
+            .next_power_of_two()
+            > device.limits().max_storage_buffer_binding_size as usize
+        {
+            return Err(Error("clip buffer limit exceeded"));
+        }
+        let range = [
+            (self.clip_data.bytes.len() / 16) as f32,
+            clips.len() as f32,
+            0.,
+            0.,
+        ];
+        for row in data {
+            self.clip_data.push(&row);
+        }
+        Ok((range, visible))
+    }
+
     fn path_group(
         device: &wgpu::Device,
         pipeline: &wgpu::RenderPipeline,
         buffer: &wgpu::Buffer,
         transforms: &wgpu::Buffer,
+        clips: &wgpu::Buffer,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("figleaf vector edges"),
@@ -932,6 +1067,10 @@ impl Renderer {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: transforms.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: clips.as_entire_binding(),
                 },
             ],
         })
@@ -1026,6 +1165,7 @@ impl Renderer {
                 Draw::Text(instance, group, _) | Draw::ShadowedText(instance, group, ..) => {
                     flush(pass, &mut run);
                     pass.set_pipeline(&self.text_pipeline);
+                    pass.set_bind_group(1, &self.text_clip_group, &[]);
                     pass.set_bind_group(0, group, &[]);
                     pass.set_vertex_buffer(0, self.texts.buffer.slice(..));
                     pass.draw(0..6, *instance..*instance + 1);

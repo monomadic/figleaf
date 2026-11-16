@@ -26,7 +26,7 @@ Rust output; do not merely remove an exporter error.
    gradients, clips, supported effects and text. Singular matrices fail closed.
    Rotation/reflection/skew reviewed beside Figma ([comparison](docs/affine-compare.png),
    mean 0.36/255, edge maximum 78/255). Other cases have synthetic tests.
-   Crossing transformed clip intersections and rounded text clips remain task 7;
+   Crossing transformed clip intersections and rounded text clips were added in task 7;
    transformed path strokes were added in task 3; path effects remain unsupported.
 3. **Complete path strokes — done for non-branching paths 2026-11-15.**
    Butt/square/round caps, miter/bevel/round joins, SVG miter limits, closed
@@ -62,10 +62,14 @@ Rust output; do not merely remove an exporter error.
    Generated Rust reviewed beside Figma ([comparison](docs/booleans-compare.png),
    mean 0.22/255 at 1×). Effects/unsupported paints remain hard errors.
    Malformed geometry, overlapping alpha, transforms, bindings and caching tested.
-7. **Complete clipping.** Per-corner rounded clips, intersecting nested rounded
-   clips, intersecting transformed clips, arbitrary path clips, and rounded/path clipping of
-   text. Preserve every ancestor clip within the exported hierarchy. Plain
-   rectangular intersections and a single circular-corner shape clip work now.
+7. **Complete clipping — done 2026-11-17.** Additive, independently transformed
+   clips support per-corner rounded rectangles and arbitrary paths on shapes,
+   text and supported shadows. Regions union within a clip; every ancestor
+   intersects at shared coverage samples. Plugin output retains every frame clip.
+   Generated Rust reviewed beside Figma ([comparison](docs/clipping-compare.png),
+   mean 1.01/255 at 2×); the circular clip also rendered through the path API.
+   Holes, region unions, repeated clips, invalid inputs and unchanged uploads
+   have synthetic tests. Resource limits hard-error; Figma masks remain task 9.
 8. **Corner smoothing.** Figma's smoothed corners on rectangles, frames, and
    supported rounded paths; carry the geometry through borders, clips, and
    shadows. Ordinary circular corner radii already work.
