@@ -1682,3 +1682,107 @@ fn resolved_variable_width_and_brush_outlines_keep_tips_holes_and_cache() {
     assert_eq!(r.problems().len(), 1);
     assert!(i.rgba.iter().all(|v| *v == 0));
 }
+
+#[test]
+fn stroke_paints_preserve_order_gradient_coordinates_and_cache() {
+    use figleaf::{Paint, Transform, VectorPath, WindingRule};
+    let gradient = LinearGradient::horizontal()
+        .stop(0., hex(0xff0000))
+        .stop(1., hex(0x0000ff));
+    let base = Shape::rect(Rect::new(10., 10., 80., 40.)).stroke(10., hex(0), StrokeAlign::Inside);
+    let mut c = Canvas::new();
+    c.shape(base.clone().stroke_paints(vec![
+        Paint::Solid(hex(0xff0000)),
+        Paint::Solid([0., 0., 1., 0.5]),
+    ]));
+    let gpu = Gpu::new();
+    let mut r = Renderer::new(&gpu.device, gpu.format);
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    let p = i.pixel(50, 12);
+    assert!((127..=128).contains(&p[0]) && (127..=128).contains(&p[2]));
+    assert_eq!(p[3], 255);
+    assert_eq!(i.pixel(50, 30), CLEAR);
+    c.clear();
+    c.shape(
+        base.clone()
+            .stroke_paints(vec![Paint::Linear(gradient.clone())]),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(i.pixel(12, 12)[0] > 240);
+    assert!(i.pixel(87, 12)[2] > 240);
+    assert_eq!(i.pixel(50, 30), CLEAR);
+    let report = r
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    c.clear();
+    c.shape(
+        base.stroke_paints(vec![Paint::Linear(gradient.clone().opacity(0.5))])
+            .transform(Transform::new([[-1., 0., 100.], [0., 1., 0.]])),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(i.pixel(12, 12)[2] > 120);
+    assert_eq!(i.pixel(12, 12)[3], 128);
+    c.clear();
+    c.shape(
+        Shape::vector(
+            Rect::new(10., 30., 80., 0.),
+            vec![
+                VectorPath::new(WindingRule::None)
+                    .move_to([0., 0.])
+                    .line_to([80., 0.]),
+            ],
+        )
+        .stroke_gradient(10., gradient, StrokeAlign::Center),
+    );
+    let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(r.problems().is_empty());
+    assert!(i.pixel(12, 30)[0] > 240);
+    assert!(i.pixel(87, 30)[2] > 240);
+    for bad in [
+        Shape::rect(Rect::new(0., 0., 20., 20.)).stroke_paints(vec![Paint::Solid(hex(0))]),
+        Shape::rect(Rect::new(0., 0., 20., 0.)).stroke_gradient(
+            2.,
+            LinearGradient::vertical()
+                .stop(0., hex(0))
+                .stop(1., hex(0xffffff)),
+            StrokeAlign::Center,
+        ),
+        Shape::rect(Rect::new(0., 0., 20., 20.)).stroke_gradient(
+            2.,
+            LinearGradient::horizontal(),
+            StrokeAlign::Inside,
+        ),
+        Shape::rect(Rect::new(0., 0., 20., 20.))
+            .stroke(2., hex(0), StrokeAlign::Inside)
+            .stroke_paints(vec![Paint::Solid(hex(0)); 33]),
+    ] {
+        c.clear();
+        c.shape(bad);
+        let i = gpu.render(&mut r, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(r.problems().len(), 1);
+        assert!(i.rgba.iter().all(|v| *v == 0));
+    }
+}
+
+#[test]
+fn vector_masks_use_stroke_paint_visibility_not_the_legacy_color() {
+    use figleaf::{Mask, MaskType, Paint};
+    let mut source = Canvas::new();
+    source.shape(
+        Shape::rect(Rect::new(10., 10., 30., 30.))
+            .stroke(5., [0.; 4], StrokeAlign::Inside)
+            .stroke_paints(vec![Paint::Linear(
+                LinearGradient::horizontal()
+                    .stop(0., [1., 0., 0., 0.])
+                    .stop(1., [1., 0., 0., 0.5]),
+            )]),
+    );
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    let mut c = Canvas::new();
+    c.masked(Mask::new(MaskType::Vector, source), content);
+    let i = draw(&c);
+    assert_eq!(i.pixel(11, 20), RED);
+    assert_eq!(i.pixel(25, 25), CLEAR);
+}

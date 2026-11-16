@@ -2,7 +2,7 @@
 // Root placement is omitted; its rotation/scale and all descendant transforms are preserved.
 // Supply matching fonts/styles through your text backend. Render at scale 0.5–4.
 #[allow(unused_imports)]
-use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType};
+use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint};
 
 pub fn draw_selection(canvas: &mut Canvas) {
     // Temporary figleaf smoothing reference [372:242]

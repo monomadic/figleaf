@@ -1,0 +1,1060 @@
+{
+  "id": "385:242",
+  "name": "Temporary figleaf stroke paints reference",
+  "type": "FRAME",
+  "width": 500,
+  "height": 385,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      2400
+    ],
+    [
+      0,
+      1,
+      1200
+    ]
+  ],
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeMiterLimit": 4,
+  "dashPattern": [],
+  "cornerRadius": 0,
+  "cornerSmoothing": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "strokeTopWeight": 1,
+  "strokeRightWeight": 1,
+  "strokeBottomWeight": 1,
+  "strokeLeftWeight": 1,
+  "clipsContent": false,
+  "fillGeometry": [
+    {
+      "windingRule": "NONZERO",
+      "data": "M0 0 L500 0 L500 385 L0 385 L0 0 Z"
+    }
+  ],
+  "strokeGeometry": [],
+  "variableWidthStrokeProperties": {
+    "widthProfile": "UNIFORM",
+    "variableWidthPoints": []
+  },
+  "complexStrokeProperties": {
+    "type": "BASIC"
+  },
+  "children": [
+    {
+      "id": "385:243",
+      "name": "Rectangle",
+      "type": "RECTANGLE",
+      "width": 110,
+      "height": 70,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          25
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          "boundVariables": {}
+        },
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 0.5,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 1
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 12,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 12,
+      "strokeRightWeight": 12,
+      "strokeBottomWeight": 12,
+      "strokeLeftWeight": 12,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 70 L0 70 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L0 -12 L-12 -12 L-12 0 L0 0 Z M110 0 L122 0 L122 -12 L110 -12 L110 0 Z M110 70 L110 82 L122 82 L122 70 L110 70 Z M0 70 L-12 70 L-12 82 L0 82 L0 70 Z M0 0 L0 12 L110 12 L110 0 L110 -12 L0 -12 L0 0 Z M110 0 L98 0 L98 70 L110 70 L122 70 L122 0 L110 0 Z M110 70 L110 58 L0 58 L0 70 L0 82 L110 82 L110 70 Z M0 70 L12 70 L12 0 L0 0 L-12 0 L-12 70 L0 70 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "385:244",
+      "name": "Rectangle",
+      "type": "RECTANGLE",
+      "width": 110,
+      "height": 70,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          185
+        ],
+        [
+          0,
+          1,
+          25
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 0.30000001192092896,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0,
+            "g": 1,
+            "b": 0
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 12,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 12,
+      "strokeRightWeight": 12,
+      "strokeBottomWeight": 12,
+      "strokeLeftWeight": 12,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L110 0 L110 70 L0 70 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L0 -6 L-6 -6 L-6 0 L0 0 Z M110 0 L116 0 L116 -6 L110 -6 L110 0 Z M110 70 L110 76 L116 76 L116 70 L110 70 Z M0 70 L-6 70 L-6 76 L0 76 L0 70 Z M0 0 L0 6 L110 6 L110 0 L110 -6 L0 -6 L0 0 Z M110 0 L104 0 L104 70 L110 70 L116 70 L116 0 L110 0 Z M110 70 L110 64 L0 64 L0 70 L0 76 L110 76 L110 70 Z M0 70 L6 70 L6 0 L0 0 L-6 0 L-6 70 L0 70 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "385:245",
+      "name": "Ellipse",
+      "type": "ELLIPSE",
+      "width": 110,
+      "height": 70,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          345
+        ],
+        [
+          0,
+          1,
+          25
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 12,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M110 35 C110 54.33 85.3757 70 55 70 C24.6243 70 0 54.33 0 35 C0 15.67 24.6243 0 55 0 C85.3757 0 110 15.67 110 35 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M110 35 L98 35 C98 39.1391 95.3411 44.6021 87.4484 49.6248 C79.698 54.5569 68.2581 58 55 58 L55 70 L55 82 C72.1175 82 88.1777 77.6081 100.333 69.8727 C112.347 62.2278 122 50.1908 122 35 L110 35 Z M55 70 L55 58 C41.7419 58 30.302 54.5569 22.5516 49.6248 C14.6589 44.6021 12 39.1391 12 35 L0 35 L-12 35 C-12 50.1908 -2.3467 62.2278 9.66662 69.8727 C21.8223 77.6081 37.8825 82 55 82 L55 70 Z M0 35 L12 35 C12 30.8609 14.6589 25.3979 22.5516 20.3752 C30.302 15.4431 41.7419 12 55 12 L55 0 L55 -12 C37.8825 -12 21.8223 -7.60811 9.66662 0.127325 C-2.3467 7.77217 -12 19.8092 -12 35 L0 35 Z M55 0 L55 12 C68.2581 12 79.698 15.4431 87.4484 20.3752 C95.3411 25.3979 98 30.8609 98 35 L110 35 L122 35 C122 19.8092 112.347 7.77217 100.333 0.127325 C88.1777 -7.60811 72.1175 -12 55 -12 L55 0 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "385:246",
+      "name": "Rectangle",
+      "type": "RECTANGLE",
+      "width": 110,
+      "height": 70,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          150
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 18,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 18,
+      "topRightRadius": 18,
+      "bottomRightRadius": 18,
+      "bottomLeftRadius": 18,
+      "strokeTopWeight": 3,
+      "strokeRightWeight": 14,
+      "strokeBottomWeight": 8,
+      "strokeLeftWeight": 0,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 18 C0 8.05887 8.05887 0 18 0 L92 0 C101.941 0 110 8.05888 110 18 L110 52 C110 61.9411 101.941 70 92 70 L18 70 C8.05888 70 0 61.9411 0 52 L0 18 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 18 C0 6.40202 9.40202 -3 21 -3 L103 -3 C114.598 -3 124 6.40202 124 18 L96 18 C96 9.71573 94.2091 3 92 3 L18 3 C8.05887 3 0 9.71573 0 18 Z M124 52 C124 66.3594 112.359 78 98 78 L26 78 C11.6406 78 0 66.3594 0 52 C0 57.5228 8.05887 62 18 62 L92 62 C94.2091 62 96 57.5228 96 52 L124 52 Z M96 52 M0 70 L0 0 L0 70 M103 -3 C114.598 -3 124 6.40202 124 18 L124 52 C124 66.3594 112.359 78 98 78 L92 62 C94.2091 62 96 57.5228 96 52 L96 18 C96 9.71573 94.2091 3 92 3 L103 -3 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "385:247",
+      "name": "Line",
+      "type": "LINE",
+      "width": 110,
+      "height": 0,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          185
+        ],
+        [
+          0,
+          1,
+          150
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 12,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "fillGeometry": [],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 -6 L0 0 L110 0 L110 -6 L110 -12 L0 -12 L0 -6 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "385:248",
+      "name": "Rectangle",
+      "type": "RECTANGLE",
+      "width": 70,
+      "height": 40,
+      "relativeTransform": [
+        [
+          0.9403762221336365,
+          -0.3401360809803009,
+          350
+        ],
+        [
+          0.3401360809803009,
+          0.9403762221336365,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 8,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "ROUND",
+      "strokeMiterLimit": 4,
+      "dashPattern": [
+        24,
+        12
+      ],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "strokeTopWeight": 8,
+      "strokeRightWeight": 8,
+      "strokeBottomWeight": 8,
+      "strokeLeftWeight": 8,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L70 0 L70 40 L0 40 L0 0 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 0 L0 -4 L-4 -4 L-4 0 L0 0 Z M70 0 L74 0 L74 -4 L70 -4 L70 0 Z M70 40 L70 44 L74 44 L74 40 L70 40 Z M0 40 L-4 40 L-4 44 L0 44 L0 40 Z M-4 13.3333 C-4 15.5425 -2.20914 17.3333 0 17.3333 C2.20914 17.3333 4 15.5425 4 13.3333 L0 13.3333 L-4 13.3333 Z M4 26.6667 C4 24.4575 2.20914 22.6667 0 22.6667 C-2.20914 22.6667 -4 24.4575 -4 26.6667 L0 26.6667 L4 26.6667 Z M11.6667 44 C13.8758 44 15.6667 42.2091 15.6667 40 C15.6667 37.7909 13.8758 36 11.6667 36 L11.6667 40 L11.6667 44 Z M23.3333 36 C21.1242 36 19.3333 37.7909 19.3333 40 C19.3333 42.2091 21.1242 44 23.3333 44 L23.3333 40 L23.3333 36 Z M46.6667 44 C48.8758 44 50.6667 42.2091 50.6667 40 C50.6667 37.7909 48.8758 36 46.6667 36 L46.6667 40 L46.6667 44 Z M58.3333 36 C56.1242 36 54.3333 37.7909 54.3333 40 C54.3333 42.2091 56.1242 44 58.3333 44 L58.3333 40 L58.3333 36 Z M74 26.6667 C74 24.4575 72.2091 22.6667 70 22.6667 C67.7909 22.6667 66 24.4575 66 26.6667 L70 26.6667 L74 26.6667 Z M66 13.3333 C66 15.5425 67.7909 17.3333 70 17.3333 C72.2091 17.3333 74 15.5425 74 13.3333 L70 13.3333 L66 13.3333 Z M58.3333 -4 C56.1242 -4 54.3333 -2.20914 54.3333 0 C54.3333 2.20914 56.1242 4 58.3333 4 L58.3333 0 L58.3333 -4 Z M46.6667 4 C48.8758 4 50.6667 2.20914 50.6667 0 C50.6667 -2.20914 48.8758 -4 46.6667 -4 L46.6667 0 L46.6667 4 Z M23.3333 -4 C21.1242 -4 19.3333 -2.20914 19.3333 0 C19.3333 2.20914 21.1242 4 23.3333 4 L23.3333 0 L23.3333 -4 Z M11.6667 4 C13.8758 4 15.6667 2.20914 15.6667 0 C15.6667 -2.20914 13.8758 -4 11.6667 -4 L11.6667 0 L11.6667 4 Z M0 0 L-4 0 L-4 13.3333 L0 13.3333 L4 13.3333 L4 0 L0 0 Z M0 26.6667 L-4 26.6667 L-4 40 L0 40 L4 40 L4 26.6667 L0 26.6667 Z M0 40 L0 44 L11.6667 44 L11.6667 40 L11.6667 36 L0 36 L0 40 Z M23.3333 40 L23.3333 44 L46.6667 44 L46.6667 40 L46.6667 36 L23.3333 36 L23.3333 40 Z M58.3333 40 L58.3333 44 L70 44 L70 40 L70 36 L58.3333 36 L58.3333 40 Z M70 40 L74 40 L74 26.6667 L70 26.6667 L66 26.6667 L66 40 L70 40 Z M70 13.3333 L74 13.3333 L74 0 L70 0 L66 0 L66 13.3333 L70 13.3333 Z M70 0 L70 -4 L58.3333 -4 L58.3333 0 L58.3333 4 L70 4 L70 0 Z M46.6667 0 L46.6667 -4 L23.3333 -4 L23.3333 0 L23.3333 4 L46.6667 4 L46.6667 0 Z M11.6667 0 L11.6667 -4 L0 -4 L0 0 L0 4 L11.6667 4 L11.6667 0 Z M0 0 L0 -8 L-8 -8 L-8 0 L0 0 Z M70 0 L78 0 L78 -8 L70 -8 L70 0 Z M70 40 L70 48 L78 48 L78 40 L70 40 Z M0 40 L-8 40 L-8 48 L0 48 L0 40 Z M-8 13.3333 C-8 17.7516 -4.41828 21.3333 0 21.3333 C4.41828 21.3333 8 17.7516 8 13.3333 L0 13.3333 L-8 13.3333 Z M8 26.6667 C8 22.2484 4.41828 18.6667 0 18.6667 C-4.41828 18.6667 -8 22.2484 -8 26.6667 L0 26.6667 L8 26.6667 Z M11.6667 48 C16.0849 48 19.6667 44.4183 19.6667 40 C19.6667 35.5817 16.0849 32 11.6667 32 L11.6667 40 L11.6667 48 Z M23.3333 32 C18.9151 32 15.3333 35.5817 15.3333 40 C15.3333 44.4183 18.9151 48 23.3333 48 L23.3333 40 L23.3333 32 Z M46.6667 48 C51.0849 48 54.6667 44.4183 54.6667 40 C54.6667 35.5817 51.0849 32 46.6667 32 L46.6667 40 L46.6667 48 Z M58.3333 32 C53.9151 32 50.3333 35.5817 50.3333 40 C50.3333 44.4183 53.9151 48 58.3333 48 L58.3333 40 L58.3333 32 Z M78 26.6667 C78 22.2484 74.4183 18.6667 70 18.6667 C65.5817 18.6667 62 22.2484 62 26.6667 L70 26.6667 L78 26.6667 Z M62 13.3333 C62 17.7516 65.5817 21.3333 70 21.3333 C74.4183 21.3333 78 17.7516 78 13.3333 L70 13.3333 L62 13.3333 Z M58.3333 -8 C53.9151 -8 50.3333 -4.41828 50.3333 0 C50.3333 4.41828 53.9151 8 58.3333 8 L58.3333 0 L58.3333 -8 Z M46.6667 8 C51.0849 8 54.6667 4.41828 54.6667 0 C54.6667 -4.41828 51.0849 -8 46.6667 -8 L46.6667 0 L46.6667 8 Z M23.3333 -8 C18.9151 -8 15.3333 -4.41828 15.3333 0 C15.3333 4.41828 18.9151 8 23.3333 8 L23.3333 0 L23.3333 -8 Z M11.6667 8 C16.0849 8 19.6667 4.41828 19.6667 0 C19.6667 -4.41828 16.0849 -8 11.6667 -8 L11.6667 0 L11.6667 8 Z M0 0 L-8 0 L-8 13.3333 L0 13.3333 L8 13.3333 L8 0 L0 0 Z M0 26.6667 L-8 26.6667 L-8 40 L0 40 L8 40 L8 26.6667 L0 26.6667 Z M0 40 L0 48 L11.6667 48 L11.6667 40 L11.6667 32 L0 32 L0 40 Z M23.3333 40 L23.3333 48 L46.6667 48 L46.6667 40 L46.6667 32 L23.3333 32 L23.3333 40 Z M58.3333 40 L58.3333 48 L70 48 L70 40 L70 32 L58.3333 32 L58.3333 40 Z M70 40 L78 40 L78 26.6667 L70 26.6667 L62 26.6667 L62 40 L70 40 Z M70 13.3333 L78 13.3333 L78 0 L70 0 L62 0 L62 13.3333 L70 13.3333 Z M70 0 L70 -8 L58.3333 -8 L58.3333 0 L58.3333 8 L70 8 L70 0 Z M46.6667 0 L46.6667 -8 L23.3333 -8 L23.3333 0 L23.3333 8 L46.6667 8 L46.6667 0 Z M11.6667 0 L11.6667 -8 L0 -8 L0 0 L0 8 L11.6667 8 L11.6667 0 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    },
+    {
+      "id": "386:242",
+      "name": "Vector gradient",
+      "type": "VECTOR",
+      "width": 110,
+      "height": 23.094011306762695,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          25
+        ],
+        [
+          0,
+          1,
+          275
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 0.30000001192092896,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0,
+            "g": 1,
+            "b": 0
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 14,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "fillGeometry": [],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 11.547 L6.26099 14.6775 C8.2187 10.7621 10.328 8.93651 12.2452 8.02454 C14.239 7.07613 16.8488 6.72597 20.4333 7.22906 C28.0363 8.29615 37.2168 12.6795 48.2694 17.8807 C58.6751 22.7775 70.6457 28.3331 82.1137 29.7446 C88.0035 30.4695 94.0814 30.1571 99.9537 27.9393 C105.881 25.7005 111.142 21.6915 115.6 15.747 L110 11.547 L104.4 7.34701 C101.358 11.4025 98.1811 13.6435 95.0072 14.8422 C91.7779 16.0619 88.0902 16.3745 83.8238 15.8494 C74.9793 14.7609 65.0749 10.3165 54.2306 5.21327 C44.0332 0.414516 32.5887 -5.20214 22.3792 -6.63505 C17.0575 -7.38196 11.4641 -7.10712 6.2314 -4.61803 C0.922046 -2.0925 -3.2187 2.33194 -6.26099 8.41651 L0 11.547 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONE",
+          "data": "M 0 11.547005653381348 C 20 -28.452994346618652 80 51.54700565338135 110 11.547005653381348"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      },
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 11.547005653381348,
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 11.547005653381348,
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 20,
+              "y": -40
+            },
+            "tangentEnd": {
+              "x": -30,
+              "y": 40
+            }
+          }
+        ],
+        "regions": []
+      }
+    },
+    {
+      "id": "386:243",
+      "name": "Variable gradient",
+      "type": "VECTOR",
+      "width": 110,
+      "height": 23.094011306762695,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          185
+        ],
+        [
+          0,
+          1,
+          275
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 0.30000001192092896,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0,
+            "g": 1,
+            "b": 0
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 14,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 0,
+      "cornerSmoothing": 0,
+      "fillGeometry": [],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 11.547 C1.39994 9.80383 2.76976 8.46494 4.3606 7.21151 C19.1679 -2.8865 34.4794 12.5742 51.2276 19.2665 C59.6869 23.1638 68.8296 26.8233 79.0692 27.8375 C89.0988 29.1213 101.251 25.419 106.78 17.1223 C108.146 15.2826 109.059 13.5677 110 11.547 C108.314 13.006 106.774 14.0731 104.978 15.1653 C88.8902 24.4562 73.4923 13.6638 57.1359 6.57434 C48.8855 2.77314 40.2805 -1.16654 30.4625 -3.30659 C21.285 -5.72437 6.95384 -4.27651 2.32315 5.50142 C1.21065 7.49541 0.568404 9.38458 0 11.547 Z"
+        }
+      ],
+      "vectorPaths": [
+        {
+          "windingRule": "NONE",
+          "data": "M 0 11.547005653381348 C 20 -28.452994346618652 80 51.54700565338135 110 11.547005653381348"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "EYE",
+        "variableWidthPoints": [
+          {
+            "position": 0,
+            "width": 0
+          },
+          {
+            "position": 0.5,
+            "width": 0.5
+          },
+          {
+            "position": 1,
+            "width": 0
+          }
+        ]
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      },
+      "vectorNetwork": {
+        "vertices": [
+          {
+            "x": 0,
+            "y": 11.547005653381348,
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          },
+          {
+            "x": 110,
+            "y": 11.547005653381348,
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "cornerRadius": 0,
+            "handleMirroring": "NONE"
+          }
+        ],
+        "segments": [
+          {
+            "start": 0,
+            "end": 1,
+            "tangentStart": {
+              "x": 20,
+              "y": -40
+            },
+            "tangentEnd": {
+              "x": -30,
+              "y": 40
+            }
+          }
+        ],
+        "regions": []
+      }
+    },
+    {
+      "id": "386:244",
+      "name": "Smoothed gradient",
+      "type": "RECTANGLE",
+      "width": 110,
+      "height": 70,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          345
+        ],
+        [
+          0,
+          1,
+          275
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 0.4000000059604645
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 0.30000001192092896,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0,
+            "g": 1,
+            "b": 0
+          },
+          "boundVariables": {}
+        }
+      ],
+      "effects": [],
+      "strokeWeight": 14,
+      "strokeAlign": "CENTER",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "cornerRadius": 18,
+      "cornerSmoothing": 0.6000000238418579,
+      "topLeftRadius": 18,
+      "topRightRadius": 18,
+      "bottomRightRadius": 18,
+      "bottomLeftRadius": 18,
+      "strokeTopWeight": 14,
+      "strokeRightWeight": 14,
+      "strokeBottomWeight": 14,
+      "strokeLeftWeight": 14,
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M0 28.8 C0 18.7191 0 13.6786 1.96188 9.82817 C3.6876 6.44125 6.44125 3.6876 9.82817 1.96188 C13.6786 0 18.7191 0 28.8 0 L81.2 0 C91.2809 0 96.3214 0 100.172 1.96188 C103.559 3.6876 106.312 6.44125 108.038 9.82817 C110 13.6786 110 18.7191 110 28.8 L110 41.2 C110 51.2809 110 56.3214 108.038 60.1718 C106.312 63.5587 103.559 66.3124 100.172 68.0381 C96.3214 70 91.2809 70 81.2 70 L28.8 70 C18.7191 70 13.6786 70 9.82817 68.0381 C6.44125 66.3124 3.6876 63.5587 1.96188 60.1718 C0 56.3214 0 51.2809 0 41.2 L0 28.8 Z"
+        }
+      ],
+      "strokeGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "data": "M9.82817 68.0381 L13.0061 61.8011 L9.82817 68.0381 Z M1.96188 60.1718 L8.19893 56.9939 L1.96188 60.1718 Z M108.038 60.1718 L101.801 56.9939 L108.038 60.1718 Z M100.172 68.0381 L96.9939 61.8011 L100.172 68.0381 Z M100.172 1.96188 L96.9939 8.19893 L100.172 1.96188 Z M108.038 9.82817 L101.801 13.0061 L108.038 9.82817 Z M9.82817 1.96188 L6.65024 -4.27516 L9.82817 1.96188 Z M28.8 0 L28.8 7 L81.2 7 L81.2 0 L81.2 -7 L28.8 -7 L28.8 0 Z M110 28.8 L103 28.8 L103 41.2 L110 41.2 L117 41.2 L117 28.8 L110 28.8 Z M81.2 70 L81.2 63 L28.8 63 L28.8 70 L28.8 77 L81.2 77 L81.2 70 Z M0 41.2 L7 41.2 L7 28.8 L0 28.8 L-7 28.8 L-7 41.2 L0 41.2 Z M28.8 70 L28.8 63 C23.644 63 20.198 62.9946 17.5477 62.778 C14.979 62.5681 13.78 62.1954 13.0061 61.8011 L9.82817 68.0381 L6.65024 74.2752 C9.72672 75.8427 12.9732 76.4509 16.4076 76.7315 C19.7603 77.0054 23.875 77 28.8 77 L28.8 70 Z M0 41.2 L-7 41.2 C-7 46.125 -7.00544 50.2397 -6.73152 53.5924 C-6.45091 57.0268 -5.84271 60.2733 -4.27516 63.3498 L1.96188 60.1718 L8.19893 56.9939 C7.80459 56.22 7.43185 55.021 7.22199 52.4523 C7.00544 49.802 7 46.356 7 41.2 L0 41.2 Z M9.82817 68.0381 L13.0061 61.8011 C10.9363 60.7465 9.25354 59.0637 8.19893 56.9939 L1.96188 60.1718 L-4.27516 63.3498 C-1.87833 68.0538 1.94619 71.8783 6.65024 74.2752 L9.82817 68.0381 Z M110 41.2 L103 41.2 C103 46.356 102.995 49.802 102.778 52.4523 C102.568 55.021 102.195 56.22 101.801 56.9939 L108.038 60.1718 L114.275 63.3498 C115.843 60.2733 116.451 57.0268 116.732 53.5924 C117.005 50.2397 117 46.125 117 41.2 L110 41.2 Z M81.2 70 L81.2 77 C86.125 77 90.2397 77.0054 93.5924 76.7315 C97.0268 76.4509 100.273 75.8427 103.35 74.2752 L100.172 68.0381 L96.9939 61.8011 C96.22 62.1954 95.021 62.5681 92.4523 62.778 C89.802 62.9946 86.356 63 81.2 63 L81.2 70 Z M108.038 60.1718 L101.801 56.9939 C100.746 59.0637 99.0637 60.7465 96.9939 61.8011 L100.172 68.0381 L103.35 74.2752 C108.054 71.8783 111.878 68.0538 114.275 63.3498 L108.038 60.1718 Z M81.2 0 L81.2 7 C86.356 7 89.802 7.00544 92.4523 7.22199 C95.021 7.43185 96.22 7.80459 96.9939 8.19893 L100.172 1.96188 L103.35 -4.27516 C100.273 -5.84271 97.0268 -6.45091 93.5924 -6.73152 C90.2397 -7.00544 86.125 -7 81.2 -7 L81.2 0 Z M110 28.8 L117 28.8 C117 23.875 117.005 19.7603 116.732 16.4076 C116.451 12.9732 115.843 9.72672 114.275 6.65024 L108.038 9.82817 L101.801 13.0061 C102.195 13.78 102.568 14.979 102.778 17.5477 C102.995 20.198 103 23.644 103 28.8 L110 28.8 Z M100.172 1.96188 L96.9939 8.19893 C99.0637 9.25354 100.746 10.9363 101.801 13.0061 L108.038 9.82817 L114.275 6.65024 C111.878 1.94619 108.054 -1.87833 103.35 -4.27516 L100.172 1.96188 Z M28.8 0 L28.8 -7 C23.875 -7 19.7603 -7.00544 16.4076 -6.73152 C12.9732 -6.45091 9.72672 -5.84271 6.65024 -4.27516 L9.82817 1.96188 L13.0061 8.19893 C13.78 7.80459 14.979 7.43185 17.5477 7.22199 C20.198 7.00544 23.644 7 28.8 7 L28.8 0 Z M0 28.8 L7 28.8 C7 23.644 7.00544 20.198 7.22199 17.5477 C7.43185 14.979 7.80459 13.78 8.19893 13.0061 L1.96188 9.82817 L-4.27516 6.65024 C-5.84271 9.72672 -6.45091 12.9732 -6.73152 16.4076 C-7.00544 19.7603 -7 23.875 -7 28.8 L0 28.8 Z M9.82817 1.96188 L6.65024 -4.27516 C1.94619 -1.87833 -1.87833 1.94619 -4.27516 6.65024 L1.96188 9.82817 L8.19893 13.0061 C9.25354 10.9363 10.9363 9.25354 13.0061 8.19893 L9.82817 1.96188 Z"
+        }
+      ],
+      "variableWidthStrokeProperties": {
+        "widthProfile": "UNIFORM",
+        "variableWidthPoints": []
+      },
+      "complexStrokeProperties": {
+        "type": "BASIC"
+      }
+    }
+  ]
+}

@@ -129,7 +129,10 @@ impl LinearGradient {
     fn ramp(&self, rect: Rect) -> Option<Ramp> {
         let axis = match self.axis {
             Axis::Transform([a, b, tx]) => {
-                let (ax, ay) = (a / rect.w, b / rect.h);
+                let (ax, ay) = (
+                    if a == 0. { 0. } else { a / rect.w },
+                    if b == 0. { 0. } else { b / rect.h },
+                );
                 [ax, ay, tx - ax * rect.x - ay * rect.y]
             }
             Axis::Between { start, end } => {
@@ -152,7 +155,7 @@ impl LinearGradient {
     }
 }
 
-/// One of a shape's fills.
+/// One of a shape's fill or stroke paints.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Paint {
     Solid(Color),
@@ -189,6 +192,9 @@ pub struct Shape {
     /// Painted in order, as Figma lists them bottom to top.
     pub fills: Vec<Paint>,
     pub stroke: Option<Stroke>,
+    /// Bottom-to-top stroke paints. Empty uses `stroke.color` for compatibility.
+    /// All paints share the stroke width, alignment and geometry.
+    pub stroke_paints: Vec<Paint>,
     /// Individual top, right, bottom, left widths, overriding `stroke.width`.
     pub stroke_weights: Option<[f32; 4]>,
     /// Painted in order: the first is furthest back.
@@ -218,6 +224,7 @@ impl Shape {
             radii: [0.; 4],
             fills: Vec::new(),
             stroke: None,
+            stroke_paints: Vec::new(),
             stroke_weights: None,
             shadows: Vec::new(),
             opacity: 1.,
@@ -345,12 +352,24 @@ impl Shape {
     }
     pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {
         self.stroke_weights = None;
+        self.stroke_paints.clear();
         self.stroke = Some(Stroke {
             width,
             color,
             align,
         });
         self
+    }
+    /// Replace the stroke color with ordered solid/linear paints. Call after
+    /// `stroke` or `strokes`; an empty list restores the legacy stroke color.
+    pub fn stroke_paints(mut self, paints: Vec<Paint>) -> Self {
+        self.stroke_paints = paints;
+        self
+    }
+    /// Set a single linear-gradient stroke.
+    pub fn stroke_gradient(self, width: f32, gradient: LinearGradient, align: StrokeAlign) -> Self {
+        self.stroke(width, [1.; 4], align)
+            .stroke_paints(vec![Paint::Linear(gradient)])
     }
     /// Individual frame/rectangle borders, in top, right, bottom, left order.
     /// Adjacent borders join through elliptical inner/outer corner contours.
@@ -540,7 +559,7 @@ impl Shape {
         numbers.push(self.opacity);
         numbers.extend(self.stroke_weights.into_iter().flatten());
         let mut bad_gradient = false;
-        for fill in &self.fills {
+        for (index, fill) in self.fills.iter().chain(&self.stroke_paints).enumerate() {
             match fill {
                 Paint::Solid(color) => numbers.extend(color),
                 Paint::Linear(g) => {
@@ -549,8 +568,9 @@ impl Shape {
                         numbers.push(s.offset);
                         numbers.extend(s.color);
                     }
-                    let visible =
-                        self.vector_paths.is_some() || (self.rect.w > 0. && self.rect.h > 0.);
+                    let visible = index >= self.fills.len()
+                        || self.vector_paths.is_some()
+                        || (self.rect.w > 0. && self.rect.h > 0.);
                     bad_gradient |= g.stops.is_empty()
                         || g.stops.len() > MAX_STOPS
                         || (visible && g.ramp(self.rect).is_none());
@@ -576,7 +596,12 @@ impl Shape {
             ),
             None => self.rect,
         };
-        if rect.validate().is_err() || self.clip.is_some_and(|c| c.rect.validate().is_err()) {
+        if !self.stroke_paints.is_empty() && self.stroke.is_none() {
+            Some("stroke paints require stroke geometry")
+        } else if self.stroke_paints.len() > 32 {
+            Some("stroke paint stack exceeds 32 paints")
+        } else if rect.validate().is_err() || self.clip.is_some_and(|c| c.rect.validate().is_err())
+        {
             Some("invalid rectangle")
         } else if !numbers.iter().all(|v| v.is_finite()) {
             Some("non-finite shape value")
@@ -728,7 +753,16 @@ impl Shape {
         // Two antialiased edges that meet let the background through.
         // Under an opaque stroke the fill can run on to the middle of
         // the stroke's outer part, where it is hidden, and close the seam.
-        let opaque = self.stroke.is_some_and(|s| s.color[3] >= 1.);
+        let opaque = self.stroke.is_some_and(|s| {
+            if self.stroke_paints.is_empty() {
+                s.color[3] >= 1.
+            } else {
+                self.stroke_paints.iter().any(|p| match p {
+                    Paint::Solid(c) => c[3] >= 1.,
+                    Paint::Linear(g) => g.opacity >= 1. && g.stops.iter().all(|s| s.color[3] >= 1.),
+                })
+            }
+        });
         let under = self.outline_sides(if opaque {
             outside.map(|w| w / 2.)
         } else {
@@ -776,7 +810,28 @@ impl Shape {
                 ));
             }
             stroke_layer.stroke_geometry = self.stroke_geometry.as_deref();
-            out.push(stroke_layer);
+            if self.stroke_paints.is_empty() {
+                out.push(stroke_layer);
+            } else {
+                for paint in &self.stroke_paints {
+                    let (color, ramp) = match paint {
+                        Paint::Solid(c) => (*c, None),
+                        Paint::Linear(g) => {
+                            ([1., 1., 1., g.opacity.clamp(0., 1.)], g.ramp(self.rect))
+                        }
+                    };
+                    out.push(Layer {
+                        color: [
+                            color[0],
+                            color[1],
+                            color[2],
+                            color[3] * self.opacity.clamp(0., 1.),
+                        ],
+                        ramp,
+                        ..stroke_layer
+                    });
+                }
+            }
         }
         for s in self.shadows.iter().filter(|s| s.inner) {
             let mut a = self.outline_sides(outside.map(|w| w - s.spread));

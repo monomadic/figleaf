@@ -54,7 +54,7 @@ figleaf’s existing approximate blur model. Missing contours are hard errors.
 
 Errors include per-region paint overrides, images, general layer opacity, blend modes,
 singular transforms, unsupported gradients,
-multiple/gradient strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
+radial/angular/diamond strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds
 clip edges and coverage work. New Figma features may need additional validation rules.
@@ -171,3 +171,18 @@ invalid profiles and missing outlines hard-error. No constant-width approximatio
 fallback or Figma mutation is used. Existing geometry/work limits still apply.
 [Generated output beside Figma](../docs/complex-strokes-compare.png) includes all
 nonuniform presets, custom widths, both brushes and transformed outlines.
+
+
+## Multiple and gradient strokes
+
+Visible solid and linear-gradient stroke paints export in Figma’s paint order,
+with paint opacity and stop alpha preserved. They share the node’s stroke
+geometry: widths/alignment, individual borders, dashes and resolved outlines.
+Gradient/multi-paint LINE nodes use Figma’s resolved stroke outlines.
+
+Limits: 32 visible stroke paints and 1–8 stops per gradient, plus existing geometry
+work limits. Gradients spanning a zero-sized dimension, missing line outlines,
+other gradient types, images/patterns and non-normal blend modes hard-error.
+The plugin still emits no partial Rust and never writes files.
+[Generated output beside Figma](../docs/stroke-paints-compare.png) covers paint
+stacks, borders, lines, affine transforms and resolved paths.

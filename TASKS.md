@@ -95,13 +95,21 @@ Rust output; do not merely remove an exporter error.
     invalid outlines and unchanged uploads have synthetic tests. Scatter/custom
     brushes and unverified brush names remain hard errors, never uniform fallbacks.
 
+11. **Multiple and linear-gradient strokes — done 2026-11-17.** Ordered stroke
+    paints share geometry across native paths, individual borders and resolved
+    outlines. Local gradient axes follow transforms; painted LINE nodes preserve
+    resolved placement. Vector masks respect stroke paint visibility. Generated
+    Rust reviewed beside Figma ([comparison](docs/stroke-paints-compare.png),
+    mean 0.19/255 at 2×). Paint order, invalid inputs and caching are tested.
+    Limits remain 32 paints and eight stops; other gradient types are next.
+
 For each item: compile generated Rust, test invalid/degenerate geometry and
 unchanged-canvas uploads, run an example, and look at its render beside a Figma
 export. Until supported end to end, retain layer-specific hard errors and emit
 no partial Rust. No plugin filesystem writes, raster fallbacks, or host edits.
 
 Paint and layout gaps are separate from this geometry queue. After geometry,
-prioritize: multiple/gradient strokes and remaining gradient types/stop counts;
+prioritize: remaining gradient types/stop counts;
 image and pattern fills; flattened opacity, blend modes and container effects;
 layer/background blur; remaining text styling/shaping; responsive layout export
 and solver gaps; wide-gamut color and multisampled targets.

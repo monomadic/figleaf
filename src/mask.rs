@@ -54,7 +54,16 @@ impl Mask {
                 })
                 .map(|_| Paint::Solid([1.; 4]))
                 .collect();
-            if shape.stroke.is_some_and(|s| s.color[3] == 0.) {
+            let stroke_visible = if shape.stroke_paints.is_empty() {
+                shape.stroke.is_some_and(|s| s.color[3] > 0.)
+            } else {
+                shape.stroke_paints.iter().any(|p| match p {
+                    Paint::Solid(c) => c[3] > 0.,
+                    Paint::Linear(g) => g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.),
+                })
+            };
+            shape.stroke_paints.clear();
+            if !stroke_visible {
                 shape.stroke = None;
                 shape.stroke_weights = None;
                 shape.stroke_geometry = None;

@@ -48,7 +48,7 @@ test('unsupported features never produce partial Rust', () => {
     node({opacity:0.5}), node({isMask:true}), node({cornerSmoothing:0.6}), node({blendMode:'MULTIPLY'}),
     node({fills:[{type:'IMAGE'}]}), node({fills:[{...solid,blendMode:'SCREEN'}]}),
     node({relativeTransform:[[0,0,0],[1,0,0]]}),
-    node({strokes:[solid,solid]}), node({strokes:[solid],dashPattern:[-1,2]}),
+    node({strokes:Array(33).fill(solid)}), node({strokes:[solid],dashPattern:[-1,2]}),
     node({strokes:[solid],strokeJoin:'BEVEL'}),
     node({fills:[{type:'GRADIENT_RADIAL'}]}),
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(9).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
@@ -428,4 +428,24 @@ test('styled strokes never fall back when outlines or style parameters are unsup
   assert.deepEqual(exportHierarchy([{...dynamic,complexStrokeProperties:{...dynamic.complexStrokeProperties,frequency:Math.fround(.01)}}]).errors,[]);
   for(const complexStrokeProperties of [{type:'DYNAMIC',frequency:0,wiggle:0,smoothen:0},{type:'DYNAMIC',frequency:1,wiggle:NaN,smoothen:0},{type:'DYNAMIC',frequency:1,wiggle:0,smoothen:2}])assert.equal(exportHierarchy([{...dynamic,complexStrokeProperties}]).code,null);
   const line=exportHierarchy([{...n,type:'LINE'}]);assert.deepEqual(line.errors,[]);assert.match(line.code,/stroke_geometry/);
+});
+
+test('multiple and linear-gradient strokes export and compile across geometries',()=>{
+  const result=exportHierarchy([require('./stroke-paints-reference.json')]);assert.deepEqual(result.errors,[]);
+  assert.equal((result.code.match(/\.stroke_paints\(/g)||[]).length,9);
+  assert.match(result.code,/Paint::Solid/);assert.match(result.code,/Paint::Linear/);assert.match(result.code,/stroke_geometry/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-stroke-paints-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for i in c.items(){if let figleaf::paint::Item::Shape(s)=i{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported stroke paints, oversized stacks and degenerate gradients fail closed',()=>{
+  const n=require('./stroke-paints-reference.json').children[1],gradient=n.strokes[0];
+  for(const strokes of [Array(33).fill(solid),[{type:'IMAGE'}],[{...gradient,type:'GRADIENT_RADIAL'}],[{...gradient,blendMode:'MULTIPLY'}],[{...gradient,gradientStops:[]}],[{...gradient,gradientStops:Array(9).fill(gradient.gradientStops[0])}],[{...gradient,gradientTransform:[[0,0,0],[0,0,0]]}]]){const r=exportHierarchy([{...n,strokes}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
+  assert.equal(exportHierarchy([{...n,height:0,strokes:[{...gradient,gradientTransform:[[0,1,0],[1,0,0]]}]}]).code,null);
+  assert.deepEqual(exportHierarchy([{...n,strokes:[{type:'IMAGE',visible:false},solid]}]).errors,[]);
+  const line=require('./stroke-paints-reference.json').children[4];
+  assert.equal(exportHierarchy([{...line,strokeGeometry:undefined}]).code,null);
 });

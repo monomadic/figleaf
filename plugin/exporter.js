@@ -28,6 +28,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const comment = value => String(value).replace(/[\r\n\u2028\u2029]/g, ' ');
   const rect = r => `Rect::new(${r.map(number).join(', ')})`;
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
+  const gradientCode = p => `LinearGradient::transform(${array(p.gradientTransform[0])})` + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
+  const paintCode = p => p.type==='SOLID' ? `Paint::Solid(${color(p.color,p.opacity)})` : p.type==='GRADIENT_LINEAR' ? `Paint::Linear(${gradientCode(p)})` : (()=>{throw Error('Unsupported stroke paint.');})();
+  const strokeColor = p => p.type==='SOLID' ? color(p.color,p.opacity) : '[1.0, 1.0, 1.0, 1.0]';
   const visible = list => {
     if (!Array.isArray(list)) throw Error('Mixed paints or effects are unsupported.');
     return list.filter(p => p.visible !== false);
@@ -186,6 +189,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (n.type === 'GROUP' && visible(n.effects || []).length) reject('Group effects require compositing and are unsupported.');
       if (n.children?.some(c => c.visible !== false) && visible(n.effects || []).length) reject('Effects on a hierarchy container require compositing and are unsupported.');
       const fills = visible(n.fills || []), strokes = visible(n.strokes || []), effects = visible(n.effects || []);
+      if (n.type==='LINE' && (strokes.length>1 || strokes.some(p=>p.type!=='SOLID'))) {
+        resolved=true;
+        if (n.strokeWeight>0 && (!Array.isArray(n.strokeGeometry)||!n.strokeGeometry.some(p=>typeof p.data==='string'&&/[LQC]/.test(p.data)))) reject('Painted line stroke outlines are unavailable.');
+      }
       for (const p of [...fills, ...strokes]) {
         if ([p, ...(p.gradientStops || [])].some(v => Object.keys(v.boundVariables || {}).length) && !verifiedBindings.has(n)) reject('Paint variable bindings must be resolved before export.');
         if (p.blendMode && p.blendMode !== 'NORMAL') reject(`Unsupported paint blend mode: ${p.blendMode}.`);
@@ -194,6 +201,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if (p.gradientStops.length < 1 || p.gradientStops.length > 8) reject('Linear gradients require 1–8 stops.');
           const t = p.gradientTransform;
           if (!t || !t.flat().every(Number.isFinite) || Math.abs(t[0][0]*t[1][1]-t[0][1]*t[1][0]) < 1e-12) reject('Degenerate gradient transforms are unsupported.');
+          if (t && ((n.width===0 && t[0][0]!==0) || (n.height===0 && t[0][1]!==0))) reject('Gradient axis spans a zero-sized dimension.');
         }
       }
       if (strokes.length) {
@@ -224,9 +232,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if (n.strokeWeight>0 && (!Array.isArray(n.strokeGeometry)||!n.strokeGeometry.some(p=>typeof p.data==='string' && /[LQC]/.test(p.data)))) reject('Styled stroke outlines are unavailable; no constant-width fallback.');
         }
       }
-      if (strokes.length > 1) reject('Multiple strokes are unsupported.');
+      if (strokes.length > 32) reject('Stroke paint stack exceeds 32 paints.');
       if (boolean && strokes.length && (typeof n.strokeWeight !== 'number' || !Number.isFinite(n.strokeWeight) || n.strokeWeight < 0)) reject('Invalid boolean stroke width.');
-      if (strokes.some(p => p.type !== 'SOLID')) reject('Only solid strokes are supported.');
       if(strokes.length && n.dashPattern?.length) {
         if(!Array.isArray(n.dashPattern) || n.dashPattern.length>32 || n.dashPattern.some(v=>typeof v!=='number' || !Number.isFinite(v) || v<0 || v>1e7)) reject('Invalid dash pattern.');
         if(effects.length && !resolved) reject('Dashed stroke effects are unsupported.');
@@ -295,9 +302,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
         }
-      } else if (n.type === 'LINE' && !styledStroke) {
-        if (fills.length || strokes.length !== 1 || effects.length) reject('Lines require one solid stroke, no fills, and no effects.');
-        if (errors.length === before) expression = `Shape::vector(${rect(box)}, vec![VectorPath::new(WindingRule::None).move_to([0.0, 0.0]).line_to(${array([n.width,0])})]).stroke(${number(n.strokeWeight)}, ${color(strokes[0].color,strokes[0].opacity)}, StrokeAlign::Center)`;
+      } else if (n.type === 'LINE' && !resolved) {
+        if (fills.length || !strokes.length || effects.length) reject('Lines require stroke paints, no fills, and no effects.');
+        if (errors.length === before) expression = `Shape::vector(${rect(box)}, vec![VectorPath::new(WindingRule::None).move_to([0.0, 0.0]).line_to(${array([n.width,0])})]).stroke(${number(n.strokeWeight)}, ${strokeColor(strokes[0])}, StrokeAlign::Center)`;
       } else if (n.type !== 'GROUP' && types.includes(n.type)) {
         if (n.type === 'VECTOR' || resolved) {
           expression = `Shape::vector(${rect(box)}, ${vectorCode(n)})`;
@@ -319,20 +326,21 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             expression += `.opacity(${number(p.opacity ?? 1)}))`;
           }
         }
-        if (strokes.length === 1 && strokes[0].type === 'SOLID') {
+        if (strokes.length) {
           const p = strokes[0];
           const align = { INSIDE:'Inside', CENTER:'Center', OUTSIDE:'Outside' }[n.strokeAlign];
           if (!align) reject('Unsupported stroke alignment.');
           const weight='strokeTopWeight' in n ? Math.max(n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight) : n.strokeWeight;
           if (resolved && (!Number.isFinite(weight) || weight < 0 || ('strokeTopWeight' in n && [n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(w=>!Number.isFinite(w)||w<0)))) reject('Invalid resolved border width.');
-          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive && !boolean && (!resolved || weight > 0)) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
-          else expression += `.stroke(${number(n.strokeWeight)}, ${color(p.color,p.opacity)}, StrokeAlign::${align})`;
+          if ('strokeTopWeight' in n && n.type !== 'VECTOR' && !primitive && !boolean && (!resolved || weight > 0)) expression += `.strokes(${array([n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight])}, ${strokeColor(p)}, StrokeAlign::${align})`;
+          else expression += `.stroke(${number(n.strokeWeight)}, ${strokeColor(p)}, StrokeAlign::${align})`;
           if (resolved && weight > 0) expression += `.stroke_geometry(${vectorCode(n, true)})`;
         }
         for (const e of effects) if (['DROP_SHADOW','INNER_SHADOW'].includes(e.type)) {
           expression += `.shadow(Shadow::${e.type === 'INNER_SHADOW' ? 'inner' : 'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode ? '.show_behind()' : ''})`;
         }
       }
+      if (expression && strokes.length && (strokes.length>1 || strokes[0].type!=='SOLID')) expression += `.stroke_paints(vec![${strokes.map(paintCode).join(', ')}])`;
       if (strokes.length && !resolved && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
         const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' && !primitive ? n.strokeTopWeight : n.strokeWeight;
         if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
@@ -395,7 +403,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };
