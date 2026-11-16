@@ -101,7 +101,15 @@ Rust output; do not merely remove an exporter error.
     resolved placement. Vector masks respect stroke paint visibility. Generated
     Rust reviewed beside Figma ([comparison](docs/stroke-paints-compare.png),
     mean 0.19/255 at 2×). Paint order, invalid inputs and caching are tested.
-    Limits remain 32 paints and eight stops; other gradient types are next.
+    Stroke paint stacks remain limited to 32 paints.
+
+12. **Remaining gradients and larger stop counts — done 2026-11-17.**
+    Radial, angular and diamond fills/strokes preserve full Figma transforms;
+    all four types accept 1–64 stops in a reusable GPU buffer. Plugin output
+    compiles and retains hard errors/no filesystem writes. Generated example
+    [reviewed beside Figma](docs/gradients-compare.png), mean 0.58/255 at 1×:
+    transformed and translucent paints, borders and a 64-stop strip. Synthetic
+    tests cover invalid inputs and unchanged uploads.
 
 For each item: compile generated Rust, test invalid/degenerate geometry and
 unchanged-canvas uploads, run an example, and look at its render beside a Figma
@@ -109,8 +117,7 @@ export. Until supported end to end, retain layer-specific hard errors and emit
 no partial Rust. No plugin filesystem writes, raster fallbacks, or host edits.
 
 Paint and layout gaps are separate from this geometry queue. After geometry,
-prioritize: remaining gradient types/stop counts;
-image and pattern fills; flattened opacity, blend modes and container effects;
+prioritize: image and pattern fills; flattened opacity, blend modes and container effects;
 layer/background blur; remaining text styling/shaping; responsive layout export
 and solver gaps; wide-gamut color and multisampled targets.
 These remain unsupported where documented; listing them does not authorize a
@@ -294,9 +301,8 @@ What it taught:
 - Figma dithers gradients by about 1/255; we do not.
 - Per-corner radii match (the markers' tabs).
 
-Not done: radial, angular and diamond gradients, gradients on strokes and
-text, more than eight stops (reported as a problem, not dropped), and blend
-modes on a fill. On an sRGB surface a translucent gradient blends in linear
+Remaining: gradients on text, more than 64 stops (reported as a problem),
+and blend modes on a fill. On an sRGB surface a translucent gradient blends in linear
 light like any other translucent colour. Abner does not use these fills yet.
 
 ## 4. Layout wrapping — done 2026-11-12

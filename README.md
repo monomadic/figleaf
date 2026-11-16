@@ -146,7 +146,7 @@ GPU storage adds 64 bytes per shape and 64 per text instance.
 ## Vector paths
 
 `Shape::vector(rect, paths)` paints local-coordinate `VectorPath` regions with
-solid/linear-gradient fills and the existing rectangular/rounded clips. Paths
+solid/gradient fills and the existing rectangular/rounded clips. Paths
 have `move_to`, `line_to`, `quadratic_to`, `cubic_to`, and `close` builders.
 `WindingRule::NonZero` and `EvenOdd` preserve holes; `None` preserves explicitly
 unfilled network branches. Open filled contours close implicitly. Regions are
@@ -286,8 +286,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 ## Not supported yet
 
-Radial, angular and diamond gradients, gradients on text, more
-than eight gradient stops, images, blurs, blend modes, flattened layer opacity, multisampled targets, layout
+Gradients on text, more than 64 gradient stops, images, blurs, blend modes, flattened layer opacity, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
@@ -421,7 +420,7 @@ nominal-width independence, invalid data and unchanged uploads.
 ## Multiple and gradient strokes
 
 `Shape::stroke_paints(Vec<Paint>)` replaces the stroke color with up to 32 ordered
-solid/linear-gradient paints, bottom to top. They share the shape’s stroke width,
+solid/gradient paints, bottom to top. They share the shape’s stroke width,
 alignment, individual border weights and path styling, as in Figma. Call it after
 `.stroke(...)` or `.strokes(...)`; an empty list uses the legacy stroke color.
 `stroke_gradient(width, gradient, align)` sets a single gradient stroke.
@@ -431,11 +430,29 @@ An axis along a zero-height line works; an axis spanning a zero-sized dimension
 is rejected. The plugin uses resolved outlines for gradient/multi-paint LINE
 nodes, preserving Figma’s supplied placement. Native vector paths, resolved
 outlines, individual borders, dashes and masks retain stroke paint stacks.
-Gradients still allow 1–8 stops; radial/angular/diamond and image/pattern strokes
-remain hard errors. No new dependencies or shader variants.
+Gradients allow 1–64 stops; image/pattern strokes remain hard errors.
+No new dependencies or shader variants.
 
 `cargo run --example stroke_paints --features wgpu` renders generated Rust
 [beside Figma](docs/stroke-paints-compare.png), mean 0.19/255 at 2×: solid/gradient
 stacks, alignments, an ellipse, unequal borders, a line, transformed dashes and
 variable-width/smoothed outlines. Synthetic tests cover paint order, gradient
 coordinates, invalid stacks, vector masks and unchanged-canvas uploads.
+
+## Radial, angular and diamond gradients
+
+`Gradient::radial(matrix)`, `Gradient::angular(matrix)` and
+`Gradient::diamond(matrix)` take the full two-row Figma `gradientTransform`.
+Use `.stop(position, color)` and `.opacity(value)`, then `.gradient(..)` for
+fills or `.stroke_gradient(width, gradient, align)` for borders. Explicit paint
+stacks use `Paint::Gradient(..)`. `LinearGradient` remains a compatible alias.
+All four types accept 1–64 stops, including repeated positions for hard edges.
+Nonlinear gradients require a nonzero box and an invertible transform.
+
+Stops live in a reusable GPU storage buffer; unchanged canvases upload nothing.
+Linear hard edges retain pixel-width filtering; nonlinear gradients use 4×4
+samples per pixel. Figma dithering is not reproduced.
+`cargo run --example gradients --features wgpu` renders plugin-generated Rust
+[beside Figma](docs/gradients-compare.png): identity and sheared transforms,
+translucent stops, borders and a 64-stop strip. Visually checked at 1×; mean
+channel difference 0.58/255. Synthetic tests cover rejection and upload caching.

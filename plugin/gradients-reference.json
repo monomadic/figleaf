@@ -1,0 +1,1566 @@
+{
+  "id": "391:242",
+  "type": "FRAME",
+  "name": "Temporary figleaf gradient validation",
+  "width": 680,
+  "height": 500,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      3200
+    ],
+    [
+      0,
+      1,
+      1600
+    ]
+  ],
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "cornerSmoothing": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "bottomRightRadius": 0,
+  "strokeTopWeight": 1,
+  "strokeRightWeight": 1,
+  "strokeBottomWeight": 1,
+  "strokeLeftWeight": 1,
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeMiterLimit": 4,
+  "clipsContent": true,
+  "layoutMode": "NONE",
+  "children": [
+    {
+      "id": "391:243",
+      "type": "RECTANGLE",
+      "name": "RADIAL 0",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_RADIAL",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:244",
+      "type": "RECTANGLE",
+      "name": "ANGULAR 0",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          240
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_ANGULAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:245",
+      "type": "RECTANGLE",
+      "name": "DIAMOND 0",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          460
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_DIAMOND",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:246",
+      "type": "RECTANGLE",
+      "name": "RADIAL 1",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          170
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_RADIAL",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              0.8500000238418579,
+              0.30000001192092896,
+              -0.05000000074505806
+            ],
+            [
+              -0.20000000298023224,
+              1.2000000476837158,
+              0.10000000149011612
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:247",
+      "type": "RECTANGLE",
+      "name": "ANGULAR 1",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          240
+        ],
+        [
+          0,
+          1,
+          170
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_ANGULAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              0.8500000238418579,
+              0.30000001192092896,
+              -0.05000000074505806
+            ],
+            [
+              -0.20000000298023224,
+              1.2000000476837158,
+              0.10000000149011612
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:248",
+      "type": "RECTANGLE",
+      "name": "DIAMOND 1",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          460
+        ],
+        [
+          0,
+          1,
+          170
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_DIAMOND",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              0.8500000238418579,
+              0.30000001192092896,
+              -0.05000000074505806
+            ],
+            [
+              -0.20000000298023224,
+              1.2000000476837158,
+              0.10000000149011612
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:249",
+      "type": "RECTANGLE",
+      "name": "RADIAL 2",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          320
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_RADIAL",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 18,
+      "strokeRightWeight": 18,
+      "strokeBottomWeight": 18,
+      "strokeLeftWeight": 18,
+      "strokeWeight": 18,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:250",
+      "type": "RECTANGLE",
+      "name": "ANGULAR 2",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          240
+        ],
+        [
+          0,
+          1,
+          320
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_ANGULAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 18,
+      "strokeRightWeight": 18,
+      "strokeBottomWeight": 18,
+      "strokeLeftWeight": 18,
+      "strokeWeight": 18,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:251",
+      "type": "RECTANGLE",
+      "name": "DIAMOND 2",
+      "width": 200,
+      "height": 130,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          460
+        ],
+        [
+          0,
+          1,
+          320
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "GRADIENT_DIAMOND",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 1,
+                "g": 0,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 1,
+                "b": 0,
+                "a": 0.6000000238418579
+              },
+              "position": 0.5,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 1,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 18,
+      "strokeRightWeight": 18,
+      "strokeBottomWeight": 18,
+      "strokeLeftWeight": 18,
+      "strokeWeight": 18,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "391:252",
+      "type": "RECTANGLE",
+      "name": "64 stops",
+      "width": 640,
+      "height": 20,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          470
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "gradientStops": [
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.01587301678955555,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.0317460335791111,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.0476190485060215,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.0634920671582222,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.0793650820851326,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.095238097012043,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.1111111119389534,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.1269841343164444,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.1428571492433548,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.1587301641702652,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.1746031790971756,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.190476194024086,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.2063492089509964,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.2222222238779068,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.2380952388048172,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.2539682686328888,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.2698412835597992,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.2857142984867096,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.30158731341362,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.3174603283405304,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.3333333432674408,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.3492063581943512,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.3650793731212616,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.380952388048172,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.3968254029750824,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.4126984179019928,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.4285714328289032,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.4444444477558136,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.460317462682724,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.4761904776096344,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.4920634925365448,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.5079365372657776,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.523809552192688,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.5396825671195984,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.5555555820465088,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.5714285969734192,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.5873016119003296,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.60317462682724,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.6190476417541504,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.6349206566810608,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.6507936716079712,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.6666666865348816,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.682539701461792,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.6984127163887024,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.7142857313156128,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.7301587462425232,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.7460317611694336,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.761904776096344,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.7777777910232544,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.7936508059501648,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.8095238208770752,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.8253968358039856,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.841269850730896,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.8571428656578064,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.8730158805847168,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.8888888955116272,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.9047619104385376,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.920634925365448,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.9365079402923584,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.9523809552192688,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 0.9682539701461792,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0.20000000298023224,
+                "b": 1,
+                "a": 1
+              },
+              "position": 0.9841269850730896,
+              "boundVariables": {}
+            },
+            {
+              "color": {
+                "r": 1,
+                "g": 0.20000000298023224,
+                "b": 0,
+                "a": 1
+              },
+              "position": 1,
+              "boundVariables": {}
+            }
+          ],
+          "gradientTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    }
+  ]
+}

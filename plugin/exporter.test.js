@@ -50,8 +50,8 @@ test('unsupported features never produce partial Rust', () => {
     node({relativeTransform:[[0,0,0],[1,0,0]]}),
     node({strokes:Array(33).fill(solid)}), node({strokes:[solid],dashPattern:[-1,2]}),
     node({strokes:[solid],strokeJoin:'BEVEL'}),
-    node({fills:[{type:'GRADIENT_RADIAL'}]}),
-    node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(9).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
+    node({fills:[{type:'GRADIENT_UNKNOWN'}]}),
+    node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(65).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
     node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
     text({lineHeight:{unit:'AUTO'}}),text({textDecoration:'UNDERLINE'}),text({characters:'🐈'}),
     text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:4}),text({textTruncation:'ENDING'}),
@@ -443,9 +443,31 @@ test('multiple and linear-gradient strokes export and compile across geometries'
 });
 test('unsupported stroke paints, oversized stacks and degenerate gradients fail closed',()=>{
   const n=require('./stroke-paints-reference.json').children[1],gradient=n.strokes[0];
-  for(const strokes of [Array(33).fill(solid),[{type:'IMAGE'}],[{...gradient,type:'GRADIENT_RADIAL'}],[{...gradient,blendMode:'MULTIPLY'}],[{...gradient,gradientStops:[]}],[{...gradient,gradientStops:Array(9).fill(gradient.gradientStops[0])}],[{...gradient,gradientTransform:[[0,0,0],[0,0,0]]}]]){const r=exportHierarchy([{...n,strokes}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
+  for(const strokes of [Array(33).fill(solid),[{type:'IMAGE'}],[{...gradient,type:'GRADIENT_UNKNOWN'}],[{...gradient,blendMode:'MULTIPLY'}],[{...gradient,gradientStops:[]}],[{...gradient,gradientStops:Array(65).fill(gradient.gradientStops[0])}],[{...gradient,gradientTransform:[[0,0,0],[0,0,0]]}]]){const r=exportHierarchy([{...n,strokes}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
   assert.equal(exportHierarchy([{...n,height:0,strokes:[{...gradient,gradientTransform:[[0,1,0],[1,0,0]]}]}]).code,null);
   assert.deepEqual(exportHierarchy([{...n,strokes:[{type:'IMAGE',visible:false},solid]}]).errors,[]);
   const line=require('./stroke-paints-reference.json').children[4];
   assert.equal(exportHierarchy([{...line,strokeGeometry:undefined}]).code,null);
+});
+
+test('all gradient types with 64 stops export deterministic compilable Rust',()=>{
+  const result=exportHierarchy([require('./gradients-reference.json')]);
+  assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/gradients.rs'),'utf8'));
+  for(const type of ['radial','angular','diamond'])assert.match(result.code,new RegExp('Gradient::'+type));
+  assert.match(result.code,/Paint::Gradient/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-gradients-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);for i in c.items(){if let figleaf::paint::Item::Shape(s)=i{assert_eq!(s.problem(),None);}}}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('nonlinear gradients reject malformed transforms and oversized stop lists',()=>{
+  for(const type of ['RADIAL','ANGULAR','DIAMOND']) {
+    const paint={...require('./gradients-reference.json').children[0].fills[0],type:'GRADIENT_'+type};
+    for(const patch of [{gradientStops:Array(65).fill(paint.gradientStops[0])},{gradientStops:[]},{gradientTransform:[[1,0,0],[0,0,0]]},{gradientTransform:[[1,0,0],[0,NaN,0]]}])assert.equal(exportHierarchy([node({fills:[{...paint,...patch}]})]).code,null);
+    assert.equal(exportHierarchy([node({height:0,fills:[paint]})]).code,null);
+    assert.deepEqual(exportHierarchy([node({fills:[{...paint,gradientStops:[paint.gradientStops[0]]}]})]).errors,[]);
+  }
 });

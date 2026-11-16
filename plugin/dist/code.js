@@ -30,8 +30,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const comment = value => String(value).replace(/[\r\n\u2028\u2029]/g, ' ');
   const rect = r => `Rect::new(${r.map(number).join(', ')})`;
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
-  const gradientCode = p => `LinearGradient::transform(${array(p.gradientTransform[0])})` + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
-  const paintCode = p => p.type==='SOLID' ? `Paint::Solid(${color(p.color,p.opacity)})` : p.type==='GRADIENT_LINEAR' ? `Paint::Linear(${gradientCode(p)})` : (()=>{throw Error('Unsupported stroke paint.');})();
+  const gradientCode = p => (p.type==='GRADIENT_LINEAR' ? `LinearGradient::transform(${array(p.gradientTransform[0])})` : `Gradient::${p.type.slice(9).toLowerCase()}([${p.gradientTransform.map(array).join(', ')}])`) + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
+  const paintCode = p => p.type==='SOLID' ? `Paint::Solid(${color(p.color,p.opacity)})` : p.type.startsWith('GRADIENT_') ? `Paint::${p.type==='GRADIENT_LINEAR'?'Linear':'Gradient'}(${gradientCode(p)})` : (()=>{throw Error('Unsupported stroke paint.');})();
   const strokeColor = p => p.type==='SOLID' ? color(p.color,p.opacity) : '[1.0, 1.0, 1.0, 1.0]';
   const visible = list => {
     if (!Array.isArray(list)) throw Error('Mixed paints or effects are unsupported.');
@@ -198,11 +198,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       for (const p of [...fills, ...strokes]) {
         if ([p, ...(p.gradientStops || [])].some(v => Object.keys(v.boundVariables || {}).length) && !verifiedBindings.has(n)) reject('Paint variable bindings must be resolved before export.');
         if (p.blendMode && p.blendMode !== 'NORMAL') reject(`Unsupported paint blend mode: ${p.blendMode}.`);
-        if (!['SOLID', 'GRADIENT_LINEAR'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
-        if (p.type === 'GRADIENT_LINEAR') {
-          if (p.gradientStops.length < 1 || p.gradientStops.length > 8) reject('Linear gradients require 1–8 stops.');
+        if (!['SOLID', 'GRADIENT_LINEAR', 'GRADIENT_RADIAL', 'GRADIENT_ANGULAR', 'GRADIENT_DIAMOND'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
+        if (p.type.startsWith('GRADIENT_')) {
+          if (p.gradientStops.length < 1 || p.gradientStops.length > 64) reject('Gradients require 1–64 stops.');
           const t = p.gradientTransform;
           if (!t || !t.flat().every(Number.isFinite) || Math.abs(t[0][0]*t[1][1]-t[0][1]*t[1][0]) < 1e-12) reject('Degenerate gradient transforms are unsupported.');
+          if (p.type!=='GRADIENT_LINEAR' && (n.width===0 || n.height===0)) reject('Gradient spans a zero-sized dimension.');
           if (t && ((n.width===0 && t[0][0]!==0) || (n.height===0 && t[0][1]!==0))) reject('Gradient axis spans a zero-sized dimension.');
         }
       }
@@ -322,11 +323,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         // Figma's paint arrays are in drawing order, bottom to top.
         for (const p of fills) {
           if (p.type === 'SOLID') expression += `.fill(${color(p.color,p.opacity)})`;
-          if (p.type === 'GRADIENT_LINEAR' && p.gradientTransform) {
-            expression += `.gradient(LinearGradient::transform(${array(p.gradientTransform[0])})`;
-            for (const s of p.gradientStops) expression += `.stop(${number(s.position)}, ${color(s.color)})`;
-            expression += `.opacity(${number(p.opacity ?? 1)}))`;
-          }
+          if (p.type.startsWith('GRADIENT_') && p.gradientTransform) expression += `.gradient(${gradientCode(p)})`;
         }
         if (strokes.length) {
           const p = strokes[0];
@@ -405,7 +402,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

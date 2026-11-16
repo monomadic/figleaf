@@ -50,7 +50,9 @@ impl Mask {
                 .iter()
                 .filter(|p| match p {
                     Paint::Solid(c) => c[3] > 0.,
-                    Paint::Linear(g) => g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.),
+                    Paint::Linear(g) | Paint::Gradient(g) => {
+                        g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.)
+                    }
                 })
                 .map(|_| Paint::Solid([1.; 4]))
                 .collect();
@@ -59,7 +61,9 @@ impl Mask {
             } else {
                 shape.stroke_paints.iter().any(|p| match p {
                     Paint::Solid(c) => c[3] > 0.,
-                    Paint::Linear(g) => g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.),
+                    Paint::Linear(g) | Paint::Gradient(g) => {
+                        g.opacity > 0. && g.stops.iter().any(|s| s.color[3] > 0.)
+                    }
                 })
             };
             shape.stroke_paints.clear();

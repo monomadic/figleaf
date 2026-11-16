@@ -23,7 +23,9 @@ pub mod render;
 pub use clip::{Clip, ClipGeometry};
 pub use geom::{Color, Error, Rect, Transform, hex, hexa};
 pub use mask::{Mask, MaskType, Masked};
-pub use paint::{Canvas, LinearGradient, Paint, Shadow, Shape, Stroke, StrokeAlign, Text};
+pub use paint::{
+    Canvas, Gradient, LinearGradient, Paint, Shadow, Shape, Stroke, StrokeAlign, Text,
+};
 
 pub use path::{PathStroke, StrokeCap, StrokeJoin, VectorPath, WindingRule};
 pub use primitives::{ArcData, Primitive};

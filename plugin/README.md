@@ -31,8 +31,8 @@ An agent can consume the displayed code just as a person can; this plugin does
 not install an agent connection or write to a consumer's project.
 
 Supported: affine-transformed rectangles, frames/components/instances/groups,
-full ellipses, filled vector paths, stroked straight lines, solid and linear-gradient fills
-(up to eight stops), solid uniform/individual borders, and shape shadows.
+full ellipses, filled vector paths, stroked straight lines, solid and linear/radial/angular/diamond gradient fills
+(up to 64 stops), solid uniform/individual borders, and shape shadows.
 Nested transforms compose; the root translation is omitted but its linear matrix is retained.
 All ancestor frame clips are retained, including unequal corner radii and crossing
 transforms. The same clip stack applies to shapes and text.
@@ -54,7 +54,7 @@ figleaf’s existing approximate blur model. Missing contours are hard errors.
 
 Errors include per-region paint overrides, images, general layer opacity, blend modes,
 singular transforms, unsupported gradients,
-radial/angular/diamond strokes, non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
+non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds
 clip edges and coverage work. New Figma features may need additional validation rules.
@@ -175,14 +175,19 @@ nonuniform presets, custom widths, both brushes and transformed outlines.
 
 ## Multiple and gradient strokes
 
-Visible solid and linear-gradient stroke paints export in Figma’s paint order,
+Visible solid and linear/radial/angular/diamond stroke paints export in Figma’s paint order,
 with paint opacity and stop alpha preserved. They share the node’s stroke
 geometry: widths/alignment, individual borders, dashes and resolved outlines.
 Gradient/multi-paint LINE nodes use Figma’s resolved stroke outlines.
 
-Limits: 32 visible stroke paints and 1–8 stops per gradient, plus existing geometry
+Limits: 32 visible stroke paints and 1–64 stops per gradient, plus existing geometry
 work limits. Gradients spanning a zero-sized dimension, missing line outlines,
-other gradient types, images/patterns and non-normal blend modes hard-error.
+images/patterns and non-normal blend modes hard-error.
 The plugin still emits no partial Rust and never writes files.
 [Generated output beside Figma](../docs/stroke-paints-compare.png) covers paint
 stacks, borders, lines, affine transforms and resolved paths.
+
+Nonlinear gradients emit `Gradient::radial`, `Gradient::angular` or `Gradient::diamond` with the full
+Figma transform; zero-sized boxes and singular transforms hard-error.
+[Gradient comparison](../docs/gradients-compare.png) includes exported fills,
+borders, transformed gradients, translucent stops and a 64-stop strip.

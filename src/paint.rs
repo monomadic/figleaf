@@ -61,7 +61,7 @@ impl Shadow {
 }
 
 /// The most stops a gradient can have.
-pub const MAX_STOPS: usize = 8;
+pub const MAX_STOPS: usize = 64;
 
 /// A gradient stop: Figma's position (0 to 1) and colour.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -70,7 +70,7 @@ pub struct Stop {
     pub color: Color,
 }
 
-/// Where a linear gradient runs, relative to the shape's box.
+/// Where a gradient runs, relative to the shape's box.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Axis {
     /// From `start` to `end`, each a fraction of the box (`[0, 0]` is its top
@@ -78,14 +78,20 @@ pub enum Axis {
     Between { start: [f32; 2], end: [f32; 2] },
     /// The first row `[a, b, tx]` of Figma's `gradientTransform`: the
     /// position along the gradient is `a * u + b * v + tx`, where `u` and `v`
-    /// are fractions of the box. This is exact for any gradient Figma holds.
+    /// are fractions of the box.
     Transform([f32; 3]),
+    /// Full Figma transform for an elliptical radial gradient.
+    Radial([[f32; 3]; 2]),
+    /// Full Figma transform for an angular gradient.
+    Angular([[f32; 3]; 2]),
+    /// Full Figma transform for a diamond gradient.
+    Diamond([[f32; 3]; 2]),
 }
 
-/// Figma's linear gradient paint. Stops blend the way Figma blends them:
+/// Figma's gradient paint. Stops blend the way Figma blends them:
 /// colour and alpha separately, not premultiplied.
 #[derive(Debug, Clone, PartialEq)]
-pub struct LinearGradient {
+pub struct Gradient {
     pub axis: Axis,
     /// One to [`MAX_STOPS`] stops. Two stops at one offset make a hard edge.
     pub stops: Vec<Stop>,
@@ -93,7 +99,10 @@ pub struct LinearGradient {
     pub opacity: f32,
 }
 
-impl LinearGradient {
+/// Compatibility name for existing linear-gradient callers.
+pub type LinearGradient = Gradient;
+
+impl Gradient {
     pub fn new(axis: Axis) -> Self {
         Self {
             axis,
@@ -116,6 +125,15 @@ impl LinearGradient {
     pub fn transform(row: [f32; 3]) -> Self {
         Self::new(Axis::Transform(row))
     }
+    pub fn radial(matrix: [[f32; 3]; 2]) -> Self {
+        Self::new(Axis::Radial(matrix))
+    }
+    pub fn angular(matrix: [[f32; 3]; 2]) -> Self {
+        Self::new(Axis::Angular(matrix))
+    }
+    pub fn diamond(matrix: [[f32; 3]; 2]) -> Self {
+        Self::new(Axis::Diamond(matrix))
+    }
     pub fn stop(mut self, offset: f32, color: Color) -> Self {
         self.stops.push(Stop { offset, color });
         self
@@ -127,7 +145,32 @@ impl LinearGradient {
 
     /// The gradient placed on a box: `t = x * axis[0] + y * axis[1] + axis[2]`.
     fn ramp(&self, rect: Rect) -> Option<Ramp> {
+        let mut axis_y = [0.; 3];
+        let mut kind = 0.;
         let axis = match self.axis {
+            Axis::Radial(m) | Axis::Angular(m) | Axis::Diamond(m) => {
+                if rect.w <= 0.
+                    || rect.h <= 0.
+                    || !m.iter().flatten().all(|x| x.is_finite())
+                    || (m[0][0] * m[1][1] - m[0][1] * m[1][0]).abs() < 1e-12
+                {
+                    return None;
+                }
+                kind = match self.axis {
+                    Axis::Radial(_) => 1.,
+                    Axis::Angular(_) => 2.,
+                    _ => 3.,
+                };
+                let map = |[a, b, c]: [f32; 3]| {
+                    [
+                        a / rect.w,
+                        b / rect.h,
+                        c - a / rect.w * rect.x - b / rect.h * rect.y,
+                    ]
+                };
+                axis_y = map(m[1]);
+                map(m[0])
+            }
             Axis::Transform([a, b, tx]) => {
                 let (ax, ay) = (
                     if a == 0. { 0. } else { a / rect.w },
@@ -143,7 +186,7 @@ impl LinearGradient {
                 [ax, ay, -ax * from[0] - ay * from[1]]
             }
         };
-        if !axis.iter().all(|v| v.is_finite()) {
+        if !axis.iter().chain(&axis_y).all(|v| v.is_finite()) {
             return None;
         }
         let mut sorted = self.stops.clone();
@@ -151,7 +194,13 @@ impl LinearGradient {
         let last = *sorted.last()?;
         let mut stops = [last; MAX_STOPS];
         stops[..sorted.len()].copy_from_slice(&sorted);
-        Some(Ramp { axis, stops })
+        Some(Ramp {
+            axis,
+            axis_y,
+            kind,
+            count: sorted.len(),
+            stops,
+        })
     }
 }
 
@@ -160,6 +209,16 @@ impl LinearGradient {
 pub enum Paint {
     Solid(Color),
     Linear(LinearGradient),
+    Gradient(Gradient),
+}
+
+impl Paint {
+    fn from_gradient(g: Gradient) -> Self {
+        match g.axis {
+            Axis::Between { .. } | Axis::Transform(_) => Self::Linear(g),
+            _ => Self::Gradient(g),
+        }
+    }
 }
 
 /// A rectangle or ellipse with fills, a stroke and effects, a
@@ -347,7 +406,7 @@ impl Shape {
     }
     /// Adds a linear gradient fill over any the shape already has.
     pub fn gradient(mut self, gradient: LinearGradient) -> Self {
-        self.fills.push(Paint::Linear(gradient));
+        self.fills.push(Paint::from_gradient(gradient));
         self
     }
     pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {
@@ -369,7 +428,7 @@ impl Shape {
     /// Set a single linear-gradient stroke.
     pub fn stroke_gradient(self, width: f32, gradient: LinearGradient, align: StrokeAlign) -> Self {
         self.stroke(width, [1.; 4], align)
-            .stroke_paints(vec![Paint::Linear(gradient)])
+            .stroke_paints(vec![Paint::from_gradient(gradient)])
     }
     /// Individual frame/rectangle borders, in top, right, bottom, left order.
     /// Adjacent borders join through elliptical inner/outer corner contours.
@@ -562,7 +621,7 @@ impl Shape {
         for (index, fill) in self.fills.iter().chain(&self.stroke_paints).enumerate() {
             match fill {
                 Paint::Solid(color) => numbers.extend(color),
-                Paint::Linear(g) => {
+                Paint::Linear(g) | Paint::Gradient(g) => {
                     numbers.push(g.opacity);
                     for s in &g.stops {
                         numbers.push(s.offset);
@@ -628,7 +687,7 @@ impl Shape {
         } else if self.clip.is_some_and(|c| c.radii != c.radii_y) {
             Some("clip corners must be circular")
         } else if bad_gradient {
-            Some("gradient needs 1 to 8 stops and a start apart from its end")
+            Some("gradient needs 1 to 64 stops and a start apart from its end")
         } else {
             None
         }
@@ -759,7 +818,9 @@ impl Shape {
             } else {
                 self.stroke_paints.iter().any(|p| match p {
                     Paint::Solid(c) => c[3] >= 1.,
-                    Paint::Linear(g) => g.opacity >= 1. && g.stops.iter().all(|s| s.color[3] >= 1.),
+                    Paint::Linear(g) | Paint::Gradient(g) => {
+                        g.opacity >= 1. && g.stops.iter().all(|s| s.color[3] >= 1.)
+                    }
                 })
             }
         });
@@ -771,7 +832,7 @@ impl Shape {
         for fill in &self.fills {
             match fill {
                 Paint::Solid(color) => out.push(layer(Mode::Band, under, None, *color, 0.)),
-                Paint::Linear(g) => {
+                Paint::Linear(g) | Paint::Gradient(g) => {
                     // The gradient is placed on the shape's own box, whatever
                     // the stroke adds.
                     if let Some(ramp) = g.ramp(self.rect) {
@@ -816,7 +877,7 @@ impl Shape {
                 for paint in &self.stroke_paints {
                     let (color, ramp) = match paint {
                         Paint::Solid(c) => (*c, None),
-                        Paint::Linear(g) => {
+                        Paint::Linear(g) | Paint::Gradient(g) => {
                             ([1., 1., 1., g.opacity.clamp(0., 1.)], g.ramp(self.rect))
                         }
                     };
@@ -881,6 +942,9 @@ pub enum Mode {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ramp {
     pub axis: [f32; 3],
+    pub axis_y: [f32; 3],
+    pub kind: f32,
+    pub count: usize,
     /// In offset order. Unused places repeat the last stop.
     pub stops: [Stop; MAX_STOPS],
 }
@@ -1303,7 +1367,7 @@ mod tests {
         let none = Shape::rect(r).gradient(LinearGradient::vertical());
         assert!(none.problem().is_some() && layers(&none).is_empty());
         let mut many = LinearGradient::vertical();
-        for i in 0..9 {
+        for i in 0..=MAX_STOPS {
             many = many.stop(i as f32 / 8., hex(0));
         }
         assert!(Shape::rect(r).gradient(many).problem().is_some());

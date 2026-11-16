@@ -165,6 +165,7 @@ pub struct Renderer {
     texts: Instances,
     path_edges: Instances,
     clip_data: Instances,
+    gradient_data: Instances,
     text_clip_group: wgpu::BindGroup,
     transforms: Instances,
     path_group: wgpu::BindGroup,
@@ -283,6 +284,7 @@ impl Renderer {
         });
         let path_edges = Instances::new(device, "figleaf vector edges", 32);
         let transforms = Instances::new(device, "figleaf transforms", 80);
+        let gradient_data = Instances::new(device, "figleaf gradients", 16);
         let clip_data = Instances::new(device, "figleaf clips", 16);
         let text_clip_group = Self::text_clip_group(device, &text_pipeline, &clip_data.buffer);
         let path_group = Self::path_group(
@@ -291,6 +293,7 @@ impl Renderer {
             &path_edges.buffer,
             &transforms.buffer,
             &clip_data.buffer,
+            &gradient_data.buffer,
         );
         Self {
             format,
@@ -298,6 +301,7 @@ impl Renderer {
             composites: HashMap::new(),
             failed_composites: HashMap::new(),
             clip_data,
+            gradient_data,
             text_clip_group,
             path_edges,
             transforms,
@@ -369,6 +373,7 @@ impl Renderer {
         self.texts.bytes.clear();
         self.path_edges.bytes.clear();
         self.clip_data.bytes.clear();
+        self.gradient_data.bytes.clear();
         self.transforms.bytes.clear();
         self.draws.clear();
         self.problems.clear();
@@ -449,6 +454,20 @@ impl Renderer {
                     let first = (self.shapes.bytes.len() / SHAPE_STRIDE) as u32;
                     let mut layers = Vec::new();
                     shape.layers(&mut layers);
+                    let gradient_bytes: usize = layers
+                        .iter()
+                        .filter_map(|l| l.ramp)
+                        .map(|r| 32 + r.count * 32)
+                        .sum();
+                    if (self.gradient_data.bytes.len() + gradient_bytes).next_power_of_two()
+                        > device.limits().max_storage_buffer_binding_size as usize
+                    {
+                        self.problems.push(Problem {
+                            item: index,
+                            reason: "gradient buffer limit exceeded",
+                        });
+                        continue;
+                    }
                     let mut prepared = Vec::new();
                     let mut pending_edges = Vec::new();
                     let mut path_error = None;
@@ -782,20 +801,31 @@ impl Renderer {
                         self.shapes.push(&clip_radii);
                         match l.ramp {
                             Some(ramp) => {
-                                let [x, y, c] = ramp.axis;
-                                let a = x / scale;
-                                let b = y / scale;
-                                self.shapes.push(&[
-                                    a * inverse.0[0][0] + b * inverse.0[1][0],
-                                    a * inverse.0[0][1] + b * inverse.0[1][1],
-                                    c + a * inverse.0[0][2] + b * inverse.0[1][2],
-                                    transform_index as f32,
-                                ]);
-                                self.shapes.push(&ramp.stops.map(|s| s.offset));
-                                for stop in ramp.stops {
-                                    let bytes = stop.color.map(|v| (v * 255.).round() as u8);
-                                    self.shapes.bytes.extend_from_slice(&bytes);
+                                let start = self.gradient_data.bytes.len() / 16;
+                                for (row, metadata) in
+                                    [(ramp.axis, ramp.kind), (ramp.axis_y, ramp.count as f32)]
+                                {
+                                    let [x, y, c] = row;
+                                    let a = x / scale;
+                                    let b = y / scale;
+                                    self.gradient_data.push(&[
+                                        a * inverse.0[0][0] + b * inverse.0[1][0],
+                                        a * inverse.0[0][1] + b * inverse.0[1][1],
+                                        c + a * inverse.0[0][2] + b * inverse.0[1][2],
+                                        metadata,
+                                    ]);
                                 }
+                                for stop in &ramp.stops[..ramp.count] {
+                                    self.gradient_data.push(&[stop.offset, 0., 0., 0.]);
+                                    self.gradient_data.push(
+                                        &stop
+                                            .color
+                                            .map(|v| ((v * 255.).round() as u8) as f32 / 255.),
+                                    );
+                                }
+                                self.shapes
+                                    .push(&[start as f32, 0., 0., transform_index as f32]);
+                                self.shapes.bytes.extend_from_slice(&[0; 64]);
                             }
                             None => {
                                 self.shapes.push(&[0., 0., 0., transform_index as f32]);
@@ -1045,6 +1075,8 @@ impl Renderer {
         self.masks.retain(|_, slot| slot.used);
         self.wraps.retain(|_, slot| slot.1);
 
+        let gradient_capacity = self.gradient_data.capacity;
+        let gradients_uploaded = self.gradient_data.upload(device, queue);
         let transform_capacity = self.transforms.capacity;
         let transforms_uploaded = self.transforms.upload(device, queue);
         let clip_capacity = self.clip_data.capacity;
@@ -1055,7 +1087,8 @@ impl Renderer {
         }
         let capacity = self.path_edges.capacity;
         let paths_uploaded = self.path_edges.upload(device, queue);
-        if capacity != self.path_edges.capacity
+        if gradient_capacity != self.gradient_data.capacity
+            || capacity != self.path_edges.capacity
             || transform_capacity != self.transforms.capacity
             || clip_capacity != self.clip_data.capacity
         {
@@ -1065,9 +1098,11 @@ impl Renderer {
                 &self.path_edges.buffer,
                 &self.transforms.buffer,
                 &self.clip_data.buffer,
+                &self.gradient_data.buffer,
             );
         }
         for uploaded in [
+            gradients_uploaded,
             clips_uploaded,
             paths_uploaded,
             transforms_uploaded,
@@ -1176,6 +1211,7 @@ impl Renderer {
         buffer: &wgpu::Buffer,
         transforms: &wgpu::Buffer,
         clips: &wgpu::Buffer,
+        gradients: &wgpu::Buffer,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("figleaf vector edges"),
@@ -1192,6 +1228,10 @@ impl Renderer {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: clips.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: gradients.as_entire_binding(),
                 },
             ],
         })

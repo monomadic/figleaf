@@ -8,6 +8,8 @@ struct PathEdge { points: vec4f, flags: vec4f }
 struct Transforms { shape_x:vec4f, shape_y:vec4f, clip_x:vec4f, clip_y:vec4f, clip_range:vec4f }
 @group(1) @binding(1) var<storage, read> transforms: array<Transforms>;
 @group(1) @binding(2) var<storage, read> clip_data: array<vec4f>;
+// Each ramp stores two mapping rows (kind/count in w), then offset/color pairs.
+@group(1) @binding(3) var<storage, read> gradients: array<vec4f>;
 fn mapped(p:vec2f, x:vec4f, y:vec4f) -> vec2f { return vec2f(dot(x.xy,p)+x.z,dot(y.xy,p)+y.z); }
 fn pixel_width(d:f32, transformed:f32) -> f32 {
     let width=max(length(vec2f(dpdx(d),dpdy(d))),0.000001);
@@ -224,19 +226,46 @@ fn to_linear(c: vec3f) -> vec3f {
 // stop that falls inside a pixel gets an antialiased edge. Between stops,
 // colour and alpha blend separately (straight alpha), as Figma blends them.
 fn ramp(v: Vertex, p: vec2f) -> vec4f {
-    var o = array<f32, 8>(v.offsets_a.x, v.offsets_a.y, v.offsets_a.z, v.offsets_a.w,
-                          v.offsets_b.x, v.offsets_b.y, v.offsets_b.z, v.offsets_b.w);
-    var c = array<vec4f, 8>(
-        unpack4x8unorm(v.stops_a.x), unpack4x8unorm(v.stops_a.y),
-        unpack4x8unorm(v.stops_a.z), unpack4x8unorm(v.stops_a.w),
-        unpack4x8unorm(v.stops_b.x), unpack4x8unorm(v.stops_b.y),
-        unpack4x8unorm(v.stops_b.z), unpack4x8unorm(v.stops_b.w));
-    let t = dot(p, v.axis.xy) + v.axis.z;
-    let width = max(length(v.axis.xy), 0.000001);
+    let base = u32(v.axis.x);
+    let axis = gradients[base];
+    let second = gradients[base+1u];
+    let count = u32(second.w);
+    var o: array<f32,64>;
+    var c: array<vec4f,64>;
+    for (var i=0u; i<count; i++) {
+        o[i]=gradients[base+2u+i*2u].x;
+        c[i]=gradients[base+3u+i*2u];
+    }
+    if (axis.w>0.5) {
+        var sum=vec4f(0.0);
+        for (var y=0u; y<4u; y++) {
+            for (var x=0u; x<4u; x++) {
+                let at=p+(vec2f(f32(x),f32(y))+0.5)/4.0-0.5;
+                let q=mapped(at,axis,second)-0.5;
+                var t=2.0*length(q);
+                if (axis.w>2.5) { t=2.0*(abs(q.x)+abs(q.y)); }
+                else if (axis.w>1.5) { t=fract(atan2(q.y,q.x)/6.28318530718); }
+                var color=c[0];
+                for (var i=0u; i<count; i++) {
+                    if (t>=o[i]) { color=c[i]; }
+                    if (i+1u<count && t>=o[i] && t<o[i+1u]) {
+                        color=mix(c[i],c[i+1u],(t-o[i])/(o[i+1u]-o[i]));
+                        break;
+                    }
+                }
+                sum+=premultiplied(color)/16.0;
+            }
+        }
+        var rgb=sum.rgb/max(sum.a,0.000001);
+        if (view.size.z>0.5) { rgb=to_linear(rgb); }
+        return vec4f(rgb,sum.a);
+    }
+    let t = dot(p, axis.xy) + axis.z;
+    let width = max(length(axis.xy), 0.000001);
     let lo = t - 0.5 * width;
     let hi = t + 0.5 * width;
     var sum = premultiplied(c[0]) * max(min(hi, o[0]) - lo, 0.0);
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < i32(count)-1; i++) {
         let left = max(lo, o[i]);
         let right = min(hi, o[i + 1]);
         if (right > left) {
@@ -244,7 +273,7 @@ fn ramp(v: Vertex, p: vec2f) -> vec4f {
             sum += premultiplied(mix(c[i], c[i + 1], m)) * (right - left);
         }
     }
-    sum += premultiplied(c[7]) * max(hi - max(lo, o[7]), 0.0);
+    sum += premultiplied(c[count-1u]) * max(hi - max(lo, o[count-1u]), 0.0);
     sum /= width;
     var rgb = sum.rgb / max(sum.a, 0.000001);
     if (view.size.z > 0.5) { rgb = to_linear(rgb); }

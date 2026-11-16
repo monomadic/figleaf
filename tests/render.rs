@@ -1786,3 +1786,40 @@ fn vector_masks_use_stroke_paint_visibility_not_the_legacy_color() {
     assert_eq!(i.pixel(11, 20), RED);
     assert_eq!(i.pixel(25, 25), CLEAR);
 }
+
+#[test]
+fn all_gradient_types_and_large_stop_buffers() {
+    use figleaf::Gradient;
+    let gpu = support::Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let identity = [[1., 0., 0.], [0., 1., 0.]];
+    for gradient in [
+        Gradient::radial(identity),
+        Gradient::angular(identity),
+        Gradient::diamond(identity),
+        Gradient::horizontal(),
+    ] {
+        let mut gradient = gradient;
+        for i in 0..64 {
+            gradient = gradient.stop(
+                i as f32 / 63.,
+                [i as f32 / 63., 0., 1. - i as f32 / 63., 1.],
+            );
+        }
+        let mut c = Canvas::new();
+        c.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).gradient(gradient.clone()));
+        let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert!(renderer.problems().is_empty());
+        assert_eq!(image.pixel(50, 30)[3], 255);
+        assert_ne!(image.pixel(15, 15), image.pixel(75, 40));
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0);
+        c.clear();
+        c.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).gradient(gradient.stop(1., [1.; 4])));
+        let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(renderer.problems().len(), 1);
+        assert!(image.rgba.iter().all(|v| *v == 0));
+    }
+}
