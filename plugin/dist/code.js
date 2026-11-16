@@ -213,7 +213,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             strokeNote=(strokeNote ? strokeNote+'; ' : '')+`Stretch brush: ${complex.brushName}, ${complex.direction}`;
           } else if (complex.type==='DYNAMIC') {
             if (nonuniform) reject('Dynamic strokes cannot combine with variable width profiles.');
-            if (!Number.isFinite(complex.frequency)||complex.frequency<.01||complex.frequency>20||!Number.isFinite(complex.wiggle)||complex.wiggle<0||complex.wiggle>1e7||!Number.isFinite(complex.smoothen)||complex.smoothen<0||complex.smoothen>1) reject('Invalid dynamic stroke parameters.');
+            if (!Number.isFinite(complex.frequency)||complex.frequency<Math.fround(.01)||complex.frequency>20||!Number.isFinite(complex.wiggle)||complex.wiggle<0||complex.wiggle>1e7||!Number.isFinite(complex.smoothen)||complex.smoothen<0||complex.smoothen>1) reject('Invalid dynamic stroke parameters.');
             strokeNote=`Dynamic stroke: frequency ${number(complex.frequency)}, wiggle ${number(complex.wiggle)}, smoothen ${number(complex.smoothen)}`;
           } else reject('Unsupported brush type/name. Only HEIST and BLOCKBUSTER stretch brushes and resolved dynamic strokes are supported.');
         }

@@ -425,6 +425,7 @@ test('styled strokes never fall back when outlines or style parameters are unsup
     {complexStrokeProperties:{type:'DYNAMIC',frequency:1,wiggle:3,smoothen:.5}},
   ]) {const r=exportHierarchy([node({type:'FRAME',children:[node(),{...n,...patch}]})]);assert.equal(r.code,null,JSON.stringify(patch));assert.ok(r.errors.length);}
   const dynamic=require('./complex-strokes-reference.json').children[5];
+  assert.deepEqual(exportHierarchy([{...dynamic,complexStrokeProperties:{...dynamic.complexStrokeProperties,frequency:Math.fround(.01)}}]).errors,[]);
   for(const complexStrokeProperties of [{type:'DYNAMIC',frequency:0,wiggle:0,smoothen:0},{type:'DYNAMIC',frequency:1,wiggle:NaN,smoothen:0},{type:'DYNAMIC',frequency:1,wiggle:0,smoothen:2}])assert.equal(exportHierarchy([{...dynamic,complexStrokeProperties}]).code,null);
   const line=exportHierarchy([{...n,type:'LINE'}]);assert.deepEqual(line.errors,[]);assert.match(line.code,/stroke_geometry/);
 });
