@@ -34,6 +34,10 @@ pub struct Composite {
     pub content: Canvas,
     pub opacity: f32,
     pub blend_mode: BlendMode,
+    /// Gaussian blur radius in local inspector units, applied to completed content.
+    pub layer_blur: Option<f32>,
+    /// Blur the enclosing backdrop within this canvas-space geometry.
+    pub background_blur: Option<(f32, crate::Clip)>,
     pub shadows: Vec<Shadow>,
     pub shadow_blend_modes: Vec<BlendMode>,
     /// Effects use this local-to-canvas transform; content is already positioned.
@@ -46,6 +50,8 @@ impl Composite {
             content,
             opacity: 1.,
             blend_mode: BlendMode::Normal,
+            layer_blur: None,
+            background_blur: None,
             shadows: Vec::new(),
             shadow_blend_modes: Vec::new(),
             effect_transform: Transform::IDENTITY,
@@ -62,6 +68,17 @@ impl Composite {
     }
     pub fn blend_mode(mut self, value: BlendMode) -> Self {
         self.blend_mode = value;
+        self
+    }
+    /// Blur the completed layer before opacity and clips. This isolates PassThrough content.
+    pub fn layer_blur(mut self, radius: f32) -> Self {
+        self.layer_blur = Some(radius);
+        self
+    }
+    /// Blur earlier content in the enclosing composite, then paint this foreground.
+    /// The boundary is independent of paint opacity; a root backdrop blur is an error.
+    pub fn background_blur(mut self, radius: f32, boundary: crate::Clip) -> Self {
+        self.background_blur = Some((radius, boundary));
         self
     }
     pub fn shadow(mut self, shadow: Shadow) -> Self {

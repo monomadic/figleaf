@@ -54,7 +54,7 @@ figleaf’s existing approximate blur model. Missing contours are hard errors.
 
 Errors include per-region paint overrides, image adjustments/animation, unknown blend modes,
 singular transforms, unsupported gradients,
-non-miter undashed rectangle/whole-ellipse borders, layer/background blur,
+non-miter undashed rectangle/whole-ellipse borders, progressive blur,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds
 clip edges and coverage work. New Figma features may need additional validation rules.
@@ -223,7 +223,7 @@ preserved, as are ancestor clips around completed effects. The selected
 hierarchy is isolated: external document/host pixels are not its backdrop.
 Include the intended background in the selection.
 
-Unknown modes, layer/background blur, unsupported effects, invalid opacity and
+Unknown modes, unsupported effects, invalid opacity and
 excessive nesting still suppress all Rust. Vector masks containing composite
 scopes remain unsupported; alpha/luminance masks can contain them. Renderer
 filter/resource limits apply at the consumer’s render scale. No filesystem
@@ -231,3 +231,19 @@ writes or raster fallbacks are added.
 
 [Compositing comparison](../docs/compositing-compare.png) covers the generated
 output; regression tests cover compilation, validation, bindings and nesting.
+
+
+## Blur
+
+Normal layer/background blur exports `Composite::layer_blur(radius)` and
+`.background_blur(radius, boundary)`. Layer blur flattens content/effects before
+opacity; background blur samples earlier content inside the exported hierarchy,
+with a rounded or resolved path boundary. Include the backdrop in the selection.
+Ancestor clips apply after layer blur. Zero-opacity fills do not activate background
+blur. Radii preserve resolved variable bindings and effect transforms.
+
+Progressive or unknown blur types, duplicate blurs of either type, invalid/excessive
+radii, unavailable boundaries, and background blur on groups/text/lines hard-error.
+Renderer filter limits also apply at the consumer’s scale. The plugin still only
+shows Rust and writes no files. [Generated comparison](../docs/blur-compare.png)
+was reviewed beside Figma; Gaussian filtering remains approximate.

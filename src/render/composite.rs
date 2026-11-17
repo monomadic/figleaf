@@ -1,5 +1,5 @@
 use super::*;
-use crate::{BlendMode, Composite, Paint, Shape};
+use crate::{BlendMode, Composite, Paint, Shape, Transform};
 
 pub(super) struct Cached {
     pub snapshot: Composite,
@@ -93,17 +93,17 @@ impl Engine<'_> {
         s: &Surface,
         b: &Surface,
         mask: &Surface,
-        values: [f32; 16],
+        values: [f32; 24],
     ) -> wgpu::BindGroup {
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("figleaf composite parameters"),
-            size: 64,
+            size: 96,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         self.queue
             .write_buffer(&buffer, 0, &values.map(f32::to_le_bytes).concat());
-        self.report.uploaded_bytes += 64;
+        self.report.uploaded_bytes += 96;
         let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
@@ -141,11 +141,11 @@ impl Engine<'_> {
         s: &Surface,
         b: &Surface,
         mask: &Surface,
-        values: [f32; 16],
+        values: [f32; 24],
     ) -> Result<Surface, Error> {
         let taps = match values[0] as u32 {
             2 => (2 * values[2].abs().ceil() as u64 + 1).pow(2),
-            3 => 2 * (values[2] * 3.).ceil() as u64 + 1,
+            3 | 8 | 9 => 2 * (values[2] * 3.).ceil() as u64 + 1,
             _ => 1,
         };
         self.sample_work += u64::from(self.target[0]) * u64::from(self.target[1]) * taps;
@@ -263,7 +263,7 @@ impl Engine<'_> {
                 ordinary.clear();
                 let mask = self.run(&m.mask.source()?, None, depth + 1)?;
                 let content = self.run(&m.content, Some(&out), depth + 1)?;
-                let mut p = [0.; 16];
+                let mut p = [0.; 24];
                 p[0] = 7.;
                 p[1] = f32::from(m.mask.kind == crate::MaskType::Luminance);
                 p[2] = m.mask.opacity;
@@ -313,7 +313,7 @@ impl Engine<'_> {
         let x = [m[0][0] / unit, m[1][0] / unit];
         let y = [m[0][1] / unit, m[1][1] / unit];
         if spread != 0. {
-            let mut p = [0.; 16];
+            let mut p = [0.; 24];
             p[0] = 2.;
             p[2] = spread * scale;
             p[4..8].copy_from_slice(&[x[0], x[1], y[0], y[1]]);
@@ -321,7 +321,7 @@ impl Engine<'_> {
         }
         if s.blur > 0. {
             for direction in [x, y] {
-                let mut p = [0.; 16];
+                let mut p = [0.; 24];
                 p[0] = 3.;
                 p[2] = s.blur * scale / 2.;
                 p[4] = direction[0];
@@ -329,7 +329,7 @@ impl Engine<'_> {
                 filtered = self.pass(&filtered, source, source, p)?;
             }
         }
-        let mut p = [0.; 16];
+        let mut p = [0.; 24];
         p[0] = 4.;
         p[1] = c.shadow_blend_modes.get(index).copied().unwrap_or_default() as u32 as f32;
         p[4] = (m[0][0] * s.offset[0] + m[0][1] * s.offset[1]) * self.scale;
@@ -339,16 +339,78 @@ impl Engine<'_> {
         p[13] = f32::from(s.behind);
         self.pass(&filtered, backdrop, source, p)
     }
+    fn blur(
+        &mut self,
+        source: &Surface,
+        radius: f32,
+        transform: Transform,
+        boundary: Option<&crate::Clip>,
+    ) -> Result<Surface, Error> {
+        let mut out = source.clone();
+        if radius == 0. {
+            return Ok(out);
+        }
+        let unit = transform.max_scale();
+        let m = transform.0;
+        for direction in [
+            [m[0][0] / unit, m[1][0] / unit],
+            [m[0][1] / unit, m[1][1] / unit],
+        ] {
+            let mut p = [0.; 24];
+            p[0] = 8.;
+            // Separate Gaussian approximations for the layer and bounded backdrop
+            // kernels, checked beside the saved Figma fixture (not pixel exact).
+            p[2] = radius * self.scale * unit / if boundary.is_some() { 3. } else { 2. };
+            if let Some(boundary) = boundary {
+                p[0] = 9.;
+                let inv = boundary.transform.inverse()?.0;
+                p[8..11].copy_from_slice(&inv[0]);
+                p[12..15].copy_from_slice(&inv[1]);
+                let bounds = match &boundary.geometry {
+                    crate::ClipGeometry::RoundedRect { rect, .. } => *rect,
+                    crate::ClipGeometry::Paths(paths) => crate::path::bounds(paths)?,
+                };
+                p[16..20].copy_from_slice(&[bounds.x, bounds.y, bounds.w, bounds.h]);
+                p[20] = self.scale;
+            }
+            p[4..6].copy_from_slice(&direction);
+            out = self.pass(&out, source, source, p)?;
+        }
+        Ok(out)
+    }
+    fn coverage(&mut self, clips: &[crate::Clip], depth: usize) -> Result<Surface, Error> {
+        let mut shape = Shape::rect(Rect::new(
+            0.,
+            0.,
+            self.target[0] as f32 / self.scale,
+            self.target[1] as f32 / self.scale,
+        ))
+        .fill([1.; 4]);
+        shape.clips = clips.to_vec();
+        let mut canvas = Canvas::new();
+        canvas.shape(shape);
+        self.run(&canvas, None, depth)
+    }
     fn compose(&mut self, c: &Composite, b: &Surface, depth: usize) -> Result<Surface, Error> {
         validate_scope(c, self.scale)?;
-        let pass_through = c.blend_mode == BlendMode::PassThrough;
+        let pass_through = c.blend_mode == BlendMode::PassThrough && c.layer_blur.is_none();
+        let backdrop = if let Some((radius, boundary)) = &c.background_blur {
+            let blurred = self.blur(b, *radius, c.effect_transform, Some(boundary))?;
+            let mask = self.coverage(std::slice::from_ref(boundary), depth)?;
+            let mut p = [0.; 24];
+            p[0] = 6.;
+            p[1] = 1.;
+            self.pass(&blurred, b, &mask, p)?
+        } else {
+            b.clone()
+        };
         let source = if !pass_through || !c.shadows.is_empty() {
             Some(self.run(&c.content, None, depth)?)
         } else {
             None
         };
         let mut out = if pass_through {
-            b.clone()
+            backdrop.clone()
         } else {
             self.start(None)?
         };
@@ -366,7 +428,8 @@ impl Engine<'_> {
                 &out,
                 src,
                 [
-                    0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                    0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                    0., 0., 0., 0.,
                 ],
             )?
         };
@@ -375,26 +438,37 @@ impl Engine<'_> {
                 out = self.shadow(source.as_ref().expect("shadow source"), &out, c, i)?;
             }
         }
+        if let Some(radius) = c.layer_blur {
+            out = self.blur(&out, radius, c.effect_transform, None)?;
+        }
+        if !pass_through && c.background_blur.is_none() {
+            if !c.clips.is_empty() {
+                let mask = self.coverage(&c.clips, depth)?;
+                let mut p = [0.; 24];
+                p[0] = 6.;
+                out = self.pass(&out, b, &mask, p)?;
+            }
+            let mut p = [0.; 24];
+            p[1] = c.blend_mode as u32 as f32;
+            p[2] = c.opacity;
+            return self.pass(&out, b, &out, p);
+        }
+        // Finish against the filtered backdrop before applying layer opacity once.
+        if !pass_through {
+            let mut p = [0.; 24];
+            p[1] = c.blend_mode as u32 as f32;
+            p[2] = 1.;
+            out = self.pass(&out, &backdrop, &out, p)?;
+        }
         if !c.clips.is_empty() {
-            let mut shape = Shape::rect(Rect::new(
-                0.,
-                0.,
-                self.target[0] as f32 / self.scale,
-                self.target[1] as f32 / self.scale,
-            ))
-            .fill([1.; 4]);
-            shape.clips = c.clips.clone();
-            let mut canvas = Canvas::new();
-            canvas.shape(shape);
-            let mask = self.run(&canvas, None, depth)?;
-            let mut p = [0.; 16];
+            let mask = self.coverage(&c.clips, depth)?;
+            let mut p = [0.; 24];
             p[0] = 6.;
-            p[1] = f32::from(pass_through);
+            p[1] = 1.;
             out = self.pass(&out, b, &mask, p)?;
         }
-        let mut p = [0.; 16];
-        p[0] = f32::from(pass_through);
-        p[1] = c.blend_mode as u32 as f32;
+        let mut p = [0.; 24];
+        p[0] = 1.;
         p[2] = c.opacity;
         self.pass(&out, b, &out, p)
     }
@@ -488,6 +562,18 @@ fn validate_scope(c: &Composite, scale: f32) -> Result<(), Error> {
     }
     c.effect_transform.inverse()?;
     let scale = scale * c.effect_transform.max_scale();
+    for radius in c
+        .layer_blur
+        .iter()
+        .chain(c.background_blur.iter().map(|(r, _)| r))
+    {
+        if !radius.is_finite() || *radius < 0. || radius * scale * 1.5 > 128. {
+            return Err(Error("blur radius exceeds filter limits"));
+        }
+    }
+    if let Some((_, boundary)) = &c.background_blur {
+        boundary.validate()?;
+    }
     for s in &c.shadows {
         if s.color
             .iter()
@@ -566,6 +652,11 @@ impl Renderer {
         text: &mut dyn Backend,
         report: &mut Preparation,
     ) -> Result<(), Error> {
+        if c.background_blur.is_some() {
+            return Err(Error(
+                "background blur requires an enclosing composite canvas",
+            ));
+        }
         if c.blend_mode != BlendMode::Normal {
             return Err(Error(
                 "root blend requires an enclosing isolated composite canvas",
@@ -608,7 +699,7 @@ impl Renderer {
             };
             let clear = engine.start(None)?;
             let out = engine.compose(c, &clear, 0)?;
-            let mut p = [0.; 16];
+            let mut p = [0.; 24];
             p[0] = 5.;
             p[1] = f32::from(self.linear);
             Ok(engine.group(&self.scope_pipeline, &out, &out, &out, p))

@@ -153,7 +153,7 @@ unfilled network branches. Open filled contours close implicitly. Regions are
 unioned before each fill, so overlaps do not accumulate opacity.
 
 The plugin reads Figma's resolved `fillGeometry` plus unfilled `vectorPaths`.
-Per-region paint overrides and blur effects remain hard errors. Solid path
+Per-region paint overrides remain hard errors. Solid path
 strokes are supported as described below. Run `cargo run --example vector_paths --features wgpu` for the person
 icon from [Switchblade's design](https://www.figma.com/design/p01oYypZrTOjxe4Pi2Ytxe?node-id=336-1230).
 Its bound color was explicitly resolved for the saved fixture. The plugin now resolves bindings in the consumer’s active
@@ -286,7 +286,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 ## Not supported yet
 
-Gradients on text, more than 64 gradient stops, image adjustments/animation, layer/background blurs, multisampled targets, layout
+Gradients on text, more than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
@@ -385,7 +385,7 @@ suppresses its entire scope and appears in `Renderer::problems`.
 The plugin preserves sibling scope, mask replacements, clipping-frame breaks,
 and nested intersections. Supported shapes, gradients, shadows and text work
 in alpha/luminance masks. Vector masks containing text or other masks still
-hard-error, as do layer/background blurs.
+hard-error; normal blurs use composite canvases.
 Run `cargo run --example masks --features wgpu` for the generated fixture:
 [Figma beside figleaf](docs/masks-compare.png), mean 0.20/255 at 2×. The comparison
 covers rounded/elliptical boundaries, primary-color luminance, mask opacity,
@@ -507,7 +507,7 @@ converts to the host’s target format. No new dependencies.
 Container `.shadow(..)` effects use the completed content’s alpha silhouette,
 including holes and clipped children. Drop/inner shadows, spread, transformed
 offsets, effect blend modes, and ancestor clips are supported. Gaussian shadow
-filtering is approximate. Layer/background blur remains a separate task.
+filtering is approximate.
 
 Cached scopes upload nothing when unchanged. Invalid scopes report a problem
 and draw no partial content. Limits: eight nesting levels, 128 composite scopes (including paint scopes),
@@ -520,3 +520,28 @@ Shadow spread is limited to 32 physical pixels and the blur kernel to a
 pass-through against a colored sibling backdrop, paint blending and container
 shadows. Mean channel difference: 0.72/255 at 1×; shadow edges still differ.
 The saved Figma blend swatches and synthetic overlap/mask/cache cases are tested.
+
+
+## Layer and background blur
+
+`Composite::layer_blur(radius)` filters completed premultiplied content, including
+its effects, before layer opacity and ancestor clipping. A blurred Pass Through
+scope isolates its content. `Composite::background_blur(radius, boundary)` filters
+earlier content inside an enclosing composite, then paints the foreground sharply.
+The boundary is a canvas-space `Clip` (rounded rectangle or paths, including holes);
+it is independent of fill alpha. Background sampling clamps to its local bounds.
+Use `.effect_transform(..)` for local blur axes and scale, and transform the
+boundary separately like other clips. Root background blur reports a problem:
+include the intended backdrop in an enclosing canvas, not in the host render target.
+
+Both filters use cached separable Gaussian passes; no dependencies were added.
+The existing composite resource limits apply. Invalid/negative/nonfinite radii,
+excessive filter work and invalid boundaries report problems without partial output.
+The plugin exports normal blur radii and resolved boundaries, including bindings;
+zero-opacity fills do not activate background blur. Progressive/duplicate blurs,
+and background blur on groups, text or lines still hard-error.
+
+`cargo run --example blur --features wgpu` renders plugin-generated Rust
+[beside Figma](docs/blur-compare.png), mean 1.81/255 at 1×. Filtering is approximate;
+background boundary edges differ by up to 38/255 in this fixture. Tests cover transformed kernels, premultiplied transparency,
+clipping, masks, holes, backdrop changes, invalid input and zero unchanged uploads.

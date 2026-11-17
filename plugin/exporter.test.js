@@ -127,7 +127,7 @@ test('resolved network regions, holes and unfilled branches survive export', () 
 test('vector errors block output instead of dropping features or malformed commands', () => {
   const n=node({type:'VECTOR',fillGeometry:[{windingRule:'NONZERO',data:'M0 0 L10 0 L0 10 Z'}]});
   for(const overrides of [
-    {strokes:[solid]}, {effects:[{type:'LAYER_BLUR',radius:2}]},
+    {strokes:[solid]}, {effects:[{type:'LAYER_BLUR',radius:-2}]},
     {vectorNetwork:{regions:[{fills:[]}]}},
     ...['M0 0 A10 10 0 0 0 20 20','L0 0','M0 C1 2 3 4 5 6','M0 0 Q1 2','M0 0 LNaN 10','M0 0 L1e99 10'].map(data=>({fillGeometry:[{windingRule:'NONZERO',data}]})),
     {fillGeometry:[{windingRule:'UNKNOWN',data:'M0 0'}]},
@@ -362,7 +362,7 @@ test('smoothing exports resolved fills, borders, clips and shadows and compiles'
 });
 test('invalid smoothing and unavailable contours block all output',()=>{
   const n=require('./smoothing-reference.json').children[1];
-  for(const patch of [{cornerSmoothing:NaN},{cornerSmoothing:-1},{cornerSmoothing:1.1},{fillGeometry:undefined},{strokeGeometry:undefined},{strokeTopWeight:-1},{effects:[{type:'LAYER_BLUR',radius:2}]}]) {
+  for(const patch of [{cornerSmoothing:NaN},{cornerSmoothing:-1},{cornerSmoothing:1.1},{fillGeometry:undefined},{strokeGeometry:undefined},{strokeTopWeight:-1},{effects:[{type:'LAYER_BLUR',radius:-2}]}]) {
     const r=exportHierarchy([node(),{...n,...patch}]);assert.equal(r.code,null);assert.ok(r.errors.length);
   }
   const zero={...n,strokeWeight:0,strokeTopWeight:0,strokeRightWeight:0,strokeBottomWeight:0,strokeLeftWeight:0,strokeGeometry:undefined};
@@ -536,11 +536,39 @@ test('compositing output preserves isolation, opacity, paint blends and containe
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
 test('unsupported effects and invalid composite scopes still suppress all code',()=>{
-  for(const patch of [{opacity:NaN},{opacity:2},{blendMode:'UNKNOWN'},{effects:[{type:'LAYER_BLUR',radius:2}]},{effects:[{type:'BACKGROUND_BLUR',radius:2}]},{effects:[{type:'DROP_SHADOW',boundVariables:{radius:alias},color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]}]){
+  for(const patch of [{opacity:NaN},{opacity:2},{blendMode:'UNKNOWN'},{effects:[{type:'LAYER_BLUR',radius:-2}]},{effects:[{type:'BACKGROUND_BLUR',radius:-2}]},{effects:[{type:'DROP_SHADOW',boundVariables:{radius:alias},color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]}]){
     const result=exportHierarchy([node({type:'FRAME',children:[node()],...patch})]);assert.equal(result.code,null);assert.ok(result.errors.length);
   }
   let root=node({opacity:.5});for(let i=0;i<9;i++)root=node({type:'FRAME',blendMode:'NORMAL',children:[root]});
   assert.equal(exportHierarchy([root]).code,null);
   const mask=node({type:'FRAME',isMask:true,maskType:'VECTOR',children:[node({opacity:.5})]});
   assert.equal(exportHierarchy([node({type:'FRAME',children:[mask,node()]})]).code,null);
+});
+
+test('normal blur output preserves radius, boundary, effect transform and compiles',()=>{
+  const result=exportHierarchy([require('./blur-reference.json')]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/blur.rs'),'utf8'));
+  assert.match(result.code,/layer_blur\(12.0\)/);assert.match(result.code,/background_blur\(12.0, Clip::rounded_rect/);
+  assert.equal((result.code.match(/\.background_blur\(/g)||[]).length,2,'zero-opacity fill has no backdrop effect');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-blur-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('blur validation rejects progressive, duplicate, excessive and unresolved effects',()=>{
+  for(const effects of [
+    [{type:'LAYER_BLUR',radius:2,blurType:'PROGRESSIVE',startRadius:0}],
+    [{type:'BACKGROUND_BLUR',radius:2,blurType:'UNKNOWN'}],
+    [{type:'LAYER_BLUR',radius:2},{type:'LAYER_BLUR',radius:3}],
+    [{type:'BACKGROUND_BLUR',radius:Infinity}],
+    [{type:'LAYER_BLUR',radius:100}],
+    [{type:'LAYER_BLUR',radius:2,boundVariables:{radius:alias}}],
+  ]){const r=exportHierarchy([node({effects})]);assert.equal(r.code,null);assert.ok(r.errors.length);}
+  const n=node({effects:[{type:'LAYER_BLUR',radius:4,boundVariables:{radius:alias}}]});
+  assert.deepEqual(exportHierarchy([n],'SRGB',new Map([[n,['blur radius']]])).errors,[]);
+  assert.equal(exportHierarchy([node({effects:[{type:'LAYER_BLUR',radius:50}],relativeTransform:[[3,0,0],[0,1,0]]})]).code,null);
+  const vector=node({type:'VECTOR',fillGeometry:[{windingRule:'EVENODD',data:'M0 0 L20 0 L20 20 L0 20 Z M5 5 L10 5 L10 10 L5 10 Z'}],effects:[{type:'BACKGROUND_BLUR',radius:4}]});
+  const result=exportHierarchy([vector]);assert.deepEqual(result.errors,[]);assert.match(result.code,/background_blur\(4.0, Clip::paths/);
 });

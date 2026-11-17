@@ -131,8 +131,18 @@ Rust output; do not merely remove an exporter error.
     0.72/255 at 1×; shadow filtering remains approximate. Cached scopes and
     failures upload nothing when unchanged. Tests cover saved blend swatches,
     overlap, masks, clipping, validation, compilation and cache behavior.
-    Layer/background blur remains next; vector masks containing composite scopes
+    Vector masks containing composite scopes
     and requests beyond documented resource/filter limits hard-error.
+
+15. **Layer and background blur — done for normal blur 2026-11-17.**
+    Cached premultiplied layer filtering and bounded backdrop filtering preserve
+    layer opacity, transformed axes, masks and ancestor clips. Plugin emits native
+    composite calls with resolved radii/boundaries; no files or raster fallbacks.
+    Generated Rust [reviewed beside Figma](docs/blur-compare.png), mean 1.81/255; Gaussian filtering
+    remains approximate. Synthetic tests cover holes, clips, masks, transparency,
+    changed backdrops, errors and unchanged uploads. Progressive/duplicate blurs
+    and background blur on groups/text/lines remain hard errors. Host pixels are
+    not sampled; include the backdrop in the enclosing composite/selection.
 
 For each item: compile generated Rust, test invalid/degenerate geometry and
 unchanged-canvas uploads, run an example, and look at its render beside a Figma
@@ -140,7 +150,7 @@ export. Until supported end to end, retain layer-specific hard errors and emit
 no partial Rust. No plugin filesystem writes, raster fallbacks, or host edits.
 
 Paint and layout gaps are separate from this geometry queue. After geometry,
-prioritize: layer/background blur; remaining text styling/shaping; responsive layout export
+prioritize: remaining text styling/shaping; responsive layout export
 and solver gaps; wide-gamut color and multisampled targets.
 These remain unsupported where documented; listing them does not authorize a
 file importer, input handling, or a runtime.

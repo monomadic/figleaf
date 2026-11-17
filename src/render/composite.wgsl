@@ -2,7 +2,7 @@
 @group(0) @binding(1) var backdrop:texture_2d<f32>;
 @group(0) @binding(2) var silhouette:texture_2d<f32>;
 @group(0) @binding(3) var linear_sampler:sampler;
-struct Params { op:vec4f, direction:vec4f, color:vec4f, other:vec4f }
+struct Params { op:vec4f, direction:vec4f, color:vec4f, other:vec4f, bounds:vec4f, scale:vec4f }
 @group(0) @binding(4) var<uniform> params:Params;
 @vertex fn vs(@builtin(vertex_index) i:u32)->@builtin(position) vec4f {
     let p=array<vec2f,3>(vec2f(-1,-1),vec2f(3,-1),vec2f(-1,3));return vec4f(p[i],0,1);
@@ -50,6 +50,22 @@ fn sample_alpha(p:vec2f)->f32 {
     if(any(p<vec2f(0.0))||any(p>=size)){return 0.0;}
     return textureSampleLevel(source,linear_sampler,p/size,0.0).a;
 }
+fn sample_color(position:vec2f)->vec4f {
+    var p=position;
+    if(u32(params.op.x)==9u){
+        let scale=params.scale.x;
+        let inv=mat2x2f(vec2f(params.color.x,params.other.x),vec2f(params.color.y,params.other.y));
+        let t=vec2f(params.color.z,params.other.z);
+        let local=inv*(p/scale)+t;
+        let half_pixel=min(vec2f(0.5/scale),params.bounds.zw/2.0);
+        let q=clamp(local,params.bounds.xy+half_pixel,params.bounds.xy+params.bounds.zw-half_pixel)-t;
+        let det=params.color.x*params.other.y-params.color.y*params.other.x;
+        p=vec2f(params.other.y*q.x-params.color.y*q.y,-params.other.x*q.x+params.color.x*q.y)/det*scale;
+    }
+    let size=vec2f(textureDimensions(source));
+    if(any(p<vec2f(0.0))||any(p>=size)){return vec4f(0.0);}
+    return textureSampleLevel(source,linear_sampler,p/size,0.0);
+}
 @fragment fn fs(@builtin(position) p:vec4f)->@location(0) vec4f {
     let s=textureLoad(source,vec2i(p.xy),0);let b=textureLoad(backdrop,vec2i(p.xy),0);
     let op=u32(params.op.x);
@@ -65,6 +81,11 @@ fn sample_alpha(p:vec2f)->f32 {
         let sigma=params.op.z;let radius=i32(ceil(sigma*3.0));var total=0.0;var weight=0.0;
         for(var i=-radius;i<=radius;i++){let w=exp(-0.5*f32(i*i)/(sigma*sigma));total+=sample_alpha(p.xy+params.direction.xy*f32(i))*w;weight+=w;}
         return vec4f(total/weight);
+    }
+    if(op==8u||op==9u){
+        let sigma=params.op.z;let radius=i32(ceil(sigma*3.0));var total=vec4f(0.0);var weight=0.0;
+        for(var i=-radius;i<=radius;i++){let w=exp(-0.5*f32(i*i)/(sigma*sigma));total+=sample_color(p.xy+params.direction.xy*f32(i))*w;weight+=w;}
+        return total/weight;
     }
     if(op==4u){
         let a=textureLoad(silhouette,vec2i(p.xy),0).a;

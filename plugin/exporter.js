@@ -31,7 +31,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
   const blendModes={NORMAL:'Normal',PASS_THROUGH:'PassThrough',MULTIPLY:'Multiply',SCREEN:'Screen',OVERLAY:'Overlay',DARKEN:'Darken',LIGHTEN:'Lighten',COLOR_DODGE:'ColorDodge',COLOR_BURN:'ColorBurn',HARD_LIGHT:'HardLight',SOFT_LIGHT:'SoftLight',DIFFERENCE:'Difference',EXCLUSION:'Exclusion',HUE:'Hue',SATURATION:'Saturation',COLOR:'Color',LUMINOSITY:'Luminosity',LINEAR_BURN:'LinearBurn',LINEAR_DODGE:'LinearDodge'};
   const blended = p=>p.visible!==false && p.blendMode && p.blendMode!=='NORMAL';
-  const needsComposite=n=>n.visible!==false && ((!n.isMask&&n.opacity!==undefined&&n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||[...(Array.isArray(n.fills)?n.fills:[]),...(Array.isArray(n.strokes)?n.strokes:[])].some(blended)||(Array.isArray(n.effects)&&n.effects.some(e=>e.visible!==false&&(blended(e)||n.children?.length)))||(n.children||[]).some(needsComposite));
+  const needsComposite=n=>n.visible!==false && ((!n.isMask&&n.opacity!==undefined&&n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||[...(Array.isArray(n.fills)?n.fills:[]),...(Array.isArray(n.strokes)?n.strokes:[])].some(blended)||(Array.isArray(n.effects)&&n.effects.some(e=>e.visible!==false&&(blended(e)||n.children?.length||['LAYER_BLUR','BACKGROUND_BLUR'].includes(e.type))))||(n.children||[]).some(needsComposite));
   const shadowCode=e=>`Shadow::${e.type==='INNER_SHADOW'?'inner':'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode?'.show_behind()':''}`;
   const gradientCode = p => (p.type==='GRADIENT_LINEAR' ? `LinearGradient::transform(${array(p.gradientTransform[0])})` : `Gradient::${p.type.slice(9).toLowerCase()}([${p.gradientTransform.map(array).join(', ')}])`) + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
   function imageCode(p) {
@@ -79,6 +79,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     result.flat().forEach(number);
     return result;
   }
+  const maxScale = m => {
+    const [[a,c],[b,d]]=m;const trace=a*a+b*b+c*c+d*d;
+    return Math.sqrt((trace+Math.sqrt((a*a+b*b-c*c-d*d)**2+4*(a*c+b*d)**2))/2);
+  };
   const compose = (parent,child) => parent.map(r => [r[0]*child[0][0]+r[1]*child[1][0],r[0]*child[0][1]+r[1]*child[1][1],r[0]*child[0][2]+r[1]*child[1][2]+r[2]]);
   // Figma's documented absolute path command subset. Use resolved fillGeometry
   // so branched networks retain every filled region and hole. Never reconstruct
@@ -223,18 +227,28 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
       const fills = visible(n.fills || []), strokes = visible(n.strokes || []);
       const allEffects=visible(n.effects || []);
-      const scopeEffects=!!n.children?.length || n.type==='GROUP' || allEffects.some(blended);
-      const effects=scopeEffects?[]:allEffects;
-      for(const e of allEffects){if(Object.keys(e.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Effect variable bindings must be resolved before export.');if(!['DROP_SHADOW','INNER_SHADOW'].includes(e.type))reject(`Unsupported effect: ${e.type}.`);if(!blendModes[e.blendMode ?? 'NORMAL']||e.blendMode==='PASS_THROUGH')reject('Unsupported effect blend mode.');}
+      const containerEffects=!!n.children?.length || n.type==='GROUP' || allEffects.some(blended);
+      const scopeEffects=containerEffects || allEffects.some(e=>['LAYER_BLUR','BACKGROUND_BLUR'].includes(e.type));
+      const effects=containerEffects?[]:allEffects.filter(e=>!['LAYER_BLUR','BACKGROUND_BLUR'].includes(e.type));
+      for(const e of allEffects){if(Object.keys(e.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Effect variable bindings must be resolved before export.');if(!['DROP_SHADOW','INNER_SHADOW','LAYER_BLUR','BACKGROUND_BLUR'].includes(e.type))reject(`Unsupported effect: ${e.type}.`);if(!blendModes[e.blendMode ?? 'NORMAL']||e.blendMode==='PASS_THROUGH')reject('Unsupported effect blend mode.');}
+      for(const type of ['LAYER_BLUR','BACKGROUND_BLUR']) {
+        const blurs=allEffects.filter(e=>e.type===type);
+        if(blurs.length>1)reject(`Multiple ${type} effects are unsupported.`);
+        for(const e of blurs) {
+          if(e.blurType!==undefined&&e.blurType!=='NORMAL')reject('Progressive or unknown blur types are unsupported.');
+          if(!Number.isFinite(e.radius)||e.radius<0||e.radius*maxScale(world)*1.5>128)reject('Blur radius exceeds filter limits.');
+        }
+      }
       const isolated=n.children?.length && n.blendMode==='NORMAL' && (n.children||[]).some(needsComposite);
       if((!asMask && n.opacity!==undefined && n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||(scopeEffects&&allEffects.length)||isolated){
         if(asMask&&n.maskType==='VECTOR')reject('Vector masks cannot contain composited effects or blend scopes.');
         if(compositeDepth+maskDepth+patternStack.size>=8)reject('Combined compositing nesting exceeds eight levels.');
         compositeDepth++;
         const name=`composite_${compositeIndex++}`;
-        scope={name,clips:clip||[],effects:scopeEffects?allEffects:[],mode:blendModes[n.blendMode ?? (n.children?.length?'PASS_THROUGH':'NORMAL')]};
+        scope={name,clips:clip||[],effects:scopeEffects?allEffects.filter(e=>!effects.includes(e)):[],mode:blendModes[n.blendMode ?? (n.children?.length?'PASS_THROUGH':'NORMAL')]};
         if(n.type!=='TEXT'&&!n.children?.length&&['NORMAL',undefined].includes(n.blendMode)&&[...fills,...strokes].some(blended))scope.mode='PassThrough';
         lines.push(`    let mut ${name} = Canvas::new();`);target=name;
+        if(allEffects.some(e=>e.type==='LAYER_BLUR')) {clip=null;childClip=null;}
       }
       if (n.type==='LINE' && (strokes.length>1 || strokes.some(p=>p.type!=='SOLID'||blended(p)))) {
         resolved=true;
@@ -306,6 +320,13 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       const radii = 'topLeftRadius' in n ? [n.topLeftRadius, n.topRightRadius, n.bottomRightRadius, n.bottomLeftRadius] : [0,0,0,0];
       radii.forEach(number);
+      if(scope && allEffects.some(e=>e.type==='BACKGROUND_BLUR')) {
+        if(['GROUP','TEXT','LINE'].includes(n.type))reject('Background blur requires an explicit filled shape or frame boundary.');
+        scope.hasBackground=fills.some(p=>(p.opacity??1)>0);
+        scope.boundary=(!smoothed && ['RECTANGLE','FRAME','COMPONENT','INSTANCE','COMPONENT_SET'].includes(n.type))
+          ? `Clip::rounded_rect(${rect(box)}, ${array(radii)})`
+          : `Clip::paths(${vectorCode(n)})`;
+      }
       if (primitive) {
         if (effects.length) reject('Parameterized primitive effects are unsupported.');
         const radius = n.cornerRadius ?? 0;
@@ -452,8 +473,13 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     if(scope){try {
       let expression=`Composite::new(${scope.name}).opacity(${number(asMask?1:(n.opacity??1))}).blend_mode(BlendMode::${scope.mode}).effect_transform(${matrix(world)})`;
       for(const c of scope.clips)expression+=`.intersect_clip(${c.paths ? `Clip::paths(${c.paths})` : `Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)})`}.transform(${matrix(c.transform)}))`;
-      for(const e of scope.effects)expression+=`.shadow(${shadowCode(e)})`;
-      if(scope.effects.some(blended))expression+=`.shadow_blend_modes(vec![${scope.effects.map(e=>`BlendMode::${blendModes[e.blendMode??'NORMAL']}`).join(', ')}])`;
+      const shadows=scope.effects.filter(e=>['DROP_SHADOW','INNER_SHADOW'].includes(e.type));
+      for(const e of shadows)expression+=`.shadow(${shadowCode(e)})`;
+      if(shadows.some(blended))expression+=`.shadow_blend_modes(vec![${shadows.map(e=>`BlendMode::${blendModes[e.blendMode??'NORMAL']}`).join(', ')}])`;
+      for(const e of scope.effects) {
+        if(e.type==='LAYER_BLUR')expression+=`.layer_blur(${number(e.radius)})`;
+        if(e.type==='BACKGROUND_BLUR'&&scope.hasBackground)expression+=`.background_blur(${number(e.radius)}, ${scope.boundary}.transform(${matrix(world)}))`;
+      }
       lines.push(`    ${outerTarget}.composite(${expression});`);
     }catch(e){reject(e.message);}}
   }

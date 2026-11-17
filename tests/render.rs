@@ -2103,3 +2103,144 @@ fn composite_scope_budget_is_shared_across_root_items() {
     assert_eq!(renderer.problems().len(), 129);
     assert!(image.rgba.iter().all(|v| *v == 0));
 }
+
+#[test]
+fn layer_blur_filters_premultiplied_content_before_opacity_and_clipping() {
+    use figleaf::{Clip, Composite, Transform};
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(20., 20., 20., 20.)).fill(hex(0xff0000)));
+    content.shape(Shape::rect(Rect::new(30., 20., 20., 20.)).fill(hex(0xff0000)));
+    let mut c = Canvas::new();
+    c.composite(
+        Composite::new(content)
+            .layer_blur(4.)
+            .opacity(0.5)
+            .effect_transform(Transform::new([[2., 0., 0.], [0., 1., 0.]]))
+            .intersect_clip(Clip::rect(Rect::new(0., 0., 45., 60.))),
+    );
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty());
+    assert!((126..=128).contains(&image.pixel(35, 30)[3]));
+    let fringe = image.pixel(17, 30);
+    assert!(fringe[3] > 0 && fringe[3] < 64);
+    assert_eq!(fringe[0], fringe[3]);
+    assert_eq!(fringe[1], 0);
+    assert_eq!(fringe[2], 0);
+    assert_eq!(image.pixel(45, 30), CLEAR);
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+}
+
+#[test]
+fn background_blur_uses_prior_content_and_preserves_foreground_and_boundary() {
+    use figleaf::{Clip, Composite};
+    let make = |color| {
+        let mut content = Canvas::new();
+        content.shape(Shape::rect(Rect::new(0., 0., 50., 60.)).fill(color));
+        content.shape(Shape::rect(Rect::new(50., 0., 50., 60.)).fill(hex(0x0000ff)));
+        let mut foreground = Canvas::new();
+        foreground.shape(Shape::rect(Rect::new(46., 25., 8., 10.)).fill(hex(0x00ff00)));
+        content.composite(Composite::new(foreground).background_blur(
+            12.,
+            Clip::rounded_rect(Rect::new(25., 10., 50., 40.), [10.; 4]),
+        ));
+        let mut c = Canvas::new();
+        c.composite(Composite::new(content));
+        c
+    };
+    let c = make(hex(0xff0000));
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty());
+    assert_eq!(image.pixel(49, 30), [0, 255, 0, 255]);
+    let mixed = image.pixel(49, 20);
+    assert!(mixed[0] > 80 && mixed[2] > 80);
+    assert_eq!(image.pixel(49, 5), RED);
+    assert_eq!(image.pixel(50, 5), BLUE);
+    assert_eq!(image.pixel(25, 10), RED);
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let changed = gpu.render(
+        &mut renderer,
+        &make(hex(0xffffff)),
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut NoText,
+    );
+    assert_ne!(image.pixel(49, 20), changed.pixel(49, 20));
+}
+
+#[test]
+fn blur_errors_fail_closed_and_remain_cached() {
+    use figleaf::{Clip, Composite};
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    for scope in [
+        Composite::new(content.clone()).layer_blur(f32::NAN),
+        Composite::new(content.clone()).layer_blur(-1.),
+        Composite::new(content.clone()).layer_blur(1000.),
+        Composite::new(content.clone())
+            .background_blur(4., Clip::rect(Rect::new(0., 0., 40., 40.))),
+    ] {
+        let mut c = Canvas::new();
+        c.composite(scope);
+        let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(renderer.problems().len(), 1);
+        assert!(image.rgba.iter().all(|v| *v == 0));
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    }
+    let mut c = Canvas::new();
+    c.composite(Composite::new(content.clone()).layer_blur(0.));
+    assert_eq!(draw(&c).rgba, draw(&content).rgba);
+}
+
+#[test]
+fn blurred_mask_sources_and_background_holes_keep_their_domains() {
+    use figleaf::{Clip, Composite, Mask, MaskType, VectorPath, WindingRule};
+    let mut mask = Canvas::new();
+    mask.shape(Shape::rect(Rect::new(20., 10., 40., 40.)).fill([1.; 4]));
+    let mut blurred = Canvas::new();
+    blurred.composite(Composite::new(mask).layer_blur(8.));
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    let mut c = Canvas::new();
+    c.masked(Mask::new(MaskType::Alpha, blurred), content);
+    let image = draw(&c);
+    assert!(image.pixel(18, 30)[3] > 0);
+    assert_eq!(image.pixel(90, 30), CLEAR);
+    let boundary = VectorPath::new(WindingRule::EvenOdd)
+        .move_to([10., 5.])
+        .line_to([90., 5.])
+        .line_to([90., 55.])
+        .line_to([10., 55.])
+        .close()
+        .move_to([40., 20.])
+        .line_to([60., 20.])
+        .line_to([60., 40.])
+        .line_to([40., 40.])
+        .close();
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 50., 60.)).fill(hex(0xff0000)));
+    content.shape(Shape::rect(Rect::new(50., 0., 50., 60.)).fill(hex(0x0000ff)));
+    content
+        .composite(Composite::new(Canvas::new()).background_blur(12., Clip::paths(vec![boundary])));
+    let mut c = Canvas::new();
+    c.composite(Composite::new(content));
+    let image = draw(&c);
+    assert_eq!(image.pixel(49, 30), RED);
+    assert_eq!(image.pixel(50, 30), BLUE);
+    assert!(image.pixel(49, 10)[2] > 80);
+}
