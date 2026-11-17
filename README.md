@@ -286,7 +286,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 ## Not supported yet
 
-Gradients on text, more than 64 gradient stops, image adjustments/animation, blurs, blend modes, flattened layer opacity, multisampled targets, layout
+Gradients on text, more than 64 gradient stops, image adjustments/animation, layer/background blurs, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
 non-Latin scripts and any backend other than CoreText.
 
@@ -354,7 +354,7 @@ There is no parametric squircle approximation or new dependency.
 Vector paths now support drop and inner shadows, including spread, transformed
 outlines and stroke-only silhouettes. They use the existing signed-distance
 blur approximation, not an exact Gaussian convolution; overlapping contours and
-narrow features can differ from Figma. General container effects remain errors.
+narrow features can differ from Figma. Container shadows use explicit composite canvases.
 Missing fill/stroke geometry and unsupported effects block the entire export.
 
 Run `cargo run --example smoothing --features wgpu` for the generated fixture.
@@ -385,7 +385,7 @@ suppresses its entire scope and appears in `Renderer::problems`.
 The plugin preserves sibling scope, mask replacements, clipping-frame breaks,
 and nested intersections. Supported shapes, gradients, shadows and text work
 in alpha/luminance masks. Vector masks containing text or other masks still
-hard-error, as do blurs and container effects.
+hard-error, as do layer/background blurs.
 Run `cargo run --example masks --features wgpu` for the generated fixture:
 [Figma beside figleaf](docs/masks-compare.png), mean 0.20/255 at 2×. The comparison
 covers rounded/elliptical boundaries, primary-color luminance, mask opacity,
@@ -484,3 +484,39 @@ Negative pattern spacing is unsupported.
 transparency, rounded clips, image borders and all three pattern layouts. Mean
 channel difference is 2.37/255 at 1×; bilinear image edges are softer than this
 Figma export. Synthetic tests cover errors, placement, staggering and caching.
+
+## Flattened opacity, blending and container shadows
+
+`canvas.composite(Composite::new(content).opacity(0.5))` paints an atomic canvas,
+then applies opacity once. Overlapping children do not become darker from
+repeated opacity. `Shape::opacity` also flattens that shape’s paints/effects in
+the renderer. This is a paint operation, with no scene or widget runtime.
+
+`Composite::blend_mode(BlendMode::Multiply)` and the other Figma blend modes
+blend against earlier content inside an enclosing composite. `Normal` isolates
+children; `PassThrough` exposes the enclosing backdrop, including when opacity
+is reduced. Shape paints use `.fill_blend(mode)` after adding a fill and
+`.stroke_blend_modes(vec![..])` after configuring the stroke paints.
+
+The outer composite is isolated and draws normally into the host render pass.
+It cannot read existing host pixels; a non-normal root mode reports a problem.
+Include the intended backdrop in the enclosing canvas. `draw_items` treats a
+composite as one atomic item. Internal blending uses encoded sRGB; presentation
+converts to the host’s target format. No new dependencies.
+
+Container `.shadow(..)` effects use the completed content’s alpha silhouette,
+including holes and clipped children. Drop/inner shadows, spread, transformed
+offsets, effect blend modes, and ancestor clips are supported. Gaussian shadow
+filtering is approximate. Layer/background blur remains a separate task.
+
+Cached scopes upload nothing when unchanged. Invalid scopes report a problem
+and draw no partial content. Limits: eight nesting levels, 128 composite scopes (including paint scopes),
+64 million intermediate pixels, 256 million filter samples, and device limits.
+Shadow spread is limited to 32 physical pixels and the blur kernel to a
+128-pixel radius, after the effect transform and render scale.
+
+`cargo run --example compositing --features wgpu` renders generated Rust
+[beside Figma](docs/compositing-compare.png): all blend modes, opacity, isolation,
+pass-through against a colored sibling backdrop, paint blending and container
+shadows. Mean channel difference: 0.72/255 at 1×; shadow edges still differ.
+The saved Figma blend swatches and synthetic overlap/mask/cache cases are tested.

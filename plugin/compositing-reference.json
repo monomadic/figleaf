@@ -1,0 +1,3158 @@
+{
+  "id": "398:242",
+  "type": "FRAME",
+  "name": "Temporary figleaf compositing reference",
+  "width": 560,
+  "height": 410,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      3200
+    ],
+    [
+      0,
+      1,
+      1600
+    ]
+  ],
+  "visible": true,
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "cornerSmoothing": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "bottomRightRadius": 0,
+  "strokeTopWeight": 1,
+  "strokeRightWeight": 1,
+  "strokeBottomWeight": 1,
+  "strokeLeftWeight": 1,
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeMiterLimit": 4,
+  "clipsContent": true,
+  "layoutMode": "NONE",
+  "children": [
+    {
+      "id": "398:243",
+      "type": "FRAME",
+      "name": "NORMAL",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          10
+        ],
+        [
+          0,
+          1,
+          10
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:244",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "NORMAL",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:245",
+      "type": "FRAME",
+      "name": "MULTIPLY",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          102
+        ],
+        [
+          0,
+          1,
+          10
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:246",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "MULTIPLY",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:247",
+      "type": "FRAME",
+      "name": "SCREEN",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          194
+        ],
+        [
+          0,
+          1,
+          10
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:248",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "SCREEN",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:249",
+      "type": "FRAME",
+      "name": "OVERLAY",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          286
+        ],
+        [
+          0,
+          1,
+          10
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:250",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "OVERLAY",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:251",
+      "type": "FRAME",
+      "name": "DARKEN",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          378
+        ],
+        [
+          0,
+          1,
+          10
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:252",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "DARKEN",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:253",
+      "type": "FRAME",
+      "name": "LIGHTEN",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          470
+        ],
+        [
+          0,
+          1,
+          10
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:254",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "LIGHTEN",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:255",
+      "type": "FRAME",
+      "name": "COLOR_DODGE",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          10
+        ],
+        [
+          0,
+          1,
+          75
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:256",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "COLOR_DODGE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:257",
+      "type": "FRAME",
+      "name": "COLOR_BURN",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          102
+        ],
+        [
+          0,
+          1,
+          75
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:258",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "COLOR_BURN",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:259",
+      "type": "FRAME",
+      "name": "HARD_LIGHT",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          194
+        ],
+        [
+          0,
+          1,
+          75
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:260",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "HARD_LIGHT",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:261",
+      "type": "FRAME",
+      "name": "SOFT_LIGHT",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          286
+        ],
+        [
+          0,
+          1,
+          75
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:262",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "SOFT_LIGHT",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:263",
+      "type": "FRAME",
+      "name": "DIFFERENCE",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          378
+        ],
+        [
+          0,
+          1,
+          75
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:264",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "DIFFERENCE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:265",
+      "type": "FRAME",
+      "name": "EXCLUSION",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          470
+        ],
+        [
+          0,
+          1,
+          75
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:266",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "EXCLUSION",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:267",
+      "type": "FRAME",
+      "name": "HUE",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          10
+        ],
+        [
+          0,
+          1,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:268",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "HUE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:269",
+      "type": "FRAME",
+      "name": "SATURATION",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          102
+        ],
+        [
+          0,
+          1,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:270",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "SATURATION",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:271",
+      "type": "FRAME",
+      "name": "COLOR",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          194
+        ],
+        [
+          0,
+          1,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:272",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "COLOR",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:273",
+      "type": "FRAME",
+      "name": "LUMINOSITY",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          286
+        ],
+        [
+          0,
+          1,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:274",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "LUMINOSITY",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:275",
+      "type": "FRAME",
+      "name": "LINEAR_BURN",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          378
+        ],
+        [
+          0,
+          1,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:276",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "LINEAR_BURN",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:277",
+      "type": "FRAME",
+      "name": "LINEAR_DODGE",
+      "width": 80,
+      "height": 55,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          470
+        ],
+        [
+          0,
+          1,
+          140
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.20000000298023224,
+            "g": 0.4000000059604645,
+            "b": 0.800000011920929
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:278",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 55,
+          "height": 40,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              15
+            ],
+            [
+              0,
+              1,
+              8
+            ]
+          ],
+          "visible": true,
+          "opacity": 0.699999988079071,
+          "blendMode": "LINEAR_DODGE",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:279",
+      "type": "FRAME",
+      "name": "Flattened opacity",
+      "width": 125,
+      "height": 75,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          10
+        ],
+        [
+          0,
+          1,
+          215
+        ]
+      ],
+      "visible": true,
+      "opacity": 0.5,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:280",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:281",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              35
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "399:242",
+      "type": "RECTANGLE",
+      "name": "External green backdrop",
+      "width": 401,
+      "height": 75,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          148
+        ],
+        [
+          0,
+          1,
+          215
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.800000011920929,
+            "b": 0.30000001192092896
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4
+    },
+    {
+      "id": "398:282",
+      "type": "FRAME",
+      "name": "Pass through",
+      "width": 125,
+      "height": 75,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          148
+        ],
+        [
+          0,
+          1,
+          215
+        ]
+      ],
+      "visible": true,
+      "opacity": 0.6000000238418579,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:283",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:284",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              35
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "MULTIPLY",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:285",
+      "type": "FRAME",
+      "name": "Isolated normal",
+      "width": 125,
+      "height": 75,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          286
+        ],
+        [
+          0,
+          1,
+          215
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:286",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:287",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              35
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "MULTIPLY",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:288",
+      "type": "FRAME",
+      "name": "Paint multiply",
+      "width": 125,
+      "height": 75,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          424
+        ],
+        [
+          0,
+          1,
+          215
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [],
+      "effects": [],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:289",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:290",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 90,
+          "height": 55,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              35
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "MULTIPLY",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:291",
+      "type": "FRAME",
+      "name": "Container drop",
+      "width": 145,
+      "height": 65,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          320
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [],
+      "effects": [
+        {
+          "type": "DROP_SHADOW",
+          "visible": true,
+          "radius": 6,
+          "boundVariables": {},
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.5
+          },
+          "offset": {
+            "x": 4,
+            "y": 5
+          },
+          "spread": 1,
+          "blendMode": "NORMAL",
+          "showShadowBehindNode": true
+        }
+      ],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:292",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 85,
+          "height": 45,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:293",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 85,
+          "height": 45,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              50
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:294",
+      "type": "FRAME",
+      "name": "Container inner",
+      "width": 145,
+      "height": 65,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          200
+        ],
+        [
+          0,
+          1,
+          320
+        ]
+      ],
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [],
+      "effects": [
+        {
+          "type": "INNER_SHADOW",
+          "visible": true,
+          "radius": 4,
+          "boundVariables": {},
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0,
+            "b": 0.30000001192092896,
+            "a": 0.699999988079071
+          },
+          "offset": {
+            "x": 3,
+            "y": 3
+          },
+          "spread": 1,
+          "blendMode": "MULTIPLY"
+        }
+      ],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:295",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 85,
+          "height": 45,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:296",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 85,
+          "height": 45,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              50
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    },
+    {
+      "id": "398:297",
+      "type": "FRAME",
+      "name": "Container both",
+      "width": 145,
+      "height": 65,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          380
+        ],
+        [
+          0,
+          1,
+          320
+        ]
+      ],
+      "visible": true,
+      "opacity": 0.6499999761581421,
+      "blendMode": "PASS_THROUGH",
+      "fills": [],
+      "strokes": [],
+      "effects": [
+        {
+          "type": "DROP_SHADOW",
+          "visible": true,
+          "radius": 6,
+          "boundVariables": {},
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.5
+          },
+          "offset": {
+            "x": 4,
+            "y": 5
+          },
+          "spread": 1,
+          "blendMode": "NORMAL",
+          "showShadowBehindNode": true
+        },
+        {
+          "type": "INNER_SHADOW",
+          "visible": true,
+          "radius": 4,
+          "boundVariables": {},
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0,
+            "b": 0.30000001192092896,
+            "a": 0.699999988079071
+          },
+          "offset": {
+            "x": 3,
+            "y": 3
+          },
+          "spread": 1,
+          "blendMode": "MULTIPLY"
+        }
+      ],
+      "cornerSmoothing": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeRightWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "clipsContent": false,
+      "layoutMode": "NONE",
+      "children": [
+        {
+          "id": "398:298",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 85,
+          "height": 45,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.20000000298023224,
+                "g": 0.4000000059604645,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        },
+        {
+          "id": "398:299",
+          "type": "RECTANGLE",
+          "name": "Rectangle",
+          "width": 85,
+          "height": 45,
+          "relativeTransform": [
+            [
+              1,
+              0,
+              50
+            ],
+            [
+              0,
+              1,
+              20
+            ]
+          ],
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "PASS_THROUGH",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8999999761581421,
+                "g": 0.30000001192092896,
+                "b": 0.20000000298023224
+              },
+              "boundVariables": {}
+            }
+          ],
+          "strokes": [],
+          "effects": [],
+          "cornerSmoothing": 0,
+          "topLeftRadius": 0,
+          "topRightRadius": 0,
+          "bottomLeftRadius": 0,
+          "bottomRightRadius": 0,
+          "strokeTopWeight": 1,
+          "strokeRightWeight": 1,
+          "strokeBottomWeight": 1,
+          "strokeLeftWeight": 1,
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeJoin": "MITER",
+          "strokeCap": "NONE",
+          "strokeMiterLimit": 4
+        }
+      ]
+    }
+  ]
+}

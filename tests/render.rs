@@ -1951,3 +1951,155 @@ fn invalid_pattern_sources_cache_the_failure_without_partial_paint() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
 }
+
+#[test]
+fn composite_opacity_flattens_overlap_and_caches() {
+    use figleaf::Composite;
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(10., 10., 50., 40.)).fill(hex(0xff0000)));
+    content.shape(Shape::rect(Rect::new(40., 10., 50., 40.)).fill(hex(0x0000ff)));
+    let mut c = Canvas::new();
+    c.composite(Composite::new(content).opacity(0.5));
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty());
+    assert_eq!(image.pixel(20, 20), [128, 0, 0, 128]);
+    assert_eq!(image.pixel(50, 20), [0, 0, 128, 128]);
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    c.clear();
+    c.shape(
+        Shape::rect(Rect::new(10., 10., 80., 40.))
+            .fill(hex(0xff0000))
+            .fill(hex(0x0000ff))
+            .opacity(0.5),
+    );
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(image.pixel(20, 20), [0, 0, 128, 128]);
+}
+#[test]
+fn isolated_and_pass_through_blends_and_masks_use_the_enclosing_backdrop() {
+    use figleaf::{BlendMode, Composite, Mask, MaskType};
+    let mut root = Canvas::new();
+    root.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    for (x, mode) in [(0., BlendMode::PassThrough), (50., BlendMode::Normal)] {
+        let mut child = Canvas::new();
+        child.shape(Shape::rect(Rect::new(x, 0., 50., 60.)).fill(hex(0x0000ff)));
+        let mut group = Canvas::new();
+        group.composite(Composite::new(child).blend_mode(BlendMode::Multiply));
+        root.composite(Composite::new(group).blend_mode(mode));
+    }
+    let mut c = Canvas::new();
+    c.composite(Composite::new(root));
+    let image = draw(&c);
+    assert_eq!(image.pixel(20, 20), [0, 0, 0, 255]);
+    assert_eq!(image.pixel(70, 20), BLUE);
+    let mut root = Canvas::new();
+    root.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    let mut mask = Canvas::new();
+    mask.shape(Shape::rect(Rect::new(10., 10., 30., 30.)).fill([1.; 4]));
+    let mut content = Canvas::new();
+    let mut blue = Canvas::new();
+    blue.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0x0000ff)));
+    content.composite(Composite::new(blue).blend_mode(BlendMode::Multiply));
+    root.masked(Mask::new(MaskType::Alpha, mask).opacity(0.5), content);
+    let mut c = Canvas::new();
+    c.composite(Composite::new(root));
+    let image = draw(&c);
+    assert_eq!(image.pixel(20, 20), [128, 0, 0, 255]);
+    assert_eq!(image.pixel(70, 20), RED);
+}
+#[test]
+fn composite_shadows_preserve_holes_clips_and_failed_input_cache() {
+    use figleaf::{BlendMode, Clip, Composite};
+    let mut source = Canvas::new();
+    for x in [10., 40.] {
+        source.shape(Shape::rect(Rect::new(x, 10., 10., 10.)).fill(hex(0xff0000)));
+    }
+    let mut c = Canvas::new();
+    c.composite(
+        Composite::new(source.clone())
+            .shadow(Shadow::drop(hex(0), [0., 12.], 0.).show_behind())
+            .intersect_clip(Clip::rect(Rect::new(0., 0., 45., 60.))),
+    );
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty());
+    assert_eq!(image.pixel(15, 25), [0, 0, 0, 255]);
+    assert_eq!(image.pixel(30, 25), CLEAR);
+    assert_eq!(image.pixel(47, 25), CLEAR);
+    for bad in [
+        Composite::new(source.clone()).opacity(f32::NAN),
+        Composite::new(source.clone()).shadow(Shadow::drop(hex(0), [0.; 2], 1000.)),
+        Composite::new(source).blend_mode(BlendMode::Multiply),
+    ] {
+        c.clear();
+        c.composite(bad);
+        let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+        assert_eq!(renderer.problems().len(), 1);
+        assert!(image.rgba.iter().all(|v| *v == 0));
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut NoText)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    }
+}
+#[test]
+fn compositing_fixture_blend_swatches_match_the_saved_figma_export() {
+    mod generated {
+        include!("../examples/generated/compositing.rs");
+    }
+    let mut c = Canvas::new();
+    generated::draw_selection(&mut c);
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let actual = gpu.render(&mut renderer, &c, [560, 410], 1., [1.; 4], &mut NoText);
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    let reference = support::load("docs/figma/compositing.png").unwrap();
+    for i in 0..18 {
+        let x = 40 + (i % 6) * 92;
+        let y = 30 + (i / 6) * 65;
+        let a = actual.pixel(x, y);
+        let b = reference.pixel(x, y);
+        assert!(
+            a.iter().zip(b).all(|(a, b)| a.abs_diff(b) <= 2),
+            "blend {i}: {a:?} != {b:?}"
+        );
+    }
+}
+
+#[test]
+fn fill_and_stroke_blends_share_the_enclosing_canvas() {
+    use figleaf::{BlendMode, Composite};
+    let mut root = Canvas::new();
+    root.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    root.shape(
+        Shape::rect(Rect::new(10., 10., 80., 40.))
+            .fill(hex(0x0000ff))
+            .fill_blend(BlendMode::Multiply)
+            .stroke(6., hex(0x00ff00), StrokeAlign::Outside)
+            .stroke_blend_modes(vec![BlendMode::Screen]),
+    );
+    let mut c = Canvas::new();
+    c.composite(Composite::new(root));
+    let image = draw(&c);
+    assert_eq!(image.pixel(20, 20), [0, 0, 0, 255]);
+    assert_eq!(image.pixel(6, 20), [255, 255, 0, 255]);
+}
+
+#[test]
+fn composite_scope_budget_is_shared_across_root_items() {
+    let mut c = Canvas::new();
+    for _ in 0..129 {
+        c.composite(figleaf::Composite::new(Canvas::new()));
+    }
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut NoText);
+    assert_eq!(renderer.problems().len(), 129);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+}

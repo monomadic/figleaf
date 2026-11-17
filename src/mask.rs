@@ -99,6 +99,8 @@ impl Mask {
                 stroke.color = [1.; 4];
             }
             shape.shadows.clear();
+            shape.fill_blend_modes.clear();
+            shape.stroke_blend_modes.clear();
             canvas.shape(shape);
         }
         Ok(canvas)

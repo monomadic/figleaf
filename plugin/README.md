@@ -52,9 +52,9 @@ including individual frame borders. The smoothing value is recorded in a comment
 geometry must be re-exported after changing it. Drop/inner path shadows use
 figleaf’s existing approximate blur model. Missing contours are hard errors.
 
-Errors include per-region paint overrides, image adjustments/animation, general layer opacity, blend modes,
+Errors include per-region paint overrides, image adjustments/animation, unknown blend modes,
 singular transforms, unsupported gradients,
-non-miter undashed rectangle/whole-ellipse borders, blur, container effects,
+non-miter undashed rectangle/whole-ellipse borders, layer/background blur,
 unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
 text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds
 clip edges and coverage work. New Figma features may need additional validation rules.
@@ -182,7 +182,7 @@ Gradient/multi-paint LINE nodes use Figma’s resolved stroke outlines.
 
 Limits: 32 visible stroke paints and 1–64 stops per gradient, plus existing geometry
 work limits. Gradients spanning a zero-sized dimension, missing line outlines,
-non-normal blend modes hard-error.
+unknown blend modes hard-error.
 The plugin still emits no partial Rust and never writes files.
 [Generated output beside Figma](../docs/stroke-paints-compare.png) covers paint
 stacks, borders, lines, affine transforms and resolved paths.
@@ -200,7 +200,7 @@ Fit, Crop, Tile, quarter-turn rotation and paint opacity are supported. The
 plugin still only displays code: no downloads, filesystem writes or project edits.
 Limits are one million pixels per image, two million total and 16 MB per encoded
 asset. Missing/undecodable images, animation, adjustments, invalid transforms
-and non-normal blending hard-error.
+and unknown blending hard-error.
 
 Patterns resolve `sourceNodeId`, validate its hierarchy and bindings, and emit
 a native `Canvas` source. Rectangular and both staggered tile types, fractional
@@ -213,3 +213,21 @@ by an exported bitmap. Pattern-source fonts join the generated font list.
 [Comparison](../docs/images-compare.png) covers generated image and pattern paints.
 The asset/decoder lifecycle, stale replies, missing sources and cyclic references
 have synthetic tests; the complete UI has not been manually run inside Figma.
+
+## Compositing
+
+Layer opacity, all Figma blend modes and drop/inner container shadows export
+as explicit `Composite` canvases. Normal containers isolate their children;
+Pass Through uses the enclosing backdrop. Paint and shadow blend modes are
+preserved, as are ancestor clips around completed effects. The selected
+hierarchy is isolated: external document/host pixels are not its backdrop.
+Include the intended background in the selection.
+
+Unknown modes, layer/background blur, unsupported effects, invalid opacity and
+excessive nesting still suppress all Rust. Vector masks containing composite
+scopes remain unsupported; alpha/luminance masks can contain them. Renderer
+filter/resource limits apply at the consumer’s render scale. No filesystem
+writes or raster fallbacks are added.
+
+[Compositing comparison](../docs/compositing-compare.png) covers the generated
+output; regression tests cover compilation, validation, bindings and nesting.

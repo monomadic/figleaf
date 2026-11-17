@@ -4,7 +4,7 @@ const __html__ = "<!doctype html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\
  * Kept independent of the UI so the same validator is exercised by tests. */
 function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map(), resources = {}) {
   const errors = [], lines = [], fonts = [];
-  let maskIndex = 0;
+  let maskIndex = 0, compositeIndex=0;
   const imageNames=new Map(), patternNames=new Map(), patternStack=new Set();
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
@@ -31,6 +31,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const comment = value => String(value).replace(/[\r\n\u2028\u2029]/g, ' ');
   const rect = r => `Rect::new(${r.map(number).join(', ')})`;
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
+  const blendModes={NORMAL:'Normal',PASS_THROUGH:'PassThrough',MULTIPLY:'Multiply',SCREEN:'Screen',OVERLAY:'Overlay',DARKEN:'Darken',LIGHTEN:'Lighten',COLOR_DODGE:'ColorDodge',COLOR_BURN:'ColorBurn',HARD_LIGHT:'HardLight',SOFT_LIGHT:'SoftLight',DIFFERENCE:'Difference',EXCLUSION:'Exclusion',HUE:'Hue',SATURATION:'Saturation',COLOR:'Color',LUMINOSITY:'Luminosity',LINEAR_BURN:'LinearBurn',LINEAR_DODGE:'LinearDodge'};
+  const blended = p=>p.visible!==false && p.blendMode && p.blendMode!=='NORMAL';
+  const needsComposite=n=>n.visible!==false && ((!n.isMask&&n.opacity!==undefined&&n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||[...(Array.isArray(n.fills)?n.fills:[]),...(Array.isArray(n.strokes)?n.strokes:[])].some(blended)||(Array.isArray(n.effects)&&n.effects.some(e=>e.visible!==false&&(blended(e)||n.children?.length)))||(n.children||[]).some(needsComposite));
+  const shadowCode=e=>`Shadow::${e.type==='INNER_SHADOW'?'inner':'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode?'.show_behind()':''}`;
   const gradientCode = p => (p.type==='GRADIENT_LINEAR' ? `LinearGradient::transform(${array(p.gradientTransform[0])})` : `Gradient::${p.type.slice(9).toLowerCase()}([${p.gradientTransform.map(array).join(', ')}])`) + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
   function imageCode(p) {
     const pixels=resources.images?.get(p.imageHash);
@@ -51,6 +55,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (!m || m[0][0]!==1 || m[0][1]!==0 || m[1][0]!==0 || m[1][1]!==1) throw Error('Transformed pattern source roots are unsupported; use an untransformed containing frame.');
       lines.push(`    let mut ${name} = Canvas::new();`);
       visit(source,`Pattern source / ${source.name}`,identity,null,true,0,name);
+      if(needsComposite(source))lines.push(`    let ${name}_content = std::mem::take(&mut ${name});`, `    ${name}.composite(Composite::new(${name}_content));`);
       patternStack.delete(p.sourceNodeId);
     }
     const tile={RECTANGULAR:'Rectangular',HORIZONTAL_HEXAGONAL:'HorizontalHexagonal',VERTICAL_HEXAGONAL:'VerticalHexagonal'}[p.tileType];
@@ -179,7 +184,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved operand binding (${comment(path)}): ${comment(note)}`);
     for (const child of n.children || []) operands(child,path+' / '+child.name,depth+1);
   }
-  function visit(n, path, parentTransform, clip, root = false, depth = 0, target = 'canvas', asMask = false, maskDepth = 0) {
+  function visit(n, path, parentTransform, clip, root = false, depth = 0, target = 'canvas', asMask = false, maskDepth = 0, compositeDepth = 0) {
     if (++count > 5000 || depth > 128) throw Error('Hierarchy exceeds the 5,000-node or 128-level limit.');
     // Invisible layers have no output, including their descendants.
     if (n.visible === false) return;
@@ -187,6 +192,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     const reject = message => fail(n, path, message);
     let childClip = clip;
     let world = parentTransform;
+    let scope=null;
+    const outerTarget=target;
     try {
       const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR', 'POLYGON', 'STAR', 'BOOLEAN_OPERATION'];
       const boolean = n.type === 'BOOLEAN_OPERATION';
@@ -196,12 +203,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (asMask && !['VECTOR','ALPHA','LUMINANCE'].includes(n.maskType)) reject('Unsupported mask type.');
       if (maskDepth > 8) reject('Mask nesting exceeds eight levels.');
       if (asMask && n.maskType==='VECTOR') {
-        const unsupported = (node, root=true) => node.visible !== false && (node.type==='TEXT' || (!root && node.isMask) || (node.children || []).some(c=>unsupported(c,false)));
+        const unsupported = (node, root=true) => node.visible !== false && (node.type==='TEXT' || (!root && node.isMask) || (!root && needsComposite(node)) || (node.children || []).some(c=>unsupported(c,false)));
         if (unsupported(n)) reject('Vector masks containing text or nested masks require resolved outlines.');
       }
       if (Object.keys(n.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Variable bindings must be resolved before export.');
-      if (!asMask && n.opacity !== undefined && n.opacity !== 1) reject('Layer opacity requires compositing and is unsupported. Use paint opacity.');
-      if (n.blendMode && !['NORMAL', 'PASS_THROUGH'].includes(n.blendMode)) reject(`Unsupported layer blend mode: ${n.blendMode}.`);
+      if(n.opacity!==undefined && (!Number.isFinite(n.opacity)||n.opacity<0||n.opacity>1))reject('Invalid layer opacity.');
+      if (n.blendMode && !blendModes[n.blendMode]) reject(`Unsupported layer blend mode: ${n.blendMode}.`);
       const smoothing=n.cornerSmoothing ?? 0;
       if (typeof smoothing!=='number' || !Number.isFinite(smoothing) || smoothing<0 || smoothing>1) reject('Invalid corner smoothing.');
       const smoothed=smoothing>0;
@@ -216,16 +223,28 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const box = [0, 0, n.width, n.height];
       box.forEach(number);
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
-      if (n.type === 'GROUP' && visible(n.effects || []).length) reject('Group effects require compositing and are unsupported.');
-      if (n.children?.some(c => c.visible !== false) && visible(n.effects || []).length) reject('Effects on a hierarchy container require compositing and are unsupported.');
-      const fills = visible(n.fills || []), strokes = visible(n.strokes || []), effects = visible(n.effects || []);
-      if (n.type==='LINE' && (strokes.length>1 || strokes.some(p=>p.type!=='SOLID'))) {
+      const fills = visible(n.fills || []), strokes = visible(n.strokes || []);
+      const allEffects=visible(n.effects || []);
+      const scopeEffects=!!n.children?.length || n.type==='GROUP' || allEffects.some(blended);
+      const effects=scopeEffects?[]:allEffects;
+      for(const e of allEffects){if(Object.keys(e.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Effect variable bindings must be resolved before export.');if(!['DROP_SHADOW','INNER_SHADOW'].includes(e.type))reject(`Unsupported effect: ${e.type}.`);if(!blendModes[e.blendMode ?? 'NORMAL']||e.blendMode==='PASS_THROUGH')reject('Unsupported effect blend mode.');}
+      const isolated=n.children?.length && n.blendMode==='NORMAL' && (n.children||[]).some(needsComposite);
+      if((!asMask && n.opacity!==undefined && n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||(scopeEffects&&allEffects.length)||isolated){
+        if(asMask&&n.maskType==='VECTOR')reject('Vector masks cannot contain composited effects or blend scopes.');
+        if(compositeDepth+maskDepth+patternStack.size>=8)reject('Combined compositing nesting exceeds eight levels.');
+        compositeDepth++;
+        const name=`composite_${compositeIndex++}`;
+        scope={name,clips:clip||[],effects:scopeEffects?allEffects:[],mode:blendModes[n.blendMode ?? (n.children?.length?'PASS_THROUGH':'NORMAL')]};
+        if(n.type!=='TEXT'&&!n.children?.length&&['NORMAL',undefined].includes(n.blendMode)&&[...fills,...strokes].some(blended))scope.mode='PassThrough';
+        lines.push(`    let mut ${name} = Canvas::new();`);target=name;
+      }
+      if (n.type==='LINE' && (strokes.length>1 || strokes.some(p=>p.type!=='SOLID'||blended(p)))) {
         resolved=true;
         if (n.strokeWeight>0 && (!Array.isArray(n.strokeGeometry)||!n.strokeGeometry.some(p=>typeof p.data==='string'&&/[LQC]/.test(p.data)))) reject('Painted line stroke outlines are unavailable.');
       }
       for (const p of [...fills, ...strokes]) {
         if ([p, ...(p.gradientStops || [])].some(v => Object.keys(v.boundVariables || {}).length) && !verifiedBindings.has(n)) reject('Paint variable bindings must be resolved before export.');
-        if (p.blendMode && p.blendMode !== 'NORMAL') reject(`Unsupported paint blend mode: ${p.blendMode}.`);
+        if (p.blendMode && (!blendModes[p.blendMode]||p.blendMode==='PASS_THROUGH')) reject(`Unsupported paint blend mode: ${p.blendMode}.`);
         if (!['SOLID', 'GRADIENT_LINEAR', 'GRADIENT_RADIAL', 'GRADIENT_ANGULAR', 'GRADIENT_DIAMOND', 'IMAGE', 'PATTERN'].includes(p.type)) reject(`Unsupported paint: ${p.type}.`);
         if (['IMAGE','PATTERN'].includes(p.type) && (p.opacity!==undefined && (!Number.isFinite(p.opacity)||p.opacity<0||p.opacity>1))) reject('Invalid image/pattern opacity.');
         if (p.type==='IMAGE') {
@@ -362,6 +381,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if (p.type==='IMAGE' || p.type==='PATTERN') expression += `.paint(${paintCode(p)})`;
           if (p.type === 'SOLID') expression += `.fill(${color(p.color,p.opacity)})`;
           if (p.type.startsWith('GRADIENT_') && p.gradientTransform) expression += `.gradient(${gradientCode(p)})`;
+          if(blended(p))expression+=`.fill_blend(BlendMode::${blendModes[p.blendMode]})`;
         }
         if (strokes.length) {
           const p = strokes[0];
@@ -378,6 +398,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         }
       }
       if (expression && strokes.length && (strokes.length>1 || strokes[0].type!=='SOLID')) expression += `.stroke_paints(vec![${strokes.map(paintCode).join(', ')}])`;
+      if(expression && strokes.some(blended))expression+=`.stroke_blend_modes(vec![${strokes.map(p=>`BlendMode::${blendModes[p.blendMode ?? 'NORMAL']}`).join(', ')}])`;
       if (strokes.length && !resolved && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
         const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' && !primitive ? n.strokeTopWeight : n.strokeWeight;
         if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
@@ -396,7 +417,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
         if (strokeNote) lines.push(`    // ${comment(strokeNote)} (resolved Figma outlines).`);
         if (smoothed) lines.push(`    // Corner smoothing: ${number(smoothing)} (resolved Figma contours).`);
-        lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
+        if(n.type==='TEXT' && fills.some(blended)) {const name=`composite_${compositeIndex++}`;lines.push(`    let mut ${name} = Canvas::new();`,`    ${name}.text(${expression});`,`    ${target}.composite(Composite::new(${name}).blend_mode(BlendMode::${blendModes[fills[0].blendMode]}));`);}
+        else lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
         if (radii.some(r=>r<0)) reject('Invalid clip corner radius.');
@@ -423,24 +445,37 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         const opacity=child.opacity ?? 1;
         if (!Number.isFinite(opacity) || opacity<0 || opacity>1) fail(child,path+' / '+child.name,'Invalid mask opacity.');
         lines.push(`    let mut mask_${id} = Canvas::new();`);
-        visit(child,path+' / '+child.name,world,childClip,false,depth+1,`mask_${id}`,true,maskDepth+1);
+        visit(child,path+' / '+child.name,world,childClip,false,depth+1,`mask_${id}`,true,maskDepth+1,compositeDepth);
         lines.push(`    let mut masked_${id} = Canvas::new();`);
         active={id,kind,opacity};
-      } else visit(child,path+' / '+child.name,world,childClip,false,depth+1,active ? `masked_${active.id}` : target,false,maskDepth+(active?1:0));
+      } else visit(child,path+' / '+child.name,world,childClip,false,depth+1,active ? `masked_${active.id}` : target,false,maskDepth+(active?1:0),compositeDepth);
     }
     finishMask();
+    if(scope){try {
+      let expression=`Composite::new(${scope.name}).opacity(${number(asMask?1:(n.opacity??1))}).blend_mode(BlendMode::${scope.mode}).effect_transform(${matrix(world)})`;
+      for(const c of scope.clips)expression+=`.intersect_clip(${c.paths ? `Clip::paths(${c.paths})` : `Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)})`}.transform(${matrix(c.transform)}))`;
+      for(const e of scope.effects)expression+=`.shadow(${shadowCode(e)})`;
+      if(scope.effects.some(blended))expression+=`.shadow_blend_modes(vec![${scope.effects.map(e=>`BlendMode::${blendModes[e.blendMode??'NORMAL']}`).join(', ')}])`;
+      lines.push(`    ${outerTarget}.composite(${expression});`);
+    }catch(e){reject(e.message);}}
   }
-  try { visit(selection[0], selection[0].name, identity, null, true); }
+  const compositeRoot=needsComposite(selection[0]);
+  if(compositeRoot)lines.push('    let mut selection_content = Canvas::new();');
+  try { visit(selection[0], selection[0].name, identity, null, true,0,compositeRoot?'selection_content':'canvas');
+    if(compositeRoot)lines.push('    canvas.composite(Composite::new(selection_content));');
+  }
   catch (e) { fail(selection[0], selection[0].name, e.message); }
+  if(compositeIndex>128)fail(selection[0],selection[0].name,'Hierarchy exceeds 128 composite scopes.');
   if (maskIndex > 32) fail(selection[0],selection[0].name,'Hierarchy exceeds 32 mask scopes.');
   if (errors.length) return { code: null, errors };
   const preamble = [
     '// Generated by figleaf. Current dimensions and resolved values; no responsive layout or interactions.',
     '// Root placement is omitted; its rotation/scale and all descendant transforms are preserved.',
+    ...(compositeRoot?['// The selection is isolated: backdrop-dependent blends use only its included content.']:[]),
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
-    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment};',
+    'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment, Composite, BlendMode};',
     '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
   ];
   return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };

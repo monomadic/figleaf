@@ -20,6 +20,7 @@ use crate::{
 };
 use std::{collections::HashMap, ops::Range};
 
+mod composite;
 mod images;
 mod masked;
 
@@ -94,6 +95,7 @@ struct MaskSlot {
 /// detection).
 enum Draw {
     Composite(wgpu::BindGroup, u64),
+    Scope(wgpu::BindGroup, u64),
     Shapes(Range<u32>),
     Image(Range<u32>, wgpu::BindGroup, u64),
     Text(u32, wgpu::BindGroup, u64),
@@ -155,6 +157,9 @@ impl Instances {
 pub struct Renderer {
     format: wgpu::TextureFormat,
     composite_pipeline: wgpu::RenderPipeline,
+    scope_pipeline: wgpu::RenderPipeline,
+    scope_cache: HashMap<usize, composite::Cached>,
+    failed_scopes: HashMap<usize, (String, &'static str)>,
     composites: HashMap<usize, masked::Composite>,
     failed_composites: HashMap<usize, masked::Failure>,
     linear: bool,
@@ -308,6 +313,9 @@ impl Renderer {
         Self {
             format,
             composite_pipeline: masked::pipeline(device, format),
+            scope_pipeline: composite::pipeline(device, format, true),
+            scope_cache: HashMap::new(),
+            failed_scopes: HashMap::new(),
             composites: HashMap::new(),
             failed_composites: HashMap::new(),
             clip_data,
@@ -402,6 +410,7 @@ impl Renderer {
         for slot in self.wraps.values_mut() {
             slot.1 = false;
         }
+        let scope_problem = composite::validate(canvas, 0, &mut 0, scale).err();
         let mut mask_count = 0;
         let mask_problem = masked::validate(canvas, 0, &mut mask_count)
             .err()
@@ -418,8 +427,30 @@ impl Renderer {
             .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
         self.composites
             .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
+        self.scope_cache.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)));
+        self.failed_scopes.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)));
         for (index, item) in canvas.items().iter().enumerate() {
             self.draws.push(Vec::new());
+            let scope = match item {
+                Item::Composite(c) => Some(Ok(c.clone())),
+                Item::Shape(s) if composite::needs_scope(s) => Some(composite::shape_scope(s)),
+                _ => None,
+            };
+            if let Some(scope) = scope {
+                let result = scope.and_then(|c| {
+                    if let Some(e) = &scope_problem {
+                        return Err(Error(e.0));
+                    }
+                    self.prepare_scope(device, queue, &c, index, target, scale, text, &mut report)
+                });
+                if let Err(e) = result {
+                    self.problems.push(Problem {
+                        item: index,
+                        reason: e.0,
+                    });
+                }
+                continue;
+            }
             if let Item::Masked(masked) = item {
                 let result = if let Some(e) = &mask_problem {
                     Err(Error(e.0))
@@ -445,7 +476,7 @@ impl Renderer {
                 continue;
             }
             let clips = match item {
-                Item::Masked(_) => unreachable!(),
+                Item::Masked(_) | Item::Composite(_) => unreachable!(),
                 Item::Shape(s) => &s.clips,
                 Item::Text(t) => &t.clips,
             };
@@ -461,7 +492,7 @@ impl Renderer {
                 }
             };
             match item {
-                Item::Masked(_) => unreachable!(),
+                Item::Masked(_) | Item::Composite(_) => unreachable!(),
                 Item::Shape(shape) => {
                     if let Some(reason) = shape.problem() {
                         self.problems.push(Problem {
@@ -1146,6 +1177,7 @@ impl Renderer {
             .flat_map(|(item, draws)| {
                 draws.iter().map(move |d| match d {
                     Draw::Image(r, _, id) => [item as u64, 5, *id, u64::from(r.start)],
+                    Draw::Scope(_, id) => [item as u64, 6, *id, 0],
                     Draw::Composite(_, id) => [item as u64, 4, *id, 0],
                     Draw::Shapes(r) => [item as u64, 1, u64::from(r.start), u64::from(r.end)],
                     Draw::Text(instance, _, id) => [item as u64, 2, u64::from(*instance), *id],
@@ -1410,6 +1442,12 @@ impl Renderer {
                     pass.set_bind_group(2, group, &[]);
                     pass.set_vertex_buffer(0, self.shapes.buffer.slice(..));
                     pass.draw(0..6, range.clone());
+                }
+                Draw::Scope(group, _) => {
+                    flush(pass, &mut run);
+                    pass.set_pipeline(&self.scope_pipeline);
+                    pass.set_bind_group(0, group, &[]);
+                    pass.draw(0..3, 0..1);
                 }
                 Draw::Composite(group, _) => {
                     flush(pass, &mut run);

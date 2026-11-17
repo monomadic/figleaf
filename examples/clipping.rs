@@ -27,7 +27,7 @@ fn main() {
         let clips = match &mut item {
             Item::Shape(s) => &mut s.clips,
             Item::Text(t) => &mut t.clips,
-            Item::Masked(_) => unreachable!("fixture has no masks"),
+            Item::Masked(_) | Item::Composite(_) => unreachable!("fixture has no masks"),
         };
         for clip in clips {
             if let ClipGeometry::RoundedRect { rect, radii } = &clip.geometry
@@ -47,6 +47,7 @@ fn main() {
             Item::Shape(s) => paths.shape(s),
             Item::Text(t) => paths.text(t),
             Item::Masked(m) => paths.masked(m.mask, m.content),
+            Item::Composite(c) => paths.composite(c),
         };
     }
     std::fs::create_dir_all("out").unwrap();

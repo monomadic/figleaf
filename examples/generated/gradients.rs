@@ -2,7 +2,7 @@
 // Root placement is omitted; its rotation/scale and all descendant transforms are preserved.
 // Supply matching fonts/styles through your text backend. Render at scale 0.5–4.
 #[allow(unused_imports)]
-use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment};
+use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment, Composite, BlendMode};
 
 pub fn draw_selection(canvas: &mut Canvas) {
     // Temporary figleaf gradient validation [391:242]

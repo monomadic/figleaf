@@ -116,3 +116,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "images"
 required-features = ["wgpu"]
+
+[[example]]
+name = "compositing"
+required-features = ["wgpu"]

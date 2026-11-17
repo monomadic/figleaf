@@ -32,3 +32,6 @@ pub use primitives::{ArcData, Primitive};
 
 pub mod image;
 pub use image::{Image, ImagePaint, ImageScaleMode, Pattern, PatternAlignment, TileType};
+
+pub mod composite;
+pub use composite::{BlendMode, Composite};

@@ -45,8 +45,8 @@ test('all-or-nothing errors include every layer', () => {
 });
 test('unsupported features never produce partial Rust', () => {
   const cases = [
-    node({opacity:0.5}), node({isMask:true}), node({cornerSmoothing:0.6}), node({blendMode:'MULTIPLY'}),
-    node({fills:[{type:'IMAGE'}]}), node({fills:[{...solid,blendMode:'SCREEN'}]}),
+    node({opacity:-0.5}), node({isMask:true}), node({cornerSmoothing:0.6}), node({blendMode:'UNKNOWN'}),
+    node({fills:[{type:'IMAGE'}]}), node({fills:[{...solid,blendMode:'UNKNOWN'}]}),
     node({relativeTransform:[[0,0,0],[1,0,0]]}),
     node({strokes:Array(33).fill(solid)}), node({strokes:[solid],dashPattern:[-1,2]}),
     node({strokes:[solid],strokeJoin:'BEVEL'}),
@@ -112,9 +112,9 @@ test('UI clears stale code, renders literal errors, and only enables valid outpu
   await elements.get('copy').onclick(); assert.equal(elements.get('status').textContent,'Copied Rust code.');
 });
 
-test('wide-gamut documents and container effects fail closed', () => {
+test('wide-gamut documents fail closed and container shadows export', () => {
   assert.equal(exportHierarchy([node()], 'DISPLAY_P3').code, null);
-  assert.equal(exportHierarchy([node({type:'FRAME',children:[node()],effects:[{type:'DROP_SHADOW',color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]})]).code,null);
+  assert.deepEqual(exportHierarchy([node({type:'FRAME',children:[node()],effects:[{type:'DROP_SHADOW',color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]})]).errors,[]);
 });
 test('resolved network regions, holes and unfilled branches survive export', () => {
   const geometry=[{windingRule:'NONZERO',data:'M0 0L20 0L20 20L0 20Z M5 5 L5 15 L15 15 L15 5 Z'}, {windingRule:'EVENODD',data:'M30 0 Q40 -10 50 0 C60 10 60 20 50 20 Z'}];
@@ -191,7 +191,7 @@ test('missing, malformed, unresolved and unsupported bound values fail closed', 
     assert.equal(r.code,null); assert.ok(r.errors.length);
   }
   const r=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>({name:'Opacity',resolveForConsumer:()=>({resolvedType:'FLOAT',value:0.5})})});
-  assert.equal(r.code,null); assert.ok(r.errors.some(e=>/compositing/.test(e.message)));
+  assert.deepEqual(r.errors,[]); assert.match(r.code,/Composite::new/);
 });
 
 test('numeric, text, effect and gradient-stop bindings keep evaluated Figma properties', async () => {
@@ -445,7 +445,7 @@ test('multiple and linear-gradient strokes export and compile across geometries'
 });
 test('unsupported stroke paints, oversized stacks and degenerate gradients fail closed',()=>{
   const n=require('./stroke-paints-reference.json').children[1],gradient=n.strokes[0];
-  for(const strokes of [Array(33).fill(solid),[{type:'IMAGE'}],[{...gradient,type:'GRADIENT_UNKNOWN'}],[{...gradient,blendMode:'MULTIPLY'}],[{...gradient,gradientStops:[]}],[{...gradient,gradientStops:Array(65).fill(gradient.gradientStops[0])}],[{...gradient,gradientTransform:[[0,0,0],[0,0,0]]}]]){const r=exportHierarchy([{...n,strokes}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
+  for(const strokes of [Array(33).fill(solid),[{type:'IMAGE'}],[{...gradient,type:'GRADIENT_UNKNOWN'}],[{...gradient,blendMode:'UNKNOWN'}],[{...gradient,gradientStops:[]}],[{...gradient,gradientStops:Array(65).fill(gradient.gradientStops[0])}],[{...gradient,gradientTransform:[[0,0,0],[0,0,0]]}]]){const r=exportHierarchy([{...n,strokes}]);assert.equal(r.code,null);assert.ok(r.errors.length);}
   assert.equal(exportHierarchy([{...n,height:0,strokes:[{...gradient,gradientTransform:[[0,1,0],[1,0,0]]}]}]).code,null);
   assert.deepEqual(exportHierarchy([{...n,strokes:[{type:'IMAGE',visible:false},solid]}]).errors,[]);
   const line=require('./stroke-paints-reference.json').children[4];
@@ -520,4 +520,27 @@ test('image decoding replies cannot publish stale output',async()=>{
   const decode=messages.find(m=>m.type==='decode-image');assert.ok(decode);
   events.selectionchange();await figma.ui.onmessage({type:'decoded-image',id:decode.id,image:require('./image-pixels.json')});await request;
   assert.equal(messages.at(-1).type,'invalidated');
+});
+
+test('compositing output preserves isolation, opacity, paint blends and container effects and compiles',()=>{
+  const result=exportHierarchy([require('./compositing-reference.json')]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/compositing.rs'),'utf8'));
+  for(const mode of ['PassThrough','Normal','SoftLight','LinearBurn','LinearDodge','Hue','Luminosity'])assert.match(result.code,new RegExp('BlendMode::'+mode));
+  const line={...require('./stroke-paints-reference.json').children[4],strokes:[{...solid,blendMode:'MULTIPLY'}]};const lineResult=exportHierarchy([line]);assert.deepEqual(lineResult.errors,[]);assert.match(lineResult.code,/stroke_geometry/);assert.match(lineResult.code,/stroke_blend_modes/);
+  assert.match(result.code,/fill_blend\(BlendMode::Multiply/);assert.match(result.code,/shadow_blend_modes/);assert.match(result.code,/\.opacity\(0.6\)/);assert.match(result.code,/selection_content/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-compositing-'));
+  try{
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn walk(c:&Canvas){for i in c.items(){match i {figleaf::paint::Item::Shape(s)=>assert_eq!(s.problem(),None),figleaf::paint::Item::Composite(g)=>walk(&g.content),_=>{}}}} fn main(){let mut c=Canvas::new();draw_selection(&mut c);walk(&c);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported effects and invalid composite scopes still suppress all code',()=>{
+  for(const patch of [{opacity:NaN},{opacity:2},{blendMode:'UNKNOWN'},{effects:[{type:'LAYER_BLUR',radius:2}]},{effects:[{type:'BACKGROUND_BLUR',radius:2}]},{effects:[{type:'DROP_SHADOW',boundVariables:{radius:alias},color:{r:0,g:0,b:0,a:1},offset:{x:0,y:0},radius:2}]}]){
+    const result=exportHierarchy([node({type:'FRAME',children:[node()],...patch})]);assert.equal(result.code,null);assert.ok(result.errors.length);
+  }
+  let root=node({opacity:.5});for(let i=0;i<9;i++)root=node({type:'FRAME',blendMode:'NORMAL',children:[root]});
+  assert.equal(exportHierarchy([root]).code,null);
+  const mask=node({type:'FRAME',isMask:true,maskType:'VECTOR',children:[node({opacity:.5})]});
+  assert.equal(exportHierarchy([node({type:'FRAME',children:[mask,node()]})]).code,null);
 });

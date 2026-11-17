@@ -252,6 +252,9 @@ pub struct Shape {
     pub radii: [f32; 4],
     /// Painted in order, as Figma lists them bottom to top.
     pub fills: Vec<Paint>,
+    /// Missing entries are Normal; non-normal paints need an enclosing Composite.
+    pub fill_blend_modes: Vec<crate::BlendMode>,
+    pub stroke_blend_modes: Vec<crate::BlendMode>,
     pub stroke: Option<Stroke>,
     /// Bottom-to-top stroke paints. Empty uses `stroke.color` for compatibility.
     /// All paints share the stroke width, alignment and geometry.
@@ -284,6 +287,8 @@ impl Shape {
             line: None,
             radii: [0.; 4],
             fills: Vec::new(),
+            fill_blend_modes: Vec::new(),
+            stroke_blend_modes: Vec::new(),
             stroke: None,
             stroke_paints: Vec::new(),
             stroke_weights: None,
@@ -406,6 +411,19 @@ impl Shape {
         self.fills.push(paint);
         self
     }
+    /// Set the blend mode of the most recently added fill.
+    pub fn fill_blend(mut self, mode: crate::BlendMode) -> Self {
+        self.fill_blend_modes
+            .resize(self.fills.len(), crate::BlendMode::Normal);
+        if let Some(last) = self.fill_blend_modes.last_mut() {
+            *last = mode;
+        }
+        self
+    }
+    pub fn stroke_blend_modes(mut self, modes: Vec<crate::BlendMode>) -> Self {
+        self.stroke_blend_modes = modes;
+        self
+    }
     pub fn fill(mut self, color: Color) -> Self {
         self.fills.push(Paint::Solid(color));
         self
@@ -418,6 +436,7 @@ impl Shape {
     pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {
         self.stroke_weights = None;
         self.stroke_paints.clear();
+        self.stroke_blend_modes.clear();
         self.stroke = Some(Stroke {
             width,
             color,
@@ -429,6 +448,7 @@ impl Shape {
     /// `stroke` or `strokes`; an empty list restores the legacy stroke color.
     pub fn stroke_paints(mut self, paints: Vec<Paint>) -> Self {
         self.stroke_paints = paints;
+        self.stroke_blend_modes.clear();
         self
     }
     /// Set a single linear-gradient stroke.
@@ -515,6 +535,20 @@ impl Shape {
 
     /// Why the shape can't be drawn, if it can't.
     pub fn problem(&self) -> Option<&'static str> {
+        if self.fill_blend_modes.len() > self.fills.len()
+            || self.stroke_blend_modes.len()
+                > self
+                    .stroke_paints
+                    .len()
+                    .max(usize::from(self.stroke.is_some()))
+            || self
+                .fill_blend_modes
+                .iter()
+                .chain(&self.stroke_blend_modes)
+                .any(|m| *m == crate::BlendMode::PassThrough)
+        {
+            return Some("invalid paint blend modes");
+        }
         if self.clips.len() > 128 {
             return Some("clip stack exceeds 128 clips");
         }
@@ -1213,8 +1247,11 @@ impl Text {
     }
 }
 
+// Keep ordinary shapes inline: boxing would add an allocation to every paint item.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
+    Composite(crate::Composite),
     Masked(crate::Masked),
     Shape(Shape),
     Text(Text),
@@ -1246,6 +1283,10 @@ impl Canvas {
     pub fn masked(&mut self, mask: crate::Mask, content: Canvas) -> &mut Self {
         self.items
             .push(Item::Masked(crate::Masked { mask, content }));
+        self
+    }
+    pub fn composite(&mut self, composite: crate::Composite) -> &mut Self {
+        self.items.push(Item::Composite(composite));
         self
     }
     pub fn items(&self) -> &[Item] {
