@@ -431,15 +431,15 @@ impl Renderer {
         self.composites
             .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
         self.rich_cache.retain(
-            |i, _| matches!(canvas.items().get(*i),Some(Item::Text(t)) if !t.runs.is_empty()),
+            |i, _| matches!(canvas.items().get(*i),Some(Item::Text(t)) if (!t.runs.is_empty() || t.line_height == 0.)),
         );
-        self.scope_cache.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)) || matches!(canvas.items().get(*i),Some(Item::Text(t)) if !t.runs.is_empty()));
-        self.failed_scopes.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)) || matches!(canvas.items().get(*i),Some(Item::Text(t)) if !t.runs.is_empty()));
+        self.scope_cache.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)) || matches!(canvas.items().get(*i),Some(Item::Text(t)) if (!t.runs.is_empty() || t.line_height == 0.)));
+        self.failed_scopes.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)) || matches!(canvas.items().get(*i),Some(Item::Text(t)) if (!t.runs.is_empty() || t.line_height == 0.)));
         for (index, item) in canvas.items().iter().enumerate() {
             self.draws.push(Vec::new());
             let scope = match item {
                 Item::Composite(c) => Some(Ok(c.clone())),
-                Item::Text(t) if !t.runs.is_empty() => {
+                Item::Text(t) if (!t.runs.is_empty() || t.line_height == 0.) => {
                     Some(rich::prepare(&mut self.rich_cache, index, t, scale, text))
                 }
                 Item::Shape(s) if composite::needs_scope(s) => Some(composite::shape_scope(s)),

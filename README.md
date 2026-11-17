@@ -563,7 +563,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, Latin characters, solid run colors and
-explicit line heights. Automatic line height, decorations, paragraph spacing,
+explicit or automatic line heights. Decorations, paragraph spacing,
 truncation, scripts beyond the existing Latin scope and richer text paints are
 still unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
@@ -573,3 +573,26 @@ bindings inside runs; it emits native text calls, never exported text images.
 tracking and wrapping. Mean channel difference is 1.42/255 at 2×; glyph edges
 still differ. Synthetic tests cover UTF-8 boundaries, empty paragraphs, font
 failures, invalid styles, shared metrics and unchanged uploads.
+
+
+## Automatic line height
+
+`Text::auto_line_height()` and `text::TextRun::auto_line_height()` select Auto
+(stored as zero in `Style::line_height`). CoreText resolves it from the supplied
+font instance’s ascent, descent and leading, including the selected size/axes.
+There is no guessed size multiplier. Runs resolve before wrapping; each line
+uses its participating runs’ heights, and empty paragraphs retain their font’s
+height. Alignment and caching use the resolved block height.
+
+Hosts can use `text::resolve_style`/`resolve_runs` before measuring or validating
+styles, or `layout_runs` for measured paragraphs. Plain `Text::origin` helpers
+require an explicit/resolved height. Custom backends must implement
+`natural_line_height` and the styled-text rendering methods for this renderer
+path; unsupported or invalid metrics and missing fonts report problems.
+The plugin emits `.auto_line_height()` for Figma Auto instead of baking a height.
+
+`cargo run --example auto_height --all-features` renders generated Rust
+[beside Figma](docs/auto-height-compare.png): plain/mixed fonts and sizes, wrapping,
+blank paragraphs and centered alignment. Mean channel difference: 2.58/255 at
+2×; small mixed-size baseline differences remain. Synthetic tests cover font
+metrics, empty lines, invalid backends, missing fonts and unchanged uploads.

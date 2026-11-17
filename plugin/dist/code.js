@@ -378,15 +378,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(s.textCase!=='ORIGINAL'||s.textDecoration!=='NONE')reject('Text case transformations and decorations are unsupported.');
           if(s.listOptions?.type!==undefined&&s.listOptions.type!=='NONE'||s.indentation||s.paragraphSpacing||s.paragraphIndent||Object.keys(s.openTypeFeatures||{}).length)reject('Lists, indentation, paragraph spacing, and OpenType overrides are unsupported.');
           if(Object.keys(s.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Text run variable bindings must be resolved before export.');
-          if(!['PIXELS','PERCENT'].includes(s.lineHeight?.unit))reject('Automatic or unknown text line height is unsupported; set an explicit line height.');
+          if(!['PIXELS','PERCENT','AUTO'].includes(s.lineHeight?.unit))reject('Unknown text line height unit.');
           if(!['PIXELS','PERCENT'].includes(s.letterSpacing?.unit))reject('Unsupported letter spacing unit.');
-          const height=s.lineHeight?.unit==='PERCENT'?s.fontSize*s.lineHeight.value/100:s.lineHeight?.value;
+          const height=s.lineHeight?.unit==='AUTO'?s.fontSize:s.lineHeight?.unit==='PERCENT'?s.fontSize*s.lineHeight.value/100:s.lineHeight?.value;
           const tracking=s.letterSpacing?.unit==='PERCENT'?s.fontSize*s.letterSpacing.value/100:s.letterSpacing?.value;
           if(!(s.fontSize>0&&s.fontSize<=128&&height>=s.fontSize&&height<=256&&Math.abs(tracking)<=s.fontSize&&n.width>0&&n.width<=2048))reject('Text exceeds figleaf’s size, line-height, tracking, or width limits.');
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)}).letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})`);
           }
         }
         for (const type of ['DROP_SHADOW','INNER_SHADOW']) {

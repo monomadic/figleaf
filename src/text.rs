@@ -5,7 +5,9 @@
 use crate::Error;
 
 mod rich;
-pub use rich::{RunLine, RunMask, TextRun, layout_runs, validate_runs};
+pub use rich::{
+    RunLine, RunMask, TextRun, layout_runs, resolve_runs, resolve_style, validate_runs,
+};
 
 pub const MAX_FONTS: usize = 64;
 pub const MAX_AXES: usize = 8;
@@ -69,6 +71,7 @@ fn check_source(f: &FontSource) -> Result<(), Error> {
 pub struct Style {
     pub font: usize,
     pub size: f32,
+    /// Explicit logical height; zero selects the supplied font’s natural height.
     pub line_height: f32,
     /// Extra space after each glyph, in logical units: Figma's letter spacing
     /// in pixels. The space after the last glyph is not counted in the advance.
@@ -91,6 +94,9 @@ pub struct Mask {
     pub metrics: Metrics,
 }
 pub trait Backend {
+    fn natural_line_height(&mut self, _style: Style) -> Result<f32, Error> {
+        Err(Error("backend does not support automatic line height"))
+    }
     /// Shape a complete attributed line; unsupported backends fail closed.
     fn measure_runs(&mut self, _runs: &[TextRun]) -> Result<Metrics, Error> {
         Err(Error("backend does not support styled text"))
@@ -109,6 +115,7 @@ pub trait Backend {
         Ok(self.raster(text, style, 2048., 1.)?.metrics)
     }
 }
+/// Validate a resolved style; call `resolve_style` first for automatic height.
 pub fn validate(text: &str, s: Style, width: f32, scale: f32) -> Result<[u32; 2], Error> {
     if text.is_empty()
         || validate_characters(text).is_err()
@@ -145,6 +152,7 @@ pub mod coretext {
         color: [f64; 4],
     }
     unsafe extern "C" {
+        fn figleaf_ct_height(font: *mut c_void) -> f64;
         fn figleaf_ct_runs(
             runs: *const StyledRun,
             count: usize,
@@ -337,9 +345,17 @@ pub mod coretext {
         }
     }
     impl Backend for CoreText {
+        fn natural_line_height(&mut self, style: Style) -> Result<f32, Error> {
+            let mut checked = style;
+            checked.line_height = checked.size;
+            validate("M", checked, 1., 1.)?;
+            let index = self.instance(style)?;
+            Ok(unsafe { figleaf_ct_height(self.instances[index].2.0.as_ptr()) } as f32)
+        }
         fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
             validate_runs(runs, 1., 1., false)?;
-            self.styled(runs, 1., None)
+            let resolved = resolve_runs(self, runs)?;
+            self.styled(&resolved, 1., None)
         }
         fn raster_runs(
             &mut self,
@@ -348,6 +364,8 @@ pub mod coretext {
             scale: f32,
         ) -> Result<RunMask, Error> {
             validate_runs(runs, width, scale, false)?;
+            let resolved = resolve_runs(self, runs)?;
+            let runs = resolved.as_slice();
             let height = runs
                 .iter()
                 .map(|r| r.style.line_height)
@@ -381,6 +399,7 @@ pub mod coretext {
             width: f32,
             scale: f32,
         ) -> Result<Mask, Error> {
+            let style = resolve_style(self, style)?;
             let [w, h] = validate(text, style, width, scale)?;
             let mut alpha = vec![0; w as usize * h as usize];
             let metrics = self.run(text, style, scale, Some((&mut alpha, w, h)))?;
@@ -392,6 +411,7 @@ pub mod coretext {
             })
         }
         fn measure(&mut self, text: &str, style: Style) -> Result<Metrics, Error> {
+            let style = resolve_style(self, style)?;
             validate(text, style, 1., 1.)?;
             self.run(text, style, 1., None)
         }
@@ -420,6 +440,7 @@ pub fn wrap(
     if !width.is_finite() || width <= 0. {
         return Err(Error("unsupported text request"));
     }
+    let style = resolve_style(backend, style)?;
     let mut advance = |s: &str| -> Result<f32, Error> {
         if s.is_empty() {
             return Ok(0.);
@@ -487,6 +508,7 @@ pub fn caret_offsets(
     text: &str,
     style: Style,
 ) -> Result<Vec<f32>, Error> {
+    let style = resolve_style(backend, style)?;
     let mut offsets = vec![0.];
     for (i, c) in text.char_indices() {
         let end = i + c.len_utf8();

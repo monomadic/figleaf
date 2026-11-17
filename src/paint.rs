@@ -1182,6 +1182,11 @@ impl Text {
         (self.size, self.line_height) = (size, line_height);
         self
     }
+    /// Use the selected font’s natural line height (stored as zero).
+    pub fn auto_line_height(mut self) -> Self {
+        self.line_height = 0.;
+        self
+    }
     pub fn inner_shadow(mut self, color: Color, offset: [f32; 2], blur: f32) -> Self {
         self.inner_shadow = Some((color, offset, blur));
         self
@@ -1237,6 +1242,7 @@ impl Text {
         }
     }
     /// Top-left of a line `advance` wide, in logical units.
+    /// Requires a resolved explicit height; use `text::layout_runs` for Auto.
     pub fn origin(&self, advance: f32) -> [f32; 2] {
         self.line_origin(advance, 0, 1)
     }

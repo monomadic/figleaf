@@ -53,7 +53,7 @@ test('unsupported features never produce partial Rust', () => {
     node({fills:[{type:'GRADIENT_UNKNOWN'}]}),
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(65).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
     node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
-    text({lineHeight:{unit:'AUTO'}}),text({textDecoration:'UNDERLINE'}),text({characters:'🐈'}),
+    text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNDERLINE'}),text({characters:'🐈'}),
     text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:4}),text({textTruncation:'ENDING'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
     text({fills:[solid,solid]}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
@@ -591,7 +591,7 @@ test('mixed text exports explicit fonts, sizes, colors and complete runs and com
 test('invalid or unsupported run styles suppress the whole hierarchy',()=>{
   for(const patch of [
     {fontName:undefined},{start:1},{end:1000},{characters:'wrong'},
-    {lineHeight:{unit:'AUTO'}},{textDecoration:'UNDERLINE'},{listOptions:{type:'ORDERED'}},
+    {lineHeight:{unit:'UNKNOWN'}},{textDecoration:'UNDERLINE'},{listOptions:{type:'ORDERED'}},
     {paragraphSpacing:4},{fontSize:200},{fills:[{...solid,blendMode:'MULTIPLY'}]},
     {fills:[{type:'GRADIENT_LINEAR'}]},{fills:[{...solid,opacity:2}]},{boundVariables:{fontSize:alias}},
   ]) {
@@ -605,4 +605,19 @@ test('bindings within mixed text runs are verified against the consuming text no
   const consumers=[];const r=await exportWithVariables([root],'SRGB',{getVariableByIdAsync:async()=>({name:'Text size',resolveForConsumer:node=>{consumers.push(node);return {resolvedType:'FLOAT',value:16};}})});
   assert.equal(r.errors.length,0);assert.ok(consumers.includes(n));assert.match(r.code,/text.runs\[1\]/);
   const failed=await exportWithVariables([root],'SRGB',{getVariableByIdAsync:async()=>null});assert.equal(failed.code,null);
+});
+
+test('automatic line height stays automatic in plain and mixed Rust output',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'auto-height-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/auto_height.rs'),'utf8'));
+  assert.match(result.code,/Text::new.*auto_line_height/);assert.match(result.code,/Text::rich.*auto_line_height/);
+  assert.deepEqual(exportHierarchy([text({lineHeight:{unit:'AUTO'}})]).errors,[]);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-auto-height-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0,1]);assert_eq!(c.items().len(),5);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });

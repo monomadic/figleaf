@@ -10,8 +10,9 @@ Completed implementation notes and comparisons are in the
 
 1. **Text completeness — in progress.** Mixed-style runs with explicit fonts,
    colors, sizes and tracking are done (2026-11-17); generated output was
-   [reviewed beside Figma](docs/text-runs-compare.png). **Next: automatic line
-   height**, then paragraph spacing and indentation, decorations and case
+   [reviewed beside Figma](docs/text-runs-compare.png). Automatic line height is
+   done (2026-11-18), with [font-derived rendering and plugin output](docs/auto-height-compare.png).
+   **Next: paragraph spacing and indentation**, then decorations and case
    handling, and truncation/maximum lines. Percentage tracking already exports
    as resolved pixel values. Follow with script-aware shaping, fallback and
    line breaking, then richer text fills/strokes and remaining list/OpenType

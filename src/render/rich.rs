@@ -31,15 +31,27 @@ pub(super) fn prepare(
     result
 }
 fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, Error> {
-    if !t.string.is_empty() {
+    if !t.runs.is_empty() && !t.string.is_empty() {
         return Err(Error("styled text cannot also contain a plain string"));
     }
     t.rect.validate()?;
     t.transform.inverse()?;
     t.transform.bounds(t.rect).validate()?;
     let raster_scale = (scale * t.transform.max_scale()).max(scale).max(0.5);
-    text::validate_runs(&t.runs, t.rect.w, raster_scale, t.wrap)?;
-    let lines = text::layout_runs(backend, &t.runs, t.rect.w, t.wrap)?;
+    let runs = if t.runs.is_empty() {
+        vec![text::TextRun {
+            text: t.string.clone(),
+            style: t.style(),
+            color: t.color,
+        }]
+    } else {
+        t.runs.clone()
+    };
+    if runs.len() == 1 && runs[0].text.is_empty() {
+        return Ok(Composite::new(Canvas::new()));
+    }
+    text::validate_runs(&runs, t.rect.w, raster_scale, t.wrap)?;
+    let lines = text::layout_runs(backend, &runs, t.rect.w, t.wrap)?;
     let height: f32 = lines.iter().map(|l| l.height).sum();
     let place = |align, spare: f32| match align {
         crate::paint::Align::Start => 0.,

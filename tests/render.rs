@@ -2363,3 +2363,54 @@ fn styled_text_shapes_whole_lines_preserves_colors_and_caches() {
     );
     assert_eq!(renderer.problems().len(), 1);
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn automatic_line_height_uses_supplied_font_metrics_and_caches() {
+    use figleaf::text::{self, Backend, FontSource, TextRun, coretext::CoreText};
+    let bytes = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
+    let mut backend = CoreText::new(&[Some(FontSource { bytes, axes: &[] }), None]).unwrap();
+    let run = TextRun::new("Auto\n\nheight")
+        .size(16., 16.)
+        .auto_line_height();
+    let height = backend.natural_line_height(run.style).unwrap();
+    assert!((height - 21.12).abs() < 0.01);
+    let lines = text::layout_runs(&mut backend, std::slice::from_ref(&run), 80., true).unwrap();
+    assert_eq!(lines.len(), 3);
+    assert!(lines.iter().all(|l| (l.height - height).abs() < 0.001));
+    let style = text::resolve_style(&mut backend, run.style).unwrap();
+    let plain = backend.measure("Auto", run.style).unwrap();
+    let resolved = backend.measure("Auto", style).unwrap();
+    assert_eq!(plain.baseline, resolved.baseline);
+    let mask = backend.raster("Auto", run.style, 80., 2.).unwrap();
+    assert_eq!(mask.height, (height * 2.).ceil() as u32);
+    let mut c = Canvas::new();
+    c.text(
+        Text::new("Auto\nheight", Rect::new(5., 0., 90., 60.))
+            .size(16., 16.)
+            .auto_line_height()
+            .wrap(),
+    );
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    assert!(image.rgba.iter().any(|v| *v > 0));
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let mut bad = Canvas::new();
+    bad.text(
+        Text::new("Missing", Rect::new(0., 0., 90., 30.))
+            .font(1)
+            .auto_line_height(),
+    );
+    let image = gpu.render(&mut renderer, &bad, [100, 60], 1., [0.; 4], &mut backend);
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &bad, [100, 60], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+}

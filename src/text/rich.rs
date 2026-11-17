@@ -30,6 +30,11 @@ impl TextRun {
         self.style.line_height = line_height;
         self
     }
+    /// Use the supplied font’s natural line height.
+    pub fn auto_line_height(mut self) -> Self {
+        self.style.line_height = 0.;
+        self
+    }
     pub fn letter_spacing(mut self, value: f32) -> Self {
         self.style.letter_spacing = value;
         self
@@ -81,9 +86,34 @@ pub fn validate_runs(
         } else {
             run.text.clone()
         };
-        super::validate(&sample, run.style, width, scale)?;
+        let mut style = run.style;
+        if style.line_height == 0. {
+            style.line_height = style.size;
+        }
+        super::validate(&sample, style, width, scale)?;
     }
     Ok(())
+}
+/// Resolve Auto (zero) using the selected font. No guessed size multiplier.
+pub fn resolve_style(backend: &mut dyn Backend, mut style: Style) -> Result<Style, Error> {
+    if style.line_height == 0. {
+        let mut check = style;
+        check.line_height = check.size;
+        super::validate("M", check, 1., 1.)?;
+        let height = backend.natural_line_height(style)?;
+        if !height.is_finite() || height < style.size || height > 256. {
+            return Err(Error("text backend returned invalid automatic line height"));
+        }
+        style.line_height = height;
+    }
+    Ok(style)
+}
+pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<TextRun>, Error> {
+    let mut resolved = runs.to_vec();
+    for run in &mut resolved {
+        run.style = resolve_style(backend, run.style)?;
+    }
+    Ok(resolved)
 }
 fn slice(runs: &[TextRun], start: usize, end: usize) -> Vec<TextRun> {
     let mut offset = 0;
@@ -121,6 +151,8 @@ pub fn layout_runs(
     wrap: bool,
 ) -> Result<Vec<RunLine>, Error> {
     validate_runs(runs, width, 1., wrap)?;
+    let resolved = resolve_runs(backend, runs)?;
+    let runs = resolved.as_slice();
     let string: String = runs.iter().map(|r| r.text.as_str()).collect();
     let mut lines = Vec::new();
     let mut offset = 0;
@@ -272,5 +304,60 @@ mod tests {
         }
         assert!(validate_runs(&[TextRun::new("a\nb")], 100., 1., false).is_err());
         assert!(layout_runs(&mut super::super::NoText, &[TextRun::new("x")], 100., true).is_err());
+    }
+}
+
+#[cfg(test)]
+mod auto_tests {
+    use super::*;
+    struct FontMetrics(f32);
+    impl Backend for FontMetrics {
+        fn natural_line_height(&mut self, style: Style) -> Result<f32, Error> {
+            Ok(self.0 * style.size)
+        }
+        fn raster(
+            &mut self,
+            _: &str,
+            _: Style,
+            _: f32,
+            _: f32,
+        ) -> Result<super::super::Mask, Error> {
+            Err(Error("measurement backend"))
+        }
+        fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
+            Ok(Metrics {
+                advance: runs.iter().map(|r| r.text.len() as f64 * 5.).sum(),
+                lines: 1,
+                ..Default::default()
+            })
+        }
+    }
+    #[test]
+    fn auto_resolves_each_font_size_before_layout_and_keeps_empty_lines() {
+        let runs = vec![
+            TextRun::new("large").size(20., 20.).auto_line_height(),
+            TextRun::new("\n\nsmall").size(10., 10.).auto_line_height(),
+        ];
+        let lines = layout_runs(&mut FontMetrics(1.25), &runs, 100., true).unwrap();
+        assert_eq!(
+            lines.iter().map(|l| l.height).collect::<Vec<_>>(),
+            [25., 12.5, 12.5]
+        );
+        assert_eq!(runs[0].style.line_height, 0.);
+        let explicit = TextRun::new("explicit").size(16., 32.);
+        assert_eq!(
+            resolve_runs(&mut super::super::NoText, &[explicit]).unwrap()[0]
+                .style
+                .line_height,
+            32.
+        );
+    }
+    #[test]
+    fn auto_rejects_invalid_metrics_and_unsupported_backends() {
+        let runs = [TextRun::new("hello").auto_line_height()];
+        for metric in [f32::NAN, f32::INFINITY, 0., -1., 100.] {
+            assert!(layout_runs(&mut FontMetrics(metric), &runs, 100., true).is_err());
+        }
+        assert!(layout_runs(&mut super::super::NoText, &runs, 100., true).is_err());
     }
 }

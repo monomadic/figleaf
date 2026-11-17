@@ -121,7 +121,7 @@ int figleaf_ct_run(void *base, const uint8_t *text, size_t len,
             CGContextSetShouldSubpixelQuantizeFonts(ctx, false);
             CGContextScaleCTM(ctx, scale, scale);
             CGContextSetGrayFillColor(ctx, 1, 1);
-            CGContextSetTextPosition(ctx, 0, height - metrics->baseline);
+            CGContextSetTextPosition(ctx, 0, (double)rows / scale - metrics->baseline);
             CTLineDraw(line, ctx);
             CGContextRelease(ctx);
         }
@@ -186,8 +186,14 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
             CGContextSetAllowsFontSmoothing(ctx,false);CGContextSetShouldSmoothFonts(ctx,false);
             CGContextSetShouldAntialias(ctx,true);CGContextSetShouldSubpixelPositionFonts(ctx,true);
             CGContextSetShouldSubpixelQuantizeFonts(ctx,false);CGContextScaleCTM(ctx,scale,scale);
-            CGContextSetTextPosition(ctx,0,height-metrics->baseline);CTLineDraw(line,ctx);CGContextRelease(ctx);
+            CGContextSetTextPosition(ctx,0,(double)rows/scale-metrics->baseline);CTLineDraw(line,ctx);CGContextRelease(ctx);
         }
     }
     CFRelease(line);CFRelease(attributed);CGColorSpaceRelease(space);return status;
+}
+
+// Natural height includes the font’s own leading, never a guessed multiplier.
+double figleaf_ct_height(void *base) {
+    CTFontRef font=(CTFontRef)base;
+    return CTFontGetAscent(font)+CTFontGetDescent(font)+CTFontGetLeading(font);
 }

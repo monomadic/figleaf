@@ -503,3 +503,18 @@ Synthetic checks cover UTF-8 boundaries, empty lines, missing fonts, malformed
 runs, compilation and unchanged uploads. This completes the first text milestone,
 not the whole text queue. Automatic line height, broader scripts and remaining
 styling are still pending in [TASKS.md](../TASKS.md).
+
+
+## Automatic line height — 2026-11-18
+
+Plain text and styled runs can select Auto. CoreText resolves the supplied font
+instance’s ascent, descent and leading before wrapping, baseline placement and
+block alignment; no guessed multiplier or plugin-baked height. The plugin emits
+`.auto_line_height()` and retains existing font requirements and hard errors.
+
+Generated Rust [reviewed beside Figma](auto-height-compare.png), mean 2.58/255 at
+2×, covering mixed sizes, wrapped lines, empty paragraphs and centered alignment.
+Small mixed-size baseline differences remain. Synthetic tests cover resolved
+metrics, invalid backends, missing fonts and unchanged uploads. Paragraph spacing
+and indentation are next in [TASKS.md](../TASKS.md); live Desktop plugin validation
+remains separate.

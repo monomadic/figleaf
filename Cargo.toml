@@ -128,3 +128,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "text_runs"
 required-features = ["wgpu", "text-coretext"]
+
+[[example]]
+name = "auto_height"
+required-features = ["wgpu", "text-coretext"]
