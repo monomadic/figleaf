@@ -129,3 +129,65 @@ int figleaf_ct_run(void *base, const uint8_t *text, size_t len,
     CFRelease(line);
     return status;
 }
+
+// Each run carries a UTF-8 string. CoreText ranges are derived here in UTF-16.
+// One attributed CTLine preserves shaping across color and font boundaries.
+typedef struct {
+    void *font;
+    const uint8_t *text;
+    size_t len;
+    double height, tracking;
+    double color[4];
+} StyledRun;
+int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
+                   uint8_t *pixels, uint32_t width, uint32_t rows, Metrics *metrics) {
+    CFMutableAttributedStringRef attributed=CFAttributedStringCreateMutable(NULL,0);
+    CGColorSpaceRef space=CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    double ascent=0,descent=0,height=0;
+    int status=0;
+    for(size_t i=0;i<count;i++) {
+        const StyledRun *r=&input[i];CTFontRef font=(CTFontRef)r->font;
+        CFStringRef string=CFStringCreateWithBytes(NULL,r->text,r->len,kCFStringEncodingUTF8,false);
+        if(!string){status=2;break;}
+        CFIndex start=CFAttributedStringGetLength(attributed),length=CFStringGetLength(string);
+        CFAttributedStringReplaceString(attributed,CFRangeMake(start,0),string);CFRelease(string);
+        CFRange range=CFRangeMake(start,length);
+        CFNumberRef kern=CFNumberCreate(NULL,kCFNumberDoubleType,&r->tracking);
+        CGColorRef color=CGColorCreate(space,r->color);
+        CFAttributedStringSetAttribute(attributed,range,kCTFontAttributeName,font);
+        CFAttributedStringSetAttribute(attributed,range,kCTKernAttributeName,kern);
+        CFAttributedStringSetAttribute(attributed,range,kCTForegroundColorAttributeName,color);
+        CFRelease(kern);CGColorRelease(color);
+        double a=CTFontGetAscent(font),d=CTFontGetDescent(font);
+        if(a>ascent)ascent=a;if(d>descent)descent=d;if(r->height>height)height=r->height;
+    }
+    CTLineRef line=CTLineCreateWithAttributedString(attributed);
+    metrics->advance=CTLineGetTypographicBounds(line,NULL,NULL,NULL);
+    if(CTLineGetGlyphCount(line)>0)metrics->advance-=input[count-1].tracking;
+    metrics->ascent=ascent;metrics->descent=descent;
+    metrics->baseline=(height-ascent-descent)/2+ascent;
+    metrics->glyphs=(uint32_t)CTLineGetGlyphCount(line);metrics->lines=1;
+    CFArrayRef runs=CTLineGetGlyphRuns(line);
+    for(CFIndex i=0;i<CFArrayGetCount(runs);i++) {
+        CTRunRef run=(CTRunRef)CFArrayGetValueAtIndex(runs,i);
+        CFIndex index=CTRunGetStringRange(run).location;
+        CTFontRef expected=(CTFontRef)CFAttributedStringGetAttribute(attributed,index,kCTFontAttributeName,NULL);
+        CTFontRef actual=(CTFontRef)CFDictionaryGetValue(CTRunGetAttributes(run),kCTFontAttributeName);
+        CFStringRef a=CTFontCopyPostScriptName(actual),e=CTFontCopyPostScriptName(expected);
+        if(!CFEqual(a,e))status=3;CFRelease(a);CFRelease(e);
+        CFIndex n=CTRunGetGlyphCount(run);CGGlyph glyphs[512];
+        if(n>512){status=4;break;}CTRunGetGlyphs(run,CFRangeMake(0,n),glyphs);
+        for(CFIndex j=0;j<n;j++)if(!glyphs[j])status=3;
+    }
+    if(!status && pixels) {
+        memset(pixels,0,(size_t)width*rows*4);
+        CGContextRef ctx=CGBitmapContextCreate(pixels,width,rows,8,width*4,space,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
+        if(!ctx)status=5;else {
+            CGContextSetAllowsFontSmoothing(ctx,false);CGContextSetShouldSmoothFonts(ctx,false);
+            CGContextSetShouldAntialias(ctx,true);CGContextSetShouldSubpixelPositionFonts(ctx,true);
+            CGContextSetShouldSubpixelQuantizeFonts(ctx,false);CGContextScaleCTM(ctx,scale,scale);
+            CGContextSetTextPosition(ctx,0,height-metrics->baseline);CTLineDraw(line,ctx);CGContextRelease(ctx);
+        }
+    }
+    CFRelease(line);CFRelease(attributed);CGColorSpaceRelease(space);return status;
+}

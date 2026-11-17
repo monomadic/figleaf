@@ -630,6 +630,12 @@ pub(super) fn validate(
                     }
                 }
             }
+            Item::Text(t) if !t.runs.is_empty() => {
+                *count += 1;
+                if *count > 128 {
+                    return Err(Error("canvas exceeds 128 composite scopes"));
+                }
+            }
             Item::Masked(m) => {
                 validate(&m.mask.canvas, depth + 1, count, scale)?;
                 validate(&m.content, depth + 1, count, scale)?;

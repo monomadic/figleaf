@@ -486,3 +486,20 @@ strings and widths), hover and pressed states, which the file does not hold.
 Importing Figma files, a package format, a scene or panel runtime, input
 handling, and pixel-exactness research. Those were figui's direction. The host
 owns state and events; the agent reads Figma and writes the calls.
+
+
+## Mixed-style text runs — 2026-11-17
+
+`Text::rich` and `text::TextRun` preserve explicit fonts, sizes, line heights,
+tracking and solid colors. CoreText shapes whole attributed lines; wrapping
+crosses style boundaries and retains shared baselines. Native cached glyph
+bitmaps retain transforms, clips and text effects. The plugin emits text calls,
+verifies contiguous ranges and resolves bindings within runs; no filesystem
+writes or text-image export fallback.
+
+Generated Rust [reviewed beside Figma](text-runs-compare.png), mean 1.42/255 at
+2×, covering regular/bold, mixed sizes/colors, tracking and wrapped paragraphs.
+Synthetic checks cover UTF-8 boundaries, empty lines, missing fonts, malformed
+runs, compilation and unchanged uploads. This completes the first text milestone,
+not the whole text queue. Automatic line height, broader scripts and remaining
+styling are still pending in [TASKS.md](../TASKS.md).

@@ -23,6 +23,7 @@ use std::{collections::HashMap, ops::Range};
 mod composite;
 mod images;
 mod masked;
+mod rich;
 
 const SHAPE_STRIDE: usize = 256;
 const TEXT_STRIDE: usize = 112;
@@ -159,6 +160,7 @@ pub struct Renderer {
     composite_pipeline: wgpu::RenderPipeline,
     scope_pipeline: wgpu::RenderPipeline,
     scope_cache: HashMap<usize, composite::Cached>,
+    rich_cache: HashMap<usize, rich::Cached>,
     failed_scopes: HashMap<usize, (String, &'static str)>,
     composites: HashMap<usize, masked::Composite>,
     failed_composites: HashMap<usize, masked::Failure>,
@@ -315,6 +317,7 @@ impl Renderer {
             composite_pipeline: masked::pipeline(device, format),
             scope_pipeline: composite::pipeline(device, format, true),
             scope_cache: HashMap::new(),
+            rich_cache: HashMap::new(),
             failed_scopes: HashMap::new(),
             composites: HashMap::new(),
             failed_composites: HashMap::new(),
@@ -427,12 +430,18 @@ impl Renderer {
             .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
         self.composites
             .retain(|index, _| matches!(canvas.items().get(*index), Some(Item::Masked(_))));
-        self.scope_cache.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)));
-        self.failed_scopes.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)));
+        self.rich_cache.retain(
+            |i, _| matches!(canvas.items().get(*i),Some(Item::Text(t)) if !t.runs.is_empty()),
+        );
+        self.scope_cache.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)) || matches!(canvas.items().get(*i),Some(Item::Text(t)) if !t.runs.is_empty()));
+        self.failed_scopes.retain(|i,_|matches!(canvas.items().get(*i),Some(Item::Composite(_))) || matches!(canvas.items().get(*i),Some(Item::Shape(s)) if composite::needs_scope(s)) || matches!(canvas.items().get(*i),Some(Item::Text(t)) if !t.runs.is_empty()));
         for (index, item) in canvas.items().iter().enumerate() {
             self.draws.push(Vec::new());
             let scope = match item {
                 Item::Composite(c) => Some(Ok(c.clone())),
+                Item::Text(t) if !t.runs.is_empty() => {
+                    Some(rich::prepare(&mut self.rich_cache, index, t, scale, text))
+                }
                 Item::Shape(s) if composite::needs_scope(s) => Some(composite::shape_scope(s)),
                 _ => None,
             };

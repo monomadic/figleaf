@@ -572,3 +572,37 @@ test('blur validation rejects progressive, duplicate, excessive and unresolved e
   const vector=node({type:'VECTOR',fillGeometry:[{windingRule:'EVENODD',data:'M0 0 L20 0 L20 20 L0 20 Z M5 5 L10 5 L10 10 L5 10 Z'}],effects:[{type:'BACKGROUND_BLUR',radius:4}]});
   const result=exportHierarchy([vector]);assert.deepEqual(result.errors,[]);assert.match(result.code,/background_blur\(4.0, Clip::paths/);
 });
+
+function mixedTextFixture() {
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'text-runs-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);return root;
+}
+test('mixed text exports explicit fonts, sizes, colors and complete runs and compiles',()=>{
+  const root=mixedTextFixture();const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/text_runs.rs'),'utf8'));
+  assert.match(result.code,/Text::rich/);assert.match(result.code,/TextRun::new\("bold"\).font\(fonts\[1\]\)/);assert.match(result.code,/size\(24.0, 28.0\)/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-text-runs-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0,1]);let mut count=0;for item in c.items(){if let figleaf::paint::Item::Text(t)=item {figleaf::text::validate_runs(&t.runs,t.rect.w,1.,true).unwrap();count+=1;}}assert_eq!(count,3);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  } finally {fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('invalid or unsupported run styles suppress the whole hierarchy',()=>{
+  for(const patch of [
+    {fontName:undefined},{start:1},{end:1000},{characters:'wrong'},
+    {lineHeight:{unit:'AUTO'}},{textDecoration:'UNDERLINE'},{listOptions:{type:'ORDERED'}},
+    {paragraphSpacing:4},{fontSize:200},{fills:[{...solid,blendMode:'MULTIPLY'}]},
+    {fills:[{type:'GRADIENT_LINEAR'}]},{fills:[{...solid,opacity:2}]},{boundVariables:{fontSize:alias}},
+  ]) {
+    const root=mixedTextFixture();Object.assign(root.children[0].styledSegments[1],patch);
+    const result=exportHierarchy([root]);assert.equal(result.code,null,JSON.stringify(patch));assert.ok(result.errors.length);
+  }
+  const root=mixedTextFixture();root.children[0].hasMissingFont=true;assert.equal(exportHierarchy([root]).code,null);
+});
+test('bindings within mixed text runs are verified against the consuming text node',async()=>{
+  const root=mixedTextFixture(),n=root.children[0];n.styledSegments[1].boundVariables={fontSize:alias};
+  const consumers=[];const r=await exportWithVariables([root],'SRGB',{getVariableByIdAsync:async()=>({name:'Text size',resolveForConsumer:node=>{consumers.push(node);return {resolvedType:'FLOAT',value:16};}})});
+  assert.equal(r.errors.length,0);assert.ok(consumers.includes(n));assert.match(r.code,/text.runs\[1\]/);
+  const failed=await exportWithVariables([root],'SRGB',{getVariableByIdAsync:async()=>null});assert.equal(failed.code,null);
+});

@@ -1119,6 +1119,8 @@ pub struct Text {
     pub clip_transform: Transform,
     pub clips: Vec<crate::Clip>,
     pub string: String,
+    /// Explicit styled runs. When nonempty, the plain string must be empty.
+    pub runs: Vec<text::TextRun>,
     /// The line is `line_height` tall and placed in this box by the alignments.
     pub rect: Rect,
     /// Index into the fonts the text backend was built with.
@@ -1149,6 +1151,7 @@ impl Text {
             clip_transform: Transform::IDENTITY,
             clips: Vec::new(),
             string: string.into(),
+            runs: Vec::new(),
             rect,
             font: 0,
             size: 12.,
@@ -1162,6 +1165,13 @@ impl Text {
             wrap: false,
             clip: None,
         }
+    }
+    /// Mixed-style text. Each run supplies its own font, size, line height,
+    /// tracking and color; layer alignment, wrapping and clips still apply.
+    pub fn rich(runs: Vec<text::TextRun>, rect: Rect) -> Self {
+        let mut text = Self::new("", rect);
+        text.runs = runs;
+        text
     }
     pub fn font(mut self, font: usize) -> Self {
         self.font = font;

@@ -36,7 +36,7 @@ full ellipses, filled vector paths, stroked straight lines, solid and linear/rad
 Nested transforms compose; the root translation is omitted but its linear matrix is retained.
 All ancestor frame clips are retained, including unequal corner radii and crossing
 transforms. The same clip stack applies to shapes and text.
-Simple Latin text needs one solid fill, one style, explicit line height, and
+Latin text supports mixed runs with one solid fill per run, explicit line heights, and
 caller-supplied font indices. Code comments identify each required family/style;
 the host must supply the exact font and variable-font configuration. Normal
 figleaf text limits still apply (including a maximum 2048-unit raster width).
@@ -55,7 +55,7 @@ figleaf’s existing approximate blur model. Missing contours are hard errors.
 Errors include per-region paint overrides, image adjustments/animation, unknown blend modes,
 singular transforms, unsupported gradients,
 non-miter undashed rectangle/whole-ellipse borders, progressive blur,
-unavailable/unresolvable variables, Display P3 documents, mixed/automatic-height/decorated/list
+unavailable/unresolvable variables, Display P3 documents, automatic-height/decorated/list
 text. The size limit is 5,000 nodes and 128 levels; the renderer also bounds
 clip edges and coverage work. New Figma features may need additional validation rules.
 
@@ -247,3 +247,19 @@ radii, unavailable boundaries, and background blur on groups/text/lines hard-err
 Renderer filter limits also apply at the consumer’s scale. The plugin still only
 shows Rust and writes no files. [Generated comparison](../docs/blur-compare.png)
 was reviewed beside Figma; Gaussian filtering remains approximate.
+
+
+## Mixed-style text runs
+
+Styled segments export `Text::rich` and explicit `text::TextRun` calls, preserving
+font slots, size, pixel/percentage spacing resolved to pixels, color/paint opacity
+and explicit line heights. Runs wrap together inside one aligned layer. Each
+font/style is listed in the generated font manifest; the host supplies the exact
+font bytes/axes. Run-level variable bindings are verified against the text node.
+
+Ranges must cover the text exactly; missing fonts, unsupported run paints or
+blend modes, malformed ranges and unsupported paragraph/decorative styles suppress
+all output. Limits are 128 runs and 512 UTF-8 bytes per layer. Automatic line
+height and non-Latin shaping remain future work. The
+[generated comparison](../docs/text-runs-compare.png) was reviewed beside Figma;
+live plugin execution remains a separate roadmap item.

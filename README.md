@@ -287,7 +287,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Gradients on text, more than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
-grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation, percentage letter spacing, mixed styles,
+grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation,
 non-Latin scripts and any backend other than CoreText.
 
 ## Where it came from
@@ -545,3 +545,31 @@ and background blur on groups, text or lines still hard-error.
 [beside Figma](docs/blur-compare.png), mean 1.81/255 at 1×. Filtering is approximate;
 background boundary edges differ by up to 38/255 in this fixture. Tests cover transformed kernels, premultiplied transparency,
 clipping, masks, holes, backdrop changes, invalid input and zero unchanged uploads.
+
+
+## Mixed-style text
+
+Use `Text::rich(vec![..], rect)` with `text::TextRun::new("text")` runs, each
+with `.font(index)`, `.size(size, line_height)`, `.letter_spacing(pixels)` and
+`.color(color)`. Layer alignment, wrapping, transforms, clips and shadows still
+apply; the plain-text style setters do not override explicit run styles.
+`text::layout_runs` returns measured lines for hosts that need text dimensions.
+
+CoreText shapes each attributed line as a whole, preserving shared baselines
+and shaping across style boundaries. Fonts and variable axes remain explicitly
+supplied by the host; missing glyphs/fonts reject the whole layer. Custom text
+backends opt into `measure_runs`/`raster_runs`; their defaults report unsupported
+styled text. Cached colored glyph bitmaps use the existing image/composite
+renderer, with no new dependencies or runtime asset loading.
+
+Limits remain 512 UTF-8 bytes, 128 runs, Latin characters, solid run colors and
+explicit line heights. Automatic line height, decorations, paragraph spacing,
+truncation, scripts beyond the existing Latin scope and richer text paints are
+still unsupported. The plugin verifies contiguous Figma ranges and resolves
+bindings inside runs; it emits native text calls, never exported text images.
+
+`cargo run --example text_runs --all-features` renders generated Rust
+[beside Figma](docs/text-runs-compare.png): regular/bold fonts, colors, mixed sizes,
+tracking and wrapping. Mean channel difference is 1.42/255 at 2×; glyph edges
+still differ. Synthetic tests cover UTF-8 boundaries, empty paragraphs, font
+failures, invalid styles, shared metrics and unchanged uploads.

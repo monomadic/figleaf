@@ -2244,3 +2244,122 @@ fn blurred_mask_sources_and_background_holes_keep_their_domains() {
     assert_eq!(image.pixel(50, 30), BLUE);
     assert!(image.pixel(49, 10)[2] > 80);
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn styled_text_shapes_whole_lines_preserves_colors_and_caches() {
+    use figleaf::text::{self, Axis, Backend, FontSource, TextRun, coretext::CoreText};
+    let bytes = include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf");
+    let regular = [Axis {
+        tag: *b"wght",
+        value: 400.,
+    }];
+    let bold = [Axis {
+        tag: *b"wght",
+        value: 700.,
+    }];
+    let mut backend = CoreText::new(&[
+        Some(FontSource {
+            bytes,
+            axes: &regular,
+        }),
+        Some(FontSource { bytes, axes: &bold }),
+        None,
+    ])
+    .unwrap();
+    let runs = vec![
+        TextRun::new("ab").size(16., 24.).color(hex(0xff0000)),
+        TextRun::new("cd")
+            .size(16., 24.)
+            .font(1)
+            .color(hex(0x0000ff)),
+    ];
+    let measured = backend.measure_runs(&runs).unwrap();
+    let raster = backend.raster_runs(&runs, 100., 2.).unwrap();
+    assert_eq!(raster.metrics.advance, measured.advance);
+    assert_eq!(raster.metrics.baseline, measured.baseline);
+    let same = vec![
+        TextRun::new("a").size(16., 24.),
+        TextRun::new("b").size(16., 24.).color(hex(0xff0000)),
+    ];
+    let whole = backend.measure("ab", same[0].style).unwrap();
+    assert!((whole.advance - backend.measure_runs(&same).unwrap().advance).abs() < 0.001);
+    let mut c = Canvas::new();
+    c.text(Text::rich(runs, Rect::new(10., 10., 80., 45.)).wrap());
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut renderer, &c, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    assert!(
+        image
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] > 100 && p[2] == 0)
+    );
+    assert!(
+        image
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[2] > 100 && p[0] == 0)
+    );
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 60], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let figleaf::paint::Item::Text(original) = &c.items()[0] else {
+        unreachable!()
+    };
+    let mut edited = original.clone();
+    edited.runs[0].color = hex(0x00ff00);
+    let mut changed = Canvas::new();
+    changed.text(edited);
+    let updated = gpu.render(
+        &mut renderer,
+        &changed,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(
+        updated
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[1] > 100 && p[0] == 0 && p[2] == 0)
+    );
+    assert_ne!(updated.rgba, image.rgba);
+    for font in [2, 63] {
+        let mut bad = Canvas::new();
+        bad.text(Text::rich(
+            vec![TextRun::new("valid "), TextRun::new("missing").font(font)],
+            Rect::new(0., 0., 100., 40.),
+        ));
+        let result = gpu.render(&mut renderer, &bad, [100, 60], 1., [0.; 4], &mut backend);
+        assert_eq!(renderer.problems().len(), 1);
+        assert!(result.rgba.iter().all(|v| *v == 0));
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &bad, [100, 60], 1., &mut backend)
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    }
+    let mut bad = Canvas::new();
+    bad.text(Text::rich(
+        vec![TextRun::new("no backend")],
+        Rect::new(0., 0., 100., 30.),
+    ));
+    let _ = gpu.render(
+        &mut renderer,
+        &bad,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut text::NoText,
+    );
+    assert_eq!(renderer.problems().len(), 1);
+}

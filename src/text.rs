@@ -1,8 +1,11 @@
 //! Explicit-font, grayscale Latin text, borrowed from figui. No system
-//! fallback, rich text, bidi or emoji. A backend turns one line into a bounded
+//! fallback, bidi or emoji. Styled runs retain explicit fonts and colors. A backend turns one line into a bounded
 //! alpha mask; the renderer tints it. [`wrap`] breaks a paragraph into lines.
 //! Fonts and their variable axes are caller-supplied; nothing here names a font.
 use crate::Error;
+
+mod rich;
+pub use rich::{RunLine, RunMask, TextRun, layout_runs, validate_runs};
 
 pub const MAX_FONTS: usize = 64;
 pub const MAX_AXES: usize = 8;
@@ -88,6 +91,18 @@ pub struct Mask {
     pub metrics: Metrics,
 }
 pub trait Backend {
+    /// Shape a complete attributed line; unsupported backends fail closed.
+    fn measure_runs(&mut self, _runs: &[TextRun]) -> Result<Metrics, Error> {
+        Err(Error("backend does not support styled text"))
+    }
+    fn raster_runs(
+        &mut self,
+        _runs: &[TextRun],
+        _width: f32,
+        _scale: f32,
+    ) -> Result<RunMask, Error> {
+        Err(Error("backend does not support styled text"))
+    }
     fn raster(&mut self, text: &str, style: Style, width: f32, scale: f32) -> Result<Mask, Error>;
     /// Shapes without rasterizing. The default rasterizes at the widest mask.
     fn measure(&mut self, text: &str, style: Style) -> Result<Metrics, Error> {
@@ -120,7 +135,25 @@ pub fn validate(text: &str, s: Style, width: f32, scale: f32) -> Result<[u32; 2]
 pub mod coretext {
     use super::*;
     use std::{ffi::c_void, ptr::NonNull};
+    #[repr(C)]
+    struct StyledRun {
+        font: *mut c_void,
+        text: *const u8,
+        len: usize,
+        height: f64,
+        tracking: f64,
+        color: [f64; 4],
+    }
     unsafe extern "C" {
+        fn figleaf_ct_runs(
+            runs: *const StyledRun,
+            count: usize,
+            scale: f64,
+            pixels: *mut u8,
+            width: u32,
+            rows: u32,
+            metrics: *mut Metrics,
+        ) -> i32;
         fn figleaf_ct_font(bytes: *const u8, len: usize) -> *mut c_void;
         fn figleaf_ct_drop(font: *mut c_void);
         fn figleaf_ct_instance(
@@ -226,6 +259,47 @@ pub mod coretext {
                 .push((style.font, style.size.to_bits(), Instance(ptr)));
             Ok(self.instances.len() - 1)
         }
+        fn styled(
+            &mut self,
+            runs: &[TextRun],
+            scale: f32,
+            pixels: Option<(&mut [u8], u32, u32)>,
+        ) -> Result<Metrics, Error> {
+            let mut input = Vec::new();
+            for run in runs {
+                let i = self.instance(run.style)?;
+                input.push(StyledRun {
+                    font: self.instances[i].2.0.as_ptr(),
+                    text: run.text.as_ptr(),
+                    len: run.text.len(),
+                    height: run.style.line_height as f64,
+                    tracking: run.style.letter_spacing as f64,
+                    color: run.color.map(f64::from),
+                });
+            }
+            let (ptr, w, h) = pixels.map_or((std::ptr::null_mut(), 0, 0), |(p, w, h)| {
+                (p.as_mut_ptr(), w, h)
+            });
+            let mut metrics = Metrics::default();
+            // Input strings and retained instances live across this synchronous call;
+            // the output buffer is exactly width*rows*4 bytes and both structs are repr(C).
+            let status = unsafe {
+                figleaf_ct_runs(
+                    input.as_ptr(),
+                    input.len(),
+                    scale as f64,
+                    ptr,
+                    w,
+                    h,
+                    &mut metrics,
+                )
+            };
+            match status {
+                0 => Ok(metrics),
+                3 => Err(Error("font has no glyph for a character")),
+                _ => Err(Error("CoreText rejected styled text")),
+            }
+        }
         fn run(
             &mut self,
             text: &str,
@@ -263,6 +337,43 @@ pub mod coretext {
         }
     }
     impl Backend for CoreText {
+        fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
+            validate_runs(runs, 1., 1., false)?;
+            self.styled(runs, 1., None)
+        }
+        fn raster_runs(
+            &mut self,
+            runs: &[TextRun],
+            width: f32,
+            scale: f32,
+        ) -> Result<RunMask, Error> {
+            validate_runs(runs, width, scale, false)?;
+            let height = runs
+                .iter()
+                .map(|r| r.style.line_height)
+                .reduce(f32::max)
+                .unwrap();
+            let w = (width * scale).ceil() as u32;
+            let h = (height * scale).ceil() as u32;
+            let mut rgba = vec![0; w as usize * h as usize * 4];
+            let metrics = self.styled(runs, scale, Some((&mut rgba, w, h)))?;
+            for pixel in rgba.as_chunks_mut::<4>().0 {
+                let a = u32::from(pixel[3]);
+                for value in &mut pixel[..3] {
+                    *value = (u32::from(*value) * 255 + a / 2)
+                        .checked_div(a)
+                        .unwrap_or(0)
+                        .min(255) as u8;
+                }
+            }
+            Ok(RunMask {
+                width: w,
+                height: h,
+                rgba,
+                metrics,
+            })
+        }
+
         fn raster(
             &mut self,
             text: &str,

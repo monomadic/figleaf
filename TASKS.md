@@ -8,10 +8,12 @@ Completed implementation notes and comparisons are in the
 
 ## Ordered queue — 2026-11-17
 
-1. **Text completeness.** Start with mixed-style text runs and explicit font
-   selection across runs. Then add automatic line height, paragraph spacing and
-   indentation, decorations and case handling, truncation/maximum lines, and
-   percentage letter spacing. Follow with script-aware shaping, fallback and
+1. **Text completeness — in progress.** Mixed-style runs with explicit fonts,
+   colors, sizes and tracking are done (2026-11-17); generated output was
+   [reviewed beside Figma](docs/text-runs-compare.png). **Next: automatic line
+   height**, then paragraph spacing and indentation, decorations and case
+   handling, and truncation/maximum lines. Percentage tracking already exports
+   as resolved pixel values. Follow with script-aware shaping, fallback and
    line breaking, then richer text fills/strokes and remaining list/OpenType
    styling. Preserve hard errors for each unsupported case until implemented.
    **Done when:** generated Rust retains supported run styles and paragraph
@@ -74,9 +76,10 @@ Completed implementation notes and comparisons are in the
   resolved smoothed/complex stroke geometry, multiple paints, gradients,
   images/patterns, flattened opacity, blend modes, shadows and normal blur.
   Support has explicit exceptions and resource limits; see [README](README.md).
-- **Text/layout:** simple Latin text through CoreText, wrapping and text shadows;
+- **Text/layout:** Latin text with explicit styled runs through CoreText, wrapping
+  and text shadows;
   fixed/hug/fill auto layout with horizontal wrapping. Text measurement is
-  supplied by the caller. Rich text and broader layout semantics remain above.
+  supplied by the caller. Remaining text styling and layout semantics are above.
 - **Plugin:** static selected-hierarchy Rust output, resolved variable values
   and embedded image data. It does not yet export responsive solver calls,
   live bindings, interactions or component state. See [plugin limits](plugin/README.md).
