@@ -2487,3 +2487,98 @@ fn paragraphs_align_with_total_spacing_and_invalidate_cached_layout() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
 }
+
+#[test]
+#[cfg(feature = "text-coretext")]
+fn decorated_case_text_measures_wraps_and_caches_without_style_leaks() {
+    use figleaf::text::{
+        Backend, FontSource, TextCase, TextDecoration, TextRun, coretext::CoreText,
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let metrics = |m: figleaf::text::Metrics| {
+        (
+            m.advance, m.ascent, m.descent, m.baseline, m.glyphs, m.lines,
+        )
+    };
+    let base = TextRun::new("mix").size(20., 32.);
+    let upper = base.clone().text_case(TextCase::Upper);
+    let literal = TextRun::new("MIX").size(20., 32.);
+    assert_eq!(
+        metrics(backend.measure_runs(std::slice::from_ref(&upper)).unwrap()),
+        metrics(backend.measure_runs(&[literal]).unwrap())
+    );
+    let undecorated = backend
+        .raster_runs(
+            &[base.clone(), TextRun::new(" tail").size(20., 32.)],
+            160.,
+            2.,
+        )
+        .unwrap();
+    for decoration in [TextDecoration::Underline, TextDecoration::Strikethrough] {
+        let runs = [
+            base.clone().text_decoration(decoration),
+            TextRun::new(" tail").size(20., 32.),
+        ];
+        let mask = backend.raster_runs(&runs, 160., 2.).unwrap();
+        assert_eq!(metrics(mask.metrics), metrics(undecorated.metrics));
+        assert_ne!(mask.rgba, undecorated.rgba);
+        // The decorated prefix is 36 logical pixels wide; the tail stays untouched.
+        for y in 0..mask.height {
+            for x in 76..mask.width {
+                let i = ((y * mask.width + x) * 4) as usize;
+                assert_eq!(mask.rgba[i..i + 4], undecorated.rgba[i..i + 4]);
+            }
+        }
+    }
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.text(
+        Text::new("mixed words wrap", Rect::new(0., 0., 90., 120.))
+            .size(20., 32.)
+            .text_case(TextCase::Upper)
+            .text_decoration(TextDecoration::Underline)
+            .wrap(),
+    );
+    let image = gpu.render(&mut renderer, &c, [180, 240], 2., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    assert!(image.rgba.iter().any(|v| *v != 0));
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [180, 240], 2., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let mut literal = Canvas::new();
+    literal.text(
+        Text::rich(
+            vec![
+                TextRun::new("MIXED WORDS WRAP")
+                    .size(20., 32.)
+                    .text_decoration(TextDecoration::Underline),
+            ],
+            Rect::new(0., 0., 90., 120.),
+        )
+        .wrap(),
+    );
+    let expected = gpu.render(
+        &mut renderer,
+        &literal,
+        [180, 240],
+        2.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(image.rgba, expected.rgba);
+    let mut bad = Canvas::new();
+    bad.text(Text::new("µ", Rect::new(0., 0., 90., 120.)).text_case(TextCase::Upper));
+    let image = gpu.render(&mut renderer, &bad, [180, 240], 2., [0.; 4], &mut backend);
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &bad, [180, 240], 2., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+}

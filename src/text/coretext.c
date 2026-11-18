@@ -138,6 +138,7 @@ typedef struct {
     size_t len;
     double height, tracking;
     double color[4];
+    uint32_t decoration;
 } StyledRun;
 int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                    uint8_t *pixels, uint32_t width, uint32_t rows, Metrics *metrics) {
@@ -186,7 +187,44 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
             CGContextSetAllowsFontSmoothing(ctx,false);CGContextSetShouldSmoothFonts(ctx,false);
             CGContextSetShouldAntialias(ctx,true);CGContextSetShouldSubpixelPositionFonts(ctx,true);
             CGContextSetShouldSubpixelQuantizeFonts(ctx,false);CGContextScaleCTM(ctx,scale,scale);
-            CGContextSetTextPosition(ctx,0,(double)rows/scale-metrics->baseline);CTLineDraw(line,ctx);CGContextRelease(ctx);
+            double baseline=(double)rows/scale-metrics->baseline;
+            CGContextSetTextPosition(ctx,0,baseline);CTLineDraw(line,ctx);
+            CFIndex start=0;
+            for(size_t i=0;i<count;i++) {
+                const StyledRun *r=&input[i];
+                CFStringRef string=CFStringCreateWithBytes(NULL,r->text,r->len,kCFStringEncodingUTF8,false);
+                CFIndex end=start+CFStringGetLength(string);CFRelease(string);
+                if(r->decoration) {
+                    CTFontRef font=(CTFontRef)r->font;
+                    double thickness=CTFontGetUnderlineThickness(font),position=CTFontGetXHeight(font)/2;
+                    // OpenType OS/2 strikeout metrics are expressed in font units.
+                    CFDataRef table=CTFontCopyTable(font,kCTFontTableOS2,kCTFontTableOptionNoOptions);
+                    if(r->decoration==2 && table && CFDataGetLength(table)>=30) {
+                        const uint8_t *p=CFDataGetBytePtr(table);
+                        double units=CTFontGetSize(font)/CTFontGetUnitsPerEm(font);
+                        thickness=(int16_t)((p[26]<<8)|p[27])*units;
+                        position=(int16_t)((p[28]<<8)|p[29])*units;
+                    }
+                    if(table)CFRelease(table);
+                    double x=CTLineGetOffsetForStringIndex(line,start,NULL);
+                    double end_x=CTLineGetOffsetForStringIndex(line,end,NULL);
+                    if(i+1==count)end_x-=r->tracking;
+                    CGContextSetRGBFillColor(ctx,r->color[0],r->color[1],r->color[2],r->color[3]);
+                    // Figma places the strike at the font's strikeout position,
+                    // and the underline below the font's underline position.
+                    double bottom=r->decoration==1
+                        ? baseline+CTFontGetUnderlinePosition(font)-thickness*1.5
+                        : baseline+position-thickness;
+                    if(bottom<0 || bottom+thickness>(double)rows/scale || thickness<=0) {
+                        status=6;break;
+                    }
+                    // Automatic decorations are continuous in the Figma export;
+                    // custom placement/style/skip-ink controls are not supported.
+                    CGContextFillRect(ctx,CGRectMake(x,bottom,end_x-x,thickness));
+                }
+                start=end;
+            }
+            CGContextRelease(ctx);
         }
     }
     CFRelease(line);CFRelease(attributed);CGColorSpaceRelease(space);return status;

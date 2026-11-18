@@ -563,7 +563,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, Latin characters, solid run colors and
-explicit or automatic line heights. Decorations, truncation, scripts beyond the existing Latin scope and richer text paints are
+explicit or automatic line heights. Small caps, custom decorations, truncation, scripts beyond the existing Latin scope and richer text paints are
 still unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
@@ -623,3 +623,22 @@ unchanged, and updates when paragraph settings change. No new dependencies.
 wrapping, empty paragraphs, centered alignment and different settings per
 paragraph. Glyph edges still differ. Synthetic tests cover right/bottom alignment,
 trailing breaks, conflicts, invalid values and cache invalidation.
+
+
+## Text decorations and case
+
+`Text` and `text::TextRun` accept `.text_decoration(TextDecoration::Underline)`
+or `Strikethrough`, and `.text_case(TextCase::Upper)`, `Lower`, or `Title`.
+Defaults are `None` and `Original`. On rich text, set these on each run.
+Case resolves before measurement and wrapping without changing the source string;
+title case capitalizes word initials while preserving remaining letters, with
+word context retained across run boundaries. Simple Latin casing preserves `ß`
+in uppercase; transformations outside the supported character/byte limits fail.
+
+CoreText uses font metrics for solid, automatic-color/offset/thickness decorations,
+matching the continuous automatic lines in the reference. Decorations share run color, transforms, clipping and
+shadows. Small caps, custom decoration styles and disabled skip-ink remain plugin
+errors. No new dependencies. `cargo run --example decorations --all-features`
+renders [generated code beside Figma](docs/decorations-compare.png); glyph and
+antialiasing differences remain. Tests cover style boundaries, measurement,
+wrapping, invalid transformed text and unchanged-canvas uploads.

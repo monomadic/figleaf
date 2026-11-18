@@ -14,10 +14,12 @@ Completed implementation notes and comparisons are in the
    done (2026-11-18), with [font-derived rendering and plugin output](docs/auto-height-compare.png).
    Paragraph spacing and first-line indentation are done (2026-11-18),
    [including per-paragraph settings](docs/paragraphs-compare.png).
-   **Next: decorations and case handling**, then truncation/maximum lines. Percentage tracking already exports
+   Basic underline/strikethrough and upper/lower/title case are done (2026-11-18),
+   [including mixed styles](docs/decorations-compare.png).
+   **Next: truncation/maximum lines.** Percentage tracking already exports
    as resolved pixel values. Follow with script-aware shaping, fallback and
    line breaking, then richer text fills/strokes and remaining list/OpenType
-   styling. Preserve hard errors for each unsupported case until implemented.
+   styling, including small caps and custom decorations. Preserve hard errors for each unsupported case until implemented.
    **Done when:** generated Rust retains supported run styles and paragraph
    behavior; measured and rendered text agree; representative labels, paragraphs,
    mixed runs and non-Latin samples are reviewed beside Figma. Test wrapping,

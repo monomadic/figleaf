@@ -6,8 +6,8 @@ use crate::Error;
 
 mod rich;
 pub use rich::{
-    ParagraphStyle, RunLine, RunMask, TextRun, layout_paragraphs, layout_runs, resolve_runs,
-    resolve_style, validate_runs,
+    ParagraphStyle, RunLine, RunMask, TextCase, TextDecoration, TextRun, layout_paragraphs,
+    layout_runs, resolve_runs, resolve_style, validate_runs,
 };
 
 pub const MAX_FONTS: usize = 64;
@@ -99,6 +99,8 @@ pub trait Backend {
         Err(Error("backend does not support automatic line height"))
     }
     /// Shape a complete attributed line; unsupported backends fail closed.
+    /// Implementations must resolve case before measuring (see `resolve_runs`)
+    /// and render each run's decoration, or return an error.
     fn measure_runs(&mut self, _runs: &[TextRun]) -> Result<Metrics, Error> {
         Err(Error("backend does not support styled text"))
     }
@@ -151,6 +153,7 @@ pub mod coretext {
         height: f64,
         tracking: f64,
         color: [f64; 4],
+        decoration: u32,
     }
     unsafe extern "C" {
         fn figleaf_ct_height(font: *mut c_void) -> f64;
@@ -284,6 +287,7 @@ pub mod coretext {
                     height: run.style.line_height as f64,
                     tracking: run.style.letter_spacing as f64,
                     color: run.color.map(f64::from),
+                    decoration: run.text_decoration as u32,
                 });
             }
             let (ptr, w, h) = pixels.map_or((std::ptr::null_mut(), 0, 0), |(p, w, h)| {

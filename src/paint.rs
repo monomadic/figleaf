@@ -1121,6 +1121,8 @@ pub struct Text {
     pub string: String,
     /// Explicit styled runs. When nonempty, the plain string must be empty.
     pub runs: Vec<text::TextRun>,
+    pub text_decoration: text::TextDecoration,
+    pub text_case: text::TextCase,
     pub paragraph_spacing: f32,
     pub paragraph_indent: f32,
     /// The line is `line_height` tall and placed in this box by the alignments.
@@ -1154,6 +1156,8 @@ impl Text {
             clips: Vec::new(),
             string: string.into(),
             runs: Vec::new(),
+            text_decoration: text::TextDecoration::None,
+            text_case: text::TextCase::Original,
             paragraph_spacing: 0.,
             paragraph_indent: 0.,
             rect,
@@ -1177,6 +1181,14 @@ impl Text {
         text.runs = runs;
         text
     }
+    pub fn text_decoration(mut self, value: text::TextDecoration) -> Self {
+        self.text_decoration = value;
+        self
+    }
+    pub fn text_case(mut self, value: text::TextCase) -> Self {
+        self.text_case = value;
+        self
+    }
     /// Extra space between paragraphs, excluding soft wraps and the final tail.
     pub fn paragraph_spacing(mut self, value: f32) -> Self {
         self.paragraph_spacing = value;
@@ -1190,6 +1202,8 @@ impl Text {
     #[cfg(feature = "wgpu")]
     pub(crate) fn needs_layout(&self) -> bool {
         !self.runs.is_empty()
+            || self.text_decoration != text::TextDecoration::None
+            || self.text_case != text::TextCase::Original
             || self.line_height == 0.
             || self.paragraph_spacing != 0.
             || self.paragraph_indent != 0.

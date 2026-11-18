@@ -34,6 +34,12 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     if !t.runs.is_empty() && !t.string.is_empty() {
         return Err(Error("styled text cannot also contain a plain string"));
     }
+    if !t.runs.is_empty()
+        && (t.text_case != text::TextCase::Original
+            || t.text_decoration != text::TextDecoration::None)
+    {
+        return Err(Error("rich text requires case and decoration on each run"));
+    }
     t.rect.validate()?;
     t.transform.inverse()?;
     t.transform.bounds(t.rect).validate()?;
@@ -43,6 +49,8 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             text: t.string.clone(),
             style: t.style(),
             color: t.color,
+            text_decoration: t.text_decoration,
+            text_case: t.text_case,
             paragraph_spacing: None,
             paragraph_indent: None,
         }]

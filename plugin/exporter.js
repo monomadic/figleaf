@@ -225,7 +225,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const box = [0, 0, n.width, n.height];
       box.forEach(number);
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
-      const segments=n.type==='TEXT'&&n.getStyledTextSegments?n.getStyledTextSegments(['fontName','fontSize','fills','textCase','textDecoration','letterSpacing','lineHeight','listOptions','indentation','paragraphSpacing','paragraphIndent','openTypeFeatures','boundVariables']):null;
+      const segments=n.type==='TEXT'&&n.getStyledTextSegments?n.getStyledTextSegments(['fontName','fontSize','fills','textCase','textDecoration','textDecorationStyle','textDecorationOffset','textDecorationThickness','textDecorationColor','textDecorationSkipInk','letterSpacing','lineHeight','listOptions','indentation','paragraphSpacing','paragraphIndent','openTypeFeatures','boundVariables']):null;
       const mixedRuns=segments&&segments.length>1?segments:null;
       const fills = mixedRuns?mixedRuns.flatMap(s=>visible(s.fills||[])):visible(n.fills || []), strokes = visible(n.strokes || []);
       const allEffects=visible(n.effects || []);
@@ -367,14 +367,17 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         }
         const styles=segments?.length?segments:[n];
         const generated=[];
-        let paragraphSettings=null;
+        let paragraphSettings=null, inWord=false, transformedText='';
         for(const s of styles) {
           const paints=visible(s.fills||[]);
           if(paints.length!==1||paints[0]?.type!=='SOLID')reject('Text requires exactly one solid fill per run.');
           if(mixedRuns&&paints.some(blended))reject('Blended paints inside styled text runs are unsupported.');
           for(const p of paints) if(p.type==='SOLID' && (!p.color || [p.color.r,p.color.g,p.color.b,p.color.a??1,p.opacity??1].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)))reject('Invalid text run color or opacity.');
           if(!s.fontName||typeof s.fontName!=='object'||typeof s.fontName.family!=='string'||typeof s.fontName.style!=='string'||typeof s.fontSize!=='number'||typeof s.letterSpacing!=='object'||typeof s.lineHeight!=='object')reject('Missing or invalid run text style.');
-          if(s.textCase!=='ORIGINAL'||s.textDecoration!=='NONE')reject('Text case transformations and decorations are unsupported.');
+          const cases={ORIGINAL:'Original',UPPER:'Upper',LOWER:'Lower',TITLE:'Title'}, decorations={NONE:'None',UNDERLINE:'Underline',STRIKETHROUGH:'Strikethrough'};
+          if(!cases[s.textCase])reject('Unsupported text case (small caps require font-feature support).');
+          if(!decorations[s.textDecoration])reject('Unsupported text decoration.');
+          if(s.textDecoration!=='NONE' && (s.textDecorationStyle!=null&&s.textDecorationStyle!=='SOLID' || s.textDecorationOffset!=null&&s.textDecorationOffset.unit!=='AUTO' || s.textDecorationThickness!=null&&s.textDecorationThickness.unit!=='AUTO' || s.textDecorationColor!=null&&s.textDecorationColor.value!=='AUTO' || s.textDecorationSkipInk===false))reject('Custom decoration style, offset, thickness, color, or disabled skip-ink is unsupported.');
           if(s.listOptions?.type!==undefined&&s.listOptions.type!=='NONE'||s.indentation||Object.keys(s.openTypeFeatures||{}).length)reject('Lists, list indentation, and OpenType overrides are unsupported.');
           if(Object.keys(s.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Text run variable bindings must be resolved before export.');
           if(!['PIXELS','PERCENT','AUTO'].includes(s.lineHeight?.unit))reject('Unknown text line height unit.');
@@ -388,12 +391,24 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             if(paragraphSettings&&(paragraphSettings[0]!==spacing||paragraphSettings[1]!==indent))reject('Conflicting styles within one paragraph.');
             paragraphSettings=ch==='\n'?null:[spacing,indent];
           }
+          for(const ch of (mixedRuns?s.characters:text)||'') {
+            let mapped=ch;
+            if(s.textCase==='UPPER'||s.textCase==='TITLE'&&!inWord) {
+              const upper=ch.toUpperCase();if([...upper].length===1)mapped=upper;
+            } else if(s.textCase==='LOWER') {
+              const lower=ch==='İ'?'i':ch.toLowerCase();if([...lower].length===1)mapped=lower;
+            }
+            transformedText+=mapped;
+            if(/[\p{L}\p{N}]/u.test(ch))inWord=true;
+            else if(ch!=="'"&&ch!=='’')inWord=false;
+          }
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
+        if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>{const p=c.codePointAt(0);return c!=='\n'&&!(p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff);}))reject('Case-transformed text exceeds the supported Latin scope or byte limit.');
         for (const type of ['DROP_SHADOW','INNER_SHADOW']) {
           if (effects.filter(e => e.type === type).length > 1) reject(`Text allows only one ${type}.`);
         }

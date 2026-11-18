@@ -2,11 +2,33 @@
 use super::{Backend, MAX_TEXT_BYTES, Metrics, Style};
 use crate::{Color, Error};
 
+/// Figma's basic text decoration, using the supplied font's metrics.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(u32)]
+pub enum TextDecoration {
+    #[default]
+    None,
+    Underline,
+    Strikethrough,
+}
+/// Locale-independent Latin casing. Title capitalizes word initials and preserves
+/// the rest of each word, as in Figma. Small caps need font-feature support.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TextCase {
+    #[default]
+    Original,
+    Upper,
+    Lower,
+    Title,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextRun {
     pub text: String,
     pub style: Style,
     pub color: Color,
+    pub text_decoration: TextDecoration,
+    pub text_case: TextCase,
     /// None inherits the text layer’s paragraph setting.
     pub paragraph_spacing: Option<f32>,
     pub paragraph_indent: Option<f32>,
@@ -22,9 +44,19 @@ impl TextRun {
                 letter_spacing: 0.,
             },
             color: [0., 0., 0., 1.],
+            text_decoration: TextDecoration::None,
+            text_case: TextCase::Original,
             paragraph_spacing: None,
             paragraph_indent: None,
         }
+    }
+    pub fn text_decoration(mut self, value: TextDecoration) -> Self {
+        self.text_decoration = value;
+        self
+    }
+    pub fn text_case(mut self, value: TextCase) -> Self {
+        self.text_case = value;
+        self
     }
     pub fn paragraph_spacing(mut self, value: f32) -> Self {
         self.paragraph_spacing = Some(value);
@@ -156,8 +188,51 @@ pub fn resolve_style(backend: &mut dyn Backend, mut style: Style) -> Result<Styl
 }
 pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<TextRun>, Error> {
     let mut resolved = runs.to_vec();
+    let mut in_word = false;
     for run in &mut resolved {
+        let mut transformed = String::new();
+        for c in run.text.chars() {
+            let upper =
+                run.text_case == TextCase::Upper || (run.text_case == TextCase::Title && !in_word);
+            // Simple casing preserves character count (Figma does not expand ß).
+            let mapped = if upper {
+                let mut chars = c.to_uppercase();
+                let first = chars.next().unwrap();
+                if chars.next().is_none() { first } else { c }
+            } else if run.text_case == TextCase::Lower {
+                if c == '\u{0130}' {
+                    'i'
+                } else {
+                    let mut chars = c.to_lowercase();
+                    let first = chars.next().unwrap();
+                    if chars.next().is_none() { first } else { c }
+                }
+            } else {
+                c
+            };
+            transformed.push(mapped);
+            if c.is_alphanumeric() {
+                in_word = true;
+            } else if c != '\'' && c != '\u{2019}' {
+                in_word = false;
+            }
+        }
+        run.text = transformed;
+        // Resolution is idempotent: wrapping must not title-case continuation lines.
+        run.text_case = TextCase::Original;
         run.style = resolve_style(backend, run.style)?;
+    }
+    let bytes: usize = resolved.iter().map(|r| r.text.len()).sum();
+    if bytes > MAX_TEXT_BYTES
+        || resolved.iter().any(|r| {
+            r.text
+                .chars()
+                .any(|c| c != '\n' && !super::supported_char(c))
+        })
+    {
+        return Err(Error(
+            "case-transformed text exceeds the supported Latin scope or byte limit",
+        ));
     }
     Ok(resolved)
 }
@@ -582,5 +657,54 @@ mod paragraph_tests {
             TextRun::new("paragraph").paragraph_spacing(8.),
         ];
         assert!(layout_runs(&mut Mono, &conflict, 200., true).is_err());
+    }
+}
+
+#[cfg(test)]
+mod case_tests {
+    use super::*;
+    #[test]
+    fn case_preserves_source_and_word_context_across_runs() {
+        let runs = [
+            TextRun::new("title CA").text_case(TextCase::Title),
+            TextRun::new("SE: don't stop-at O’NEILL 2nd").text_case(TextCase::Title),
+        ];
+        let resolved = resolve_runs(&mut super::super::NoText, &runs).unwrap();
+        assert_eq!(
+            resolved.iter().map(|r| r.text.as_str()).collect::<String>(),
+            "Title CASE: Don't Stop-At O’NEILL 2nd"
+        );
+        assert_eq!(runs[0].text, "title CA");
+        assert_eq!(
+            resolve_runs(&mut super::super::NoText, &resolved).unwrap(),
+            resolved
+        );
+    }
+    #[test]
+    fn simple_case_and_transformed_scope_are_validated() {
+        let runs = [
+            TextRun::new("Straße déjà vu").text_case(TextCase::Upper),
+            TextRun::new(" İ MIXED").text_case(TextCase::Lower),
+        ];
+        let resolved = resolve_runs(&mut super::super::NoText, &runs).unwrap();
+        assert_eq!(resolved[0].text, "STRAßE DÉJÀ VU");
+        assert_eq!(resolved[1].text, " i mixed");
+        // Uppercase micro sign maps to Greek, outside the current Latin scope.
+        assert!(
+            resolve_runs(
+                &mut super::super::NoText,
+                &[TextRun::new("µ").text_case(TextCase::Upper)]
+            )
+            .is_err()
+        );
+        // Latin s with swash tail grows from 2 UTF-8 bytes to 3 when uppercased.
+        assert!(
+            resolve_runs(
+                &mut super::super::NoText,
+                &[TextRun::new("ȿ").text_case(TextCase::Upper)]
+            )
+            .is_err()
+        );
+        assert!(resolve_runs(&mut super::super::NoText, &[TextRun::new("a".repeat(513))]).is_err());
     }
 }

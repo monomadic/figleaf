@@ -535,3 +535,21 @@ Generated Rust [reviewed beside Figma](paragraphs-compare.png), mean 0.57/255 at
 settings. Synthetic tests cover right/bottom alignment, trailing newlines,
 validation and unchanged/changed caches. Decorations and case handling are next
 in [TASKS.md](../TASKS.md); live plugin validation remains separate.
+
+
+## Text decorations and case — 2026-11-18
+
+Plain text and runs retain original characters plus explicit case/decoration.
+Case resolves before layout, preserving word context across runs and continuation
+lines; font-derived underlines and strikeouts follow run colors and layer effects.
+Plugin output supports original/upper/lower/title and basic solid automatic
+underline/strikethrough. Small caps, custom decoration settings and transformed
+text outside current Latin/byte limits are hard errors, with no partial output.
+
+[Generated comparison](decorations-compare.png) was reviewed beside Figma at 2×
+(mean channel difference 1.38/255):
+underline descenders, strikeouts, accented casing, apostrophes/hyphens, mixed
+colors/styles and wrapping. Glyph/antialiasing differences remain. Synthetic tests
+cover measurement, no decoration leakage, transformed scope errors and unchanged
+uploads. No dependencies or plugin filesystem writes. Truncation/maximum lines
+are next; live Desktop plugin validation remains a separate task.

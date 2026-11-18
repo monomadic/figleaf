@@ -53,7 +53,7 @@ test('unsupported features never produce partial Rust', () => {
     node({fills:[{type:'GRADIENT_UNKNOWN'}]}),
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(65).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
     node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
-    text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNDERLINE'}),text({characters:'🐈'}),
+    text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNKNOWN'}),text({characters:'🐈'}),
     text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:-4}),text({textTruncation:'ENDING'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
     text({fills:[solid,solid]}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
@@ -591,7 +591,7 @@ test('mixed text exports explicit fonts, sizes, colors and complete runs and com
 test('invalid or unsupported run styles suppress the whole hierarchy',()=>{
   for(const patch of [
     {fontName:undefined},{start:1},{end:1000},{characters:'wrong'},
-    {lineHeight:{unit:'UNKNOWN'}},{textDecoration:'UNDERLINE'},{listOptions:{type:'ORDERED'}},
+    {lineHeight:{unit:'UNKNOWN'}},{textDecoration:'UNKNOWN'},{listOptions:{type:'ORDERED'}},
     {paragraphSpacing:4},{fontSize:200},{fills:[{...solid,blendMode:'MULTIPLY'}]},
     {fills:[{type:'GRADIENT_LINEAR'}]},{fills:[{...solid,opacity:2}]},{boundVariables:{fontSize:alias}},
   ]) {
@@ -642,4 +642,34 @@ test('paragraph validation rejects invalid values, conflicts and list indentatio
   assert.deepEqual(exportHierarchy([text({paragraphSpacing:12,paragraphIndent:16})]).errors,[]);
   const root=mixedTextFixture();root.children[0].styledSegments[1].paragraphIndent=12;
   const r=exportHierarchy([root]);assert.equal(r.code,null);assert.ok(r.errors.some(e=>/Conflicting styles/.test(e.message)));
+});
+
+test('decorations and case export exact styled Rust and compile',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'decorations-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/decorations.rs'),'utf8'));
+  for(const name of ['Upper','Lower','Title'])assert.ok(result.code.includes(`TextCase::${name}`));
+  for(const name of ['Underline','Strikethrough'])assert.ok(result.code.includes(`TextDecoration::${name}`));
+  assert.ok(result.code.includes('Straße déjà vu'),'source characters remain intact');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-decorations-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);assert_eq!(c.items().len(),7);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported decoration options, small caps and transformed scope fail without partial code',()=>{
+  for(const patch of [{textCase:'SMALL_CAPS'},{textCase:'SMALL_CAPS_FORCED'},{textCase:'UNKNOWN'},
+    {textCase:'UPPER',characters:'µ'},{textCase:'UPPER',characters:'ȿ'},
+    {textDecorationStyle:'WAVY'},{textDecorationStyle:'DOTTED'},
+    {textDecorationOffset:{unit:'PIXELS',value:2}},{textDecorationThickness:{unit:'PERCENT',value:10}},
+    {textDecorationColor:{value:solid}},{textDecorationSkipInk:false}]) {
+    const r=exportHierarchy([text({textDecoration:'UNDERLINE',...patch})]);
+    assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  for(const textCase of ['ORIGINAL','UPPER','LOWER','TITLE'])
+    assert.deepEqual(exportHierarchy([text({textCase,textDecoration:'UNDERLINE'})]).errors,[]);
+  const root=mixedTextFixture();root.children[0].styledSegments[1].textCase='SMALL_CAPS';
+  assert.equal(exportHierarchy([root]).code,null);
 });

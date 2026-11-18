@@ -279,3 +279,12 @@ settings within one paragraph, negative/nonfinite values, an indent consuming
 the full width, lists and hanging text suppress all Rust. The
 [paragraph comparison](../docs/paragraphs-compare.png) covers generated output;
 no filesystem writes, partial output or live variable runtime are introduced.
+
+
+Text decorations and case export `.text_decoration(..)` and `.text_case(..)` on
+plain text or individual runs, retaining original characters. Supported values
+are underline/strikethrough and original/upper/lower/title case. Automatic solid
+decorations use the supplied font; small caps, wavy/dotted lines, custom offsets,
+thickness/colors and disabled skip-ink still suppress all Rust. Transformed text
+must also fit the Latin/512-byte limits. The [comparison](../docs/decorations-compare.png)
+uses generated Rust; this does not replace live Desktop plugin validation.
