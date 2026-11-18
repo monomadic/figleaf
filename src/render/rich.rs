@@ -36,7 +36,8 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     }
     if !t.runs.is_empty()
         && (t.text_case != text::TextCase::Original
-            || t.text_decoration != text::TextDecoration::None)
+            || t.text_decoration != text::TextDecoration::None
+            || t.decoration_options != text::DecorationOptions::default())
     {
         return Err(Error("rich text requires case and decoration on each run"));
     }
@@ -68,6 +69,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             color: t.color,
             paints: t.paints.clone(),
             text_decoration: t.text_decoration,
+            decoration_options: t.decoration_options,
             text_case: t.text_case,
             open_type_features: t.open_type_features.clone(),
             list_options: t.list_options,
@@ -125,7 +127,10 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     };
     let mut y = t.rect.y + place(t.vertical_align, t.rect.h - height);
     let mut pixels = 0u64;
-    let outlined = t.stroke.is_some() || runs.iter().any(|r| r.paints.is_some());
+    let outlined = t.stroke.is_some()
+        || runs.iter().any(|r| {
+            r.paints.is_some() || r.decoration_options != text::DecorationOptions::default()
+        });
     let mut stroke_paths = Vec::new();
     let mut content = Canvas::new();
     let mut positioned = Vec::new();
@@ -160,6 +165,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             if outlined {
                 let outlines = backend.outline_runs(&line.runs)?;
                 if outlines.paths.len() != line.runs.len()
+                    || outlines.decoration_paths.len() != line.runs.len()
                     || outlines.metrics.lines != 1
                     || !outlines.metrics.advance.is_finite()
                     || !outlines.metrics.baseline.is_finite()
@@ -172,7 +178,19 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                 let x = if rtl { 0. } else { line.indent }
                     + place(t.align, line.available_width - line.metrics.advance as f32);
                 let offset = [x, y - t.rect.y];
-                for (mut path, run) in outlines.paths.into_iter().zip(&line.runs) {
+                for (mut path, run, decoration) in outlines
+                    .decoration_paths
+                    .into_iter()
+                    .zip(&line.runs)
+                    .map(|(p, r)| (p, r, true))
+                    .chain(
+                        outlines
+                            .paths
+                            .into_iter()
+                            .zip(&line.runs)
+                            .map(|(p, r)| (p, r, false)),
+                    )
+                {
                     if path.commands.is_empty() {
                         continue;
                     }
@@ -200,10 +218,14 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                         stroke_paths.push(path.clone());
                     }
                     let mut shape = Shape::vector(t.rect, vec![path]).transform(t.transform);
-                    shape.fills = run
-                        .paints
-                        .clone()
-                        .unwrap_or_else(|| vec![Paint::Solid(run.color)]);
+                    shape.fills =
+                        if let (true, Some(color)) = (decoration, run.decoration_options.color) {
+                            vec![Paint::Solid(color)]
+                        } else {
+                            run.paints
+                                .clone()
+                                .unwrap_or_else(|| vec![Paint::Solid(run.color)])
+                        };
                     add_outline_shapes(&mut content, shape, raster_scale)?;
                 }
                 y += advance_y - dy;

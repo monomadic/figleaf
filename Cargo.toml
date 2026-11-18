@@ -156,3 +156,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "lists_opentype"
 required-features = ["wgpu", "text-coretext"]
+
+[[example]]
+name = "custom_decorations"
+required-features = ["wgpu", "text-coretext"]

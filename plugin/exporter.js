@@ -386,7 +386,25 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const cases={ORIGINAL:'Original',UPPER:'Upper',LOWER:'Lower',TITLE:'Title',SMALL_CAPS:'SmallCaps',SMALL_CAPS_FORCED:'SmallCapsForced'}, decorations={NONE:'None',UNDERLINE:'Underline',STRIKETHROUGH:'Strikethrough'};
           if(!cases[s.textCase])reject('Unsupported text case.');
           if(!decorations[s.textDecoration])reject('Unsupported text decoration.');
-          if(s.textDecoration!=='NONE' && (s.textDecorationStyle!=null&&s.textDecorationStyle!=='SOLID' || s.textDecorationOffset!=null&&s.textDecorationOffset.unit!=='AUTO' || s.textDecorationThickness!=null&&s.textDecorationThickness.unit!=='AUTO' || s.textDecorationColor!=null&&s.textDecorationColor.value!=='AUTO' || s.textDecorationSkipInk===false))reject('Custom decoration style, offset, thickness, color, or disabled skip-ink is unsupported.');
+          let decorationCode='';
+          const decorationStyles={SOLID:'Solid',WAVY:'Wavy',DOTTED:'Dotted'};
+          if(s.textDecorationStyle!=null&&!decorationStyles[s.textDecorationStyle])reject('Unsupported decoration style.');
+          if(s.textDecorationStyle&&s.textDecorationStyle!=='SOLID')decorationCode+=`.text_decoration_style(figleaf::text::TextDecorationStyle::${decorationStyles[s.textDecorationStyle]})`;
+          for(const [field,method] of [['textDecorationOffset','offset'],['textDecorationThickness','thickness']]) {
+            const v=s[field];if(v==null||v.unit==='AUTO')continue;
+            const units={PIXELS:'Pixels',PERCENT:'Percent'}, resolved=v.unit==='PERCENT'?v.value*s.fontSize/100:v.value;
+            if(!units[v.unit]||typeof v.value!=='number'||!Number.isFinite(resolved)||Math.abs(resolved)>2048||method==='thickness'&&(resolved<0||resolved>128))reject('Invalid decoration dimension.');
+            decorationCode+=`.text_decoration_${method}(figleaf::text::DecorationValue::${units[v.unit]}(${number(v.value)}))`;
+          }
+          if(s.textDecorationColor!=null&&s.textDecorationColor.value!=='AUTO') {
+            const p=s.textDecorationColor.value;
+            if(!p||p.type!=='SOLID'||blended(p)||!p.color||[p.color.r,p.color.g,p.color.b,p.color.a??1,p.opacity??1].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1))reject('Unsupported decoration color.');
+            if(Object.keys(p.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Decoration color variables must be resolved before export.');
+            decorationCode+=`.text_decoration_color(${color(p.color,p.visible===false?0:p.opacity)})`;
+          }
+          if(s.textDecorationSkipInk!=null&&typeof s.textDecorationSkipInk!=='boolean')reject('Invalid decoration skip ink.');
+          if(s.textDecorationSkipInk===false)decorationCode+='.text_decoration_skip_ink(false)';
+          if(decorationCode&&s.textDecoration!=='UNDERLINE')reject('Custom decoration settings require an underline.');
           const listType=s.listOptions?.type??'NONE', listTypes={NONE:'None',UNORDERED:'Unordered',ORDERED:'Ordered'};
           const indentation=s.indentation??(listType==='NONE'?0:1),listSpacing=s.listSpacing??n.listSpacing??0;
           if(!listTypes[listType]||!Number.isInteger(indentation)||indentation<0||indentation>5||listType!=='NONE'&&indentation===0)reject('Unsupported list type or indentation.');
@@ -427,7 +445,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${decorationCode}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
         if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');

@@ -286,8 +286,10 @@ no filesystem writes, partial output or live variable runtime are introduced.
 Text decorations and case export `.text_decoration(..)` and `.text_case(..)` on
 plain text or individual runs, retaining original characters. Supported values
 are underline/strikethrough and original/upper/lower/title case. Automatic solid
-decorations use the supplied font; wavy/dotted lines, custom offsets,
-thickness/colors and disabled skip-ink still suppress all Rust. Transformed text
+decorations use the supplied font. Custom underlines export solid/wavy/dotted
+styles, pixel/percentage offsets and thickness, solid colors (including verified
+variable bindings), and skip-ink settings. Custom strikethrough and invalid values
+still suppress all Rust. Transformed text
 must also fit the Latin/512-byte limits. The [comparison](../docs/decorations-compare.png)
 uses generated Rust; this does not replace live Desktop plugin validation.
 

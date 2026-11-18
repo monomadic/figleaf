@@ -25,7 +25,9 @@ Completed implementation notes and comparisons are in the
    with [mixed paints and silhouette comparisons](docs/text-paints-compare.png).
    Lists, OpenType overrides and real small caps are done (2026-11-19), with
    [list and small-caps comparisons](docs/lists-opentype-compare.png).
-   **Next: custom decorations**, then RTL lists/decoration/tracking, broader
+   Custom underlines are done (2026-11-19), with
+   [styles, dimensions, colors and skip-ink comparisons](docs/custom-decorations-compare.png).
+   **Next: RTL lists/decoration/tracking**, then broader
    Unicode coverage, text paint blends and advanced stroke styles. Vertical/random
    font features and explicit kerning with tracking remain unsupported.
    Preserve hard errors until each case is implemented.

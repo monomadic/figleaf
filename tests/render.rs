@@ -3042,3 +3042,125 @@ fn list_markers_render_with_paints_strokes_and_cache() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0);
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn custom_underlines_preserve_color_overflow_skip_ink_and_cache() {
+    use figleaf::text::{
+        Backend, DecorationValue, FontSource, TextDecoration, TextDecorationStyle, TextRun,
+        coretext::CoreText,
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let base = Text::new("Agj pqy test", Rect::new(5., 0., 190., 40.))
+        .size(24., 40.)
+        .color(hex(0x000000))
+        .text_decoration(TextDecoration::Underline)
+        .text_decoration_color(hex(0xff0000))
+        .text_decoration_thickness(DecorationValue::Pixels(2.))
+        .text_decoration_offset(DecorationValue::Pixels(0.));
+    let render = |text: Text, renderer: &mut Renderer, backend: &mut CoreText| {
+        let mut canvas = Canvas::new();
+        canvas.text(text);
+        let image = gpu.render(renderer, &canvas, [210, 80], 1., [0.; 4], backend);
+        assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+        (canvas, image)
+    };
+    let (canvas, skipped) = render(base.clone(), &mut renderer, &mut backend);
+    let report = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &canvas,
+            [210, 80],
+            1.,
+            &mut backend,
+        )
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let (_, continuous) = render(
+        base.clone().text_decoration_skip_ink(false),
+        &mut renderer,
+        &mut backend,
+    );
+    let red_count = |bytes: &[u8]| {
+        bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] > 200 && p[1] < 40 && p[3] > 200)
+            .count()
+    };
+    assert!(red_count(&skipped.rgba) < red_count(&continuous.rgba));
+    for style in [TextDecorationStyle::Dotted, TextDecorationStyle::Wavy] {
+        let (_, image) = render(
+            base.clone().text_decoration_style(style),
+            &mut renderer,
+            &mut backend,
+        );
+        assert_ne!(image.rgba, skipped.rgba);
+    }
+    let (_, overflow) = render(
+        base.clone()
+            .text_decoration_offset(DecorationValue::Pixels(20.)),
+        &mut renderer,
+        &mut backend,
+    );
+    assert!(
+        red_count(&overflow.rgba[40 * 210 * 4..]) > 100,
+        "underline outside line box must not be clipped"
+    );
+    let (_, zero) = render(
+        base.clone()
+            .text_decoration_thickness(DecorationValue::Pixels(0.)),
+        &mut renderer,
+        &mut backend,
+    );
+    assert_eq!(red_count(&zero.rgba), 0);
+    let (_, percent) = render(
+        base.clone()
+            .text_decoration_thickness(DecorationValue::Percent(25.)),
+        &mut renderer,
+        &mut backend,
+    );
+    let (_, pixels) = render(
+        base.clone()
+            .text_decoration_thickness(DecorationValue::Pixels(6.)),
+        &mut renderer,
+        &mut backend,
+    );
+    assert_eq!(percent.rgba, pixels.rgba);
+    let run = TextRun::new("hello").size(24., 40.);
+    let decorated = run
+        .clone()
+        .text_decoration(TextDecoration::Underline)
+        .text_decoration_offset(DecorationValue::Pixels(20.));
+    assert_eq!(
+        backend.measure_runs(&[run]).unwrap().advance,
+        backend
+            .measure_runs(std::slice::from_ref(&decorated))
+            .unwrap()
+            .advance
+    );
+    assert!(
+        backend.raster_runs(&[decorated], 200., 1.).is_err(),
+        "bitmap-only callers cannot silently clip custom decorations"
+    );
+    for invalid in [
+        base.clone()
+            .text_decoration_thickness(DecorationValue::Pixels(-1.)),
+        base.clone()
+            .text_decoration_offset(DecorationValue::Pixels(f32::NAN)),
+        base.text_decoration(TextDecoration::Strikethrough),
+    ] {
+        let mut canvas = Canvas::new();
+        canvas.text(invalid);
+        gpu.render(&mut renderer, &canvas, [210, 80], 1., [0.; 4], &mut backend);
+        assert!(!renderer.problems().is_empty());
+    }
+}

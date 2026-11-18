@@ -564,7 +564,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, the Unicode profile below and
-explicit or automatic line heights. Custom decorations and scripts
+explicit or automatic line heights. Scripts
 outside the supported BMP profile remain unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
@@ -639,8 +639,26 @@ in uppercase; transformations outside the supported character/byte limits fail.
 
 CoreText uses font metrics for solid, automatic-color/offset/thickness decorations,
 matching the continuous automatic lines in the reference. Decorations share run color, transforms, clipping and
-shadows. Custom decoration styles and disabled skip-ink remain plugin
-errors. No new dependencies. `cargo run --example decorations --all-features`
+shadows. Custom underlines also support solid, dotted and wavy styles, pixel or
+font-size percentage thickness/offset, solid color overrides, and skip-ink.
+Use `.text_decoration_style(TextDecorationStyle::Wavy)`,
+`.text_decoration_thickness(DecorationValue::Pixels(2.))`,
+`.text_decoration_offset(DecorationValue::Percent(20.))`,
+`.text_decoration_color(color)` and `.text_decoration_skip_ink(false)`.
+These setters are on both `Text` and `TextRun`; types live in `text`. Automatic
+color follows the run paints. Zero thickness hides the underline. Custom settings
+require underline; custom strikethrough remains an error.
+
+Custom underlines use separate contours behind the glyphs, so offsets can extend
+outside the line box (explicit clipping still applies). Skip-ink subtracts gaps
+where glyph ink intersects the decoration, using CoreGraphics on macOS 13+.
+Older systems report unsupported skip-ink. Thickness is bounded to 128 logical
+units and offsets to ±2048; excess geometry reports a renderer problem. Custom
+backends must opt in with `validate_decoration` and return decoration contours
+from `outline_runs`; bitmap-only calls reject custom decorations.
+[Custom underline comparison](docs/custom-decorations-compare.png) comes from
+`cargo run --example custom_decorations --all-features`, with 12 live Figma cases.
+Small edge and skip-gap differences remain. No new dependencies. `cargo run --example decorations --all-features`
 renders [generated code beside Figma](docs/decorations-compare.png); glyph and
 antialiasing differences remain. Tests cover style boundaries, measurement,
 wrapping, invalid transformed text and unchanged-canvas uploads.

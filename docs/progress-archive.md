@@ -642,3 +642,20 @@ parity or live Desktop-plugin evidence. Richer text fills/strokes are next.
   removed temporary nodes. Explicit feature toggles are synthetic validation:
   the Figma plugin API exposes that map read-only. This does not complete the
   separate live development-plugin UI milestone.
+
+## 2026-11-19 — custom underlines
+
+- Added solid/dotted/wavy underline styles, Auto/Pixels/Percent thickness and
+  offsets, solid color overrides, and enabled/disabled skip-ink to Text/TextRun.
+  Separate contours preserve color and overflow behind glyphs; actual glyph
+  intersections determine skip gaps. Zero thickness hides the decoration.
+- Plugin emits the inspector settings and verifies decoration color bindings.
+  Unsupported/custom strikethrough settings still suppress all Rust. The plugin
+  remains read-only. CoreGraphics path operations require macOS 13+ for custom
+  skip-ink; unsupported backends fail explicitly. No dependencies added.
+- Captured 12 live Figma cases and rendered generated Rust at 2×; see the
+  [comparison](custom-decorations-compare.png). Glyph edges and small skip-gap
+  differences remain. PNG exports preserve custom color whereas the observed SVG
+  exports used the text fill; validation uses PNG. Synthetic checks cover color,
+  percentages, zero thickness, overflow, invalid values and unchanged uploads.
+  This does not complete the separate live development-plugin UI milestone.

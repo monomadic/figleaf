@@ -662,9 +662,9 @@ test('decorations and case export exact styled Rust and compile',()=>{
 test('unsupported decoration options, small caps and transformed scope fail without partial code',()=>{
   for(const patch of [{textCase:'UNKNOWN'},
     {textCase:'UPPER',characters:'µ'},{textCase:'UPPER',characters:'ȿ'},
-    {textDecorationStyle:'WAVY'},{textDecorationStyle:'DOTTED'},
-    {textDecorationOffset:{unit:'PIXELS',value:2}},{textDecorationThickness:{unit:'PERCENT',value:10}},
-    {textDecorationColor:{value:solid}},{textDecorationSkipInk:false}]) {
+    {textDecorationStyle:'DOUBLE'},
+    {textDecorationOffset:{unit:'PIXELS',value:Infinity}},{textDecorationThickness:{unit:'PERCENT',value:-10}},
+    {textDecorationColor:{value:{type:'GRADIENT_LINEAR'}}},{textDecorationSkipInk:'false'}]) {
     const r=exportHierarchy([text({textDecoration:'UNDERLINE',...patch})]);
     assert.equal(r.code,null);assert.ok(r.errors.length);
   }
@@ -795,4 +795,35 @@ test('unsupported lists and OpenType combinations fail without partial output',(
   const root=mixedTextFixture();root.children[0].styledSegments[1].listSpacing=12;
   assert.equal(exportHierarchy([root]).code,null);
   for(const textCase of ['SMALL_CAPS','SMALL_CAPS_FORCED'])assert.deepEqual(exportHierarchy([text({textCase})]).errors,[]);
+});
+
+test('custom underline inspector settings export and invalid settings fail closed',()=>{
+  const result=exportHierarchy([text({textDecoration:'UNDERLINE',textDecorationStyle:'WAVY',textDecorationOffset:{unit:'PIXELS',value:-6},textDecorationThickness:{unit:'PERCENT',value:10},textDecorationColor:{value:solid},textDecorationSkipInk:false})]);
+  assert.deepEqual(result.errors,[]);
+  for(const part of ['TextDecorationStyle::Wavy','DecorationValue::Pixels(-6.0)','DecorationValue::Percent(10.0)','text_decoration_color(','text_decoration_skip_ink(false)'])assert.ok(result.code.includes(part),part);
+  assert.deepEqual(exportHierarchy([text({textDecoration:'UNDERLINE',textDecorationStyle:'DOTTED'})]).errors,[]);
+  for(const patch of [{textDecoration:'STRIKETHROUGH',textDecorationStyle:'WAVY'}, {textDecoration:'UNDERLINE',textDecorationThickness:{unit:'PIXELS',value:129}}, {textDecoration:'UNDERLINE',textDecorationColor:{value:{...solid,boundVariables:{color:{type:'VARIABLE_ALIAS',id:'missing'}}}}}])assert.equal(exportHierarchy([text(patch)]).code,null);
+});
+
+test('live custom underline fixture generates exact compiling Rust',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'custom-decorations-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/custom_decorations.rs'),'utf8'));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-custom-decorations-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('custom decoration color bindings are verified before export',async()=>{
+  const alias={type:'VARIABLE_ALIAS',id:'underline-color'};
+  const n=text({textDecoration:'UNDERLINE',textDecorationColor:{value:{...solid,boundVariables:{color:alias}}}});
+  const missing=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>null});
+  assert.equal(missing.code,null);
+  let visited=false;
+  const valid=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>({name:'Underline',resolveForConsumer:()=>{visited=true;return {resolvedType:'COLOR',value:solid.color};}})});
+  assert.ok(visited);assert.deepEqual(Array.from(valid.errors),[]);assert.ok(valid.code.includes('text_decoration_color('));
 });

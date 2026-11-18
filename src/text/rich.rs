@@ -39,6 +39,73 @@ pub enum TextDecoration {
     Underline,
     Strikethrough,
 }
+/// Figma underline geometry. Percent values are relative to the font size.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum DecorationValue {
+    #[default]
+    Auto,
+    Pixels(f32),
+    Percent(f32),
+}
+impl DecorationValue {
+    pub(crate) fn resolve(self, size: f32) -> Option<f32> {
+        match self {
+            Self::Auto => None,
+            Self::Pixels(v) => Some(v),
+            Self::Percent(v) => Some(v * size / 100.),
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(u32)]
+pub enum TextDecorationStyle {
+    #[default]
+    Solid,
+    Wavy,
+    Dotted,
+}
+/// Custom underline settings; automatic color follows the run's paints.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DecorationOptions {
+    pub style: TextDecorationStyle,
+    pub offset: DecorationValue,
+    pub thickness: DecorationValue,
+    pub color: Option<Color>,
+    pub skip_ink: bool,
+}
+impl Default for DecorationOptions {
+    fn default() -> Self {
+        Self {
+            style: TextDecorationStyle::Solid,
+            offset: DecorationValue::Auto,
+            thickness: DecorationValue::Auto,
+            color: None,
+            skip_ink: true,
+        }
+    }
+}
+impl DecorationOptions {
+    pub fn validate(self, decoration: TextDecoration, size: f32) -> Result<(), Error> {
+        if self != Self::default() && decoration != TextDecoration::Underline {
+            return Err(Error("custom decoration settings require an underline"));
+        }
+        if self
+            .offset
+            .resolve(size)
+            .is_some_and(|v| !v.is_finite() || v.abs() > 2048.)
+            || self
+                .thickness
+                .resolve(size)
+                .is_some_and(|v| !v.is_finite() || !(0. ..=128.).contains(&v))
+            || self
+                .color
+                .is_some_and(|c| c.iter().any(|v| !v.is_finite() || !(0. ..=1.).contains(v)))
+        {
+            return Err(Error("invalid custom decoration dimensions or color"));
+        }
+        Ok(())
+    }
+}
 /// Locale-independent Latin casing. Title capitalizes word initials and preserves
 /// the rest of each word, as in Figma. Small caps need font-feature support.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -60,6 +127,7 @@ pub struct TextRun {
     /// Explicit paint stack; None uses color, Some(empty) leaves glyphs unfilled.
     pub paints: Option<Vec<crate::Paint>>,
     pub text_decoration: TextDecoration,
+    pub decoration_options: DecorationOptions,
     pub text_case: TextCase,
     pub open_type_features: Vec<OpenTypeFeature>,
     pub list_options: ListOptions,
@@ -86,6 +154,7 @@ impl TextRun {
             color: [0., 0., 0., 1.],
             paints: None,
             text_decoration: TextDecoration::None,
+            decoration_options: DecorationOptions::default(),
             text_case: TextCase::Original,
             open_type_features: Vec::new(),
             list_options: ListOptions::None,
@@ -118,6 +187,26 @@ impl TextRun {
     }
     pub fn hanging_list(mut self, hanging: bool) -> Self {
         self.hanging_list = hanging;
+        self
+    }
+    pub fn text_decoration_style(mut self, value: TextDecorationStyle) -> Self {
+        self.decoration_options.style = value;
+        self
+    }
+    pub fn text_decoration_offset(mut self, value: DecorationValue) -> Self {
+        self.decoration_options.offset = value;
+        self
+    }
+    pub fn text_decoration_thickness(mut self, value: DecorationValue) -> Self {
+        self.decoration_options.thickness = value;
+        self
+    }
+    pub fn text_decoration_color(mut self, value: Color) -> Self {
+        self.decoration_options.color = Some(value);
+        self
+    }
+    pub fn text_decoration_skip_ink(mut self, value: bool) -> Self {
+        self.decoration_options.skip_ink = value;
         self
     }
     pub fn text_decoration(mut self, value: TextDecoration) -> Self {
@@ -296,6 +385,7 @@ fn list_paragraphs(
                 format!("{}.", counter(counts[level - 1], level))
             };
             marker.text_decoration = TextDecoration::None;
+            marker.decoration_options = DecorationOptions::default();
             marker.list_options = ListOptions::None;
             marker.indentation = 0;
             marker.list_spacing = 0.;
@@ -390,6 +480,8 @@ pub fn validate_runs(
         ));
     }
     for run in runs {
+        run.decoration_options
+            .validate(run.text_decoration, run.style.size)?;
         validate_features(&run.open_type_features)?;
         if run.indentation > 5
             || run.list_options != ListOptions::None && run.indentation == 0
@@ -469,6 +561,8 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
     let mut resolved = runs.to_vec();
     let mut in_word = false;
     for run in &mut resolved {
+        run.decoration_options
+            .validate(run.text_decoration, run.style.size)?;
         validate_features(&run.open_type_features)?;
         if matches!(
             run.text_case,
@@ -491,6 +585,8 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
             }
         }
         run.open_type_features.sort();
+        run.decoration_options
+            .validate(run.text_decoration, run.style.size)?;
         validate_features(&run.open_type_features)?;
         let mut transformed = String::new();
         for c in run.text.chars() {
@@ -547,6 +643,7 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
     let mut resolved = backend.resolve_fonts(&resolved)?;
     for run in &mut resolved {
         run.style = resolve_style(backend, run.style)?;
+        backend.validate_decoration(run.decoration_options)?;
         backend.validate_open_type_features(run.style, &run.open_type_features)?;
     }
     Ok(resolved)
@@ -877,6 +974,7 @@ fn ellipsize(
         // Figma's ellipsis takes the first omitted character's style, but is not
         // underlined or struck through along with the source text.
         ellipsis.text_decoration = TextDecoration::None;
+        ellipsis.decoration_options = DecorationOptions::default();
         let mut candidate = slice(runs, line.source_start, end);
         let merged = candidate.last_mut().is_some_and(|last| {
             let mut comparable = last.clone();

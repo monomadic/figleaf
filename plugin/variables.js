@@ -34,10 +34,11 @@ async function exportWithVariables(selection, colorProfile, variables, resources
       const own = {...(node.boundVariables || {})};
       delete own.fills; delete own.strokes; delete own.effects;
       bindings(own, 'node');
+      if(node.textDecorationColor?.value?.type)paints([node.textDecorationColor.value], 'textDecorationColor');
       paints(node.fills, 'fills'); paints(node.strokes, 'strokes'); paints(node.effects, 'effects');
       for (const region of node.vectorNetwork?.regions || []) paints(region.fills, 'region.fills');
       if(node.type==='TEXT'&&node.getStyledTextSegments) {
-        for(const [i,run] of node.getStyledTextSegments(['fills','boundVariables']).entries()) {bindings(run.boundVariables||{},`text.runs[${i}]`);paints(run.fills,`text.runs[${i}].fills`);}
+        for(const [i,run] of node.getStyledTextSegments(['fills','boundVariables','textDecorationColor']).entries()) {bindings(run.boundVariables||{},`text.runs[${i}]`);paints(run.fills,`text.runs[${i}].fills`);if(run.textDecorationColor?.value?.type)paints([run.textDecorationColor.value],`text.runs[${i}].textDecorationColor`);}
       }
       const notes = [];
       for (const [id, fields] of aliases) {

@@ -186,7 +186,9 @@ typedef struct {
     size_t len;
     double height, tracking;
     double color[4];
-    uint32_t decoration;
+    uint32_t decoration, decoration_style;
+    double decoration_offset, decoration_thickness;
+    uint32_t custom_decoration, skip_ink;
     int32_t direction, kerning;
 } StyledRun;
 typedef struct { uint32_t run, kind; double points[6]; } OutlineCommand;
@@ -240,6 +242,7 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
     metrics->ascent=ascent;metrics->descent=descent;
     metrics->baseline=(height-ascent-descent)/2+ascent;
     metrics->glyphs=(uint32_t)CTLineGetGlyphCount(line);metrics->lines=1;
+    CGMutablePathRef ink=CGPathCreateMutable();
     CFArrayRef runs=CTLineGetGlyphRuns(line);
     for(CFIndex i=0;i<CFArrayGetCount(runs);i++) {
         CTRunRef run=(CTRunRef)CFArrayGetValueAtIndex(runs,i);
@@ -259,7 +262,7 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
             for(CFIndex j=0;j<n;j++) {
                 CGAffineTransform transform=CGAffineTransformMake(1,0,0,-1,positions[j].x,metrics->baseline-positions[j].y);
                 CGPathRef path=CTFontCreatePathForGlyph(actual,glyphs[j],&transform);
-                if(path){CGPathApply(path,&sink,outline_element);CGPathRelease(path);}
+                if(path){CGPathAddPath(ink,NULL,path);CGPathApply(path,&sink,outline_element);CGPathRelease(path);}
                 else {
                     CGRect bounds;CTFontGetBoundingRectsForGlyphs(actual,kCTFontOrientationDefault,&glyphs[j],&bounds,1);
                     if(!CGRectIsEmpty(bounds))status=7;
@@ -306,17 +309,64 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                     double bottom=r->decoration==1
                         ? baseline+CTFontGetUnderlinePosition(font)-thickness*1.5
                         : baseline+position-thickness;
-                    if(bottom<0 || bottom+thickness>box_height || thickness<=0) {
+                    if(!r->custom_decoration && (bottom<0 || bottom+thickness>box_height || thickness<=0)) {
                         status=6;break;
                     }
-                    // Automatic decorations are continuous in the Figma export;
-                    // custom placement/style/skip-ink controls are not supported.
-                    if(ctx)CGContextFillRect(ctx,CGRectMake(x,bottom,end_x-x,thickness));
-                    if(commands) {
-                        OutlineSink sink={commands,command_count,(uint32_t)i,0};
-                        CGPathRef path=CGPathCreateWithRect(CGRectMake(x,box_height-bottom-thickness,end_x-x,thickness),NULL);
-                        CGPathApply(path,&sink,outline_element);CGPathRelease(path);
-                        if(sink.overflow)status=4;
+                    if(r->custom_decoration) {
+                        if(!commands){status=7;break;}
+                        double top=isnan(r->decoration_offset)
+                            ? metrics->baseline-CTFontGetUnderlinePosition(font)+thickness*.5
+                            : metrics->baseline+r->decoration_offset;
+                        if(!isnan(r->decoration_thickness))thickness=r->decoration_thickness;
+                        if(thickness==0){start=end;continue;}
+                        if((end_x-x)/thickness>8192){status=4;break;}
+                        CGMutablePathRef decoration=CGPathCreateMutable();
+                        if(r->decoration_style==0)CGPathAddRect(decoration,NULL,CGRectMake(x,top,end_x-x,thickness));
+                        else if(r->decoration_style==2) {
+                            for(double left=x;left+thickness<=end_x;left+=2*thickness)
+                                CGPathAddEllipseInRect(decoration,NULL,CGRectMake(left,top,thickness,thickness));
+                        } else {
+                            CGMutablePathRef wave=CGPathCreateMutable();
+                            double half=1.75*thickness,y=top+thickness;
+                            CGPathMoveToPoint(wave,NULL,x,y);
+                            for(double left=x;left+half<=end_x;left+=half) {
+                                double next=y==top?top+thickness:top;
+                                CGPathAddCurveToPoint(wave,NULL,left+half/2,y,left+half/2,next,left+half,next);y=next;
+                            }
+                            CGPathRef stroke=CGPathCreateCopyByStrokingPath(wave,NULL,thickness*2/3,kCGLineCapRound,kCGLineJoinRound,10);
+                            CGPathAddPath(decoration,NULL,stroke);CGPathRelease(stroke);CGPathRelease(wave);
+                        }
+                        CGPathRef result=CGPathCreateCopy(decoration);CGPathRelease(decoration);
+                        if(r->skip_ink) {
+                            if(__builtin_available(macOS 13.0, *)) {
+                                // Only ink that actually intersects the decoration opens a gap.
+                                CGRect band=CGPathGetPathBoundingBox(result);
+                                CGPathRef intersections=CGPathCreateCopyByIntersectingPath(ink,result,false);
+                                CFArrayRef parts=intersections?CGPathCreateSeparateComponents(intersections,false):NULL;
+                                CGMutablePathRef gaps=CGPathCreateMutable();
+                                if(!parts){status=7;} else for(CFIndex k=0;k<CFArrayGetCount(parts);k++) {
+                                    CGRect b=CGPathGetPathBoundingBox((CGPathRef)CFArrayGetValueAtIndex(parts,k));
+                                    CGPathAddRect(gaps,NULL,CGRectMake(b.origin.x-thickness,band.origin.y-thickness,b.size.width+2*thickness,band.size.height+2*thickness));
+                                }
+                                CGPathRef cut=CGPathCreateCopyBySubtractingPath(result,gaps,false);
+                                CGPathRelease(result);result=cut;
+                                CGPathRelease(gaps);if(parts)CFRelease(parts);if(intersections)CGPathRelease(intersections);
+                            } else status=7;
+                        }
+                        if(!result)status=7;
+                        else {
+                            OutlineSink sink={commands,command_count,(uint32_t)(count+i),0};
+                            CGPathApply(result,&sink,outline_element);CGPathRelease(result);
+                            if(sink.overflow)status=4;
+                        }
+                    } else {
+                        if(ctx)CGContextFillRect(ctx,CGRectMake(x,bottom,end_x-x,thickness));
+                        if(commands) {
+                            OutlineSink sink={commands,command_count,(uint32_t)i,0};
+                            CGPathRef path=CGPathCreateWithRect(CGRectMake(x,box_height-bottom-thickness,end_x-x,thickness),NULL);
+                            CGPathApply(path,&sink,outline_element);CGPathRelease(path);
+                            if(sink.overflow)status=4;
+                        }
                     }
                 }
                 start=end;
@@ -324,7 +374,7 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
             if(ctx)CGContextRelease(ctx);
         }
     }
-    CFRelease(line);CFRelease(attributed);CGColorSpaceRelease(space);return status;
+    CGPathRelease(ink);CFRelease(line);CFRelease(attributed);CGColorSpaceRelease(space);return status;
 }
 
 // Natural height includes the font’s own leading, never a guessed multiplier.

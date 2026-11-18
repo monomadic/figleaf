@@ -1122,6 +1122,7 @@ pub struct Text {
     /// Explicit styled runs. When nonempty, the plain string must be empty.
     pub runs: Vec<text::TextRun>,
     pub text_decoration: text::TextDecoration,
+    pub decoration_options: text::DecorationOptions,
     pub text_case: text::TextCase,
     pub open_type_features: Vec<text::OpenTypeFeature>,
     pub list_options: text::ListOptions,
@@ -1169,6 +1170,7 @@ impl Text {
             string: string.into(),
             runs: Vec::new(),
             text_decoration: text::TextDecoration::None,
+            decoration_options: text::DecorationOptions::default(),
             text_case: text::TextCase::Original,
             open_type_features: Vec::new(),
             list_options: text::ListOptions::None,
@@ -1237,6 +1239,26 @@ impl Text {
         self.hanging_list = hanging;
         self
     }
+    pub fn text_decoration_style(mut self, value: text::TextDecorationStyle) -> Self {
+        self.decoration_options.style = value;
+        self
+    }
+    pub fn text_decoration_offset(mut self, value: text::DecorationValue) -> Self {
+        self.decoration_options.offset = value;
+        self
+    }
+    pub fn text_decoration_thickness(mut self, value: text::DecorationValue) -> Self {
+        self.decoration_options.thickness = value;
+        self
+    }
+    pub fn text_decoration_color(mut self, value: Color) -> Self {
+        self.decoration_options.color = Some(value);
+        self
+    }
+    pub fn text_decoration_skip_ink(mut self, value: bool) -> Self {
+        self.decoration_options.skip_ink = value;
+        self
+    }
     pub fn text_decoration(mut self, value: text::TextDecoration) -> Self {
         self.text_decoration = value;
         self
@@ -1271,6 +1293,7 @@ impl Text {
             || self.text_truncation != text::TextTruncation::Disabled
             || self.max_lines.is_some()
             || self.text_decoration != text::TextDecoration::None
+            || self.decoration_options != text::DecorationOptions::default()
             || self.text_case != text::TextCase::Original
             || self.line_height == 0.
             || self.paragraph_spacing != 0.

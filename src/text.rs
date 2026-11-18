@@ -9,9 +9,9 @@ mod unicode;
 #[cfg(feature = "wgpu")]
 pub(crate) use rich::validate_truncation;
 pub use rich::{
-    ListMarker, ListOptions, OpenTypeFeature, ParagraphStyle, RunLine, RunMask, TextCase,
-    TextDecoration, TextRun, TextTruncation, layout_paragraphs, layout_runs, layout_text,
-    resolve_runs, resolve_style, validate_runs,
+    DecorationOptions, DecorationValue, ListMarker, ListOptions, OpenTypeFeature, ParagraphStyle,
+    RunLine, RunMask, TextCase, TextDecoration, TextDecorationStyle, TextRun, TextTruncation,
+    layout_paragraphs, layout_runs, layout_text, resolve_runs, resolve_style, validate_runs,
 };
 pub(crate) use unicode::break_space;
 pub use unicode::{TextBoundaries, TextDirection};
@@ -120,9 +120,19 @@ pub struct Mask {
 /// Coordinates are logical units, x right and y down from the line top.
 pub struct RunOutlines {
     pub paths: Vec<crate::VectorPath>,
+    /// Separate decoration contours, one per run, painted behind glyphs.
+    pub decoration_paths: Vec<crate::VectorPath>,
     pub metrics: Metrics,
 }
 pub trait Backend {
+    fn validate_decoration(&mut self, options: DecorationOptions) -> Result<(), Error> {
+        if options != DecorationOptions::default() {
+            return Err(Error(
+                "custom text decorations are unsupported by this backend",
+            ));
+        }
+        Ok(())
+    }
     /// Backends must explicitly support overrides; never silently ignore them.
     fn validate_open_type_features(
         &mut self,
@@ -209,6 +219,11 @@ pub mod coretext {
         tracking: f64,
         color: [f64; 4],
         decoration: u32,
+        decoration_style: u32,
+        decoration_offset: f64,
+        decoration_thickness: f64,
+        custom_decoration: u32,
+        skip_ink: u32,
         direction: i32,
         kerning: i32,
     }
@@ -439,6 +454,21 @@ pub mod coretext {
                     tracking: run.style.letter_spacing as f64,
                     color: run.color.map(f64::from),
                     decoration: run.text_decoration as u32,
+                    decoration_style: run.decoration_options.style as u32,
+                    decoration_offset: run
+                        .decoration_options
+                        .offset
+                        .resolve(run.style.size)
+                        .map_or(f64::NAN, f64::from),
+                    decoration_thickness: run
+                        .decoration_options
+                        .thickness
+                        .resolve(run.style.size)
+                        .map_or(f64::NAN, f64::from),
+                    custom_decoration: u32::from(
+                        run.decoration_options != DecorationOptions::default(),
+                    ),
+                    skip_ink: u32::from(run.decoration_options.skip_ink),
                     direction: run.direction as i32,
                     kerning: run
                         .open_type_features
@@ -517,6 +547,9 @@ pub mod coretext {
         }
     }
     impl Backend for CoreText {
+        fn validate_decoration(&mut self, _options: DecorationOptions) -> Result<(), Error> {
+            Ok(())
+        }
         fn validate_open_type_features(
             &mut self,
             style: Style,
@@ -543,7 +576,8 @@ pub mod coretext {
             // Layout has already resolved case, fallback and natural heights.
             let mut commands = vec![OutlineCommand::default(); 65536];
             let metrics = self.styled(runs, 1., None, Some(&mut commands))?;
-            let mut paths = vec![crate::VectorPath::new(crate::WindingRule::NonZero); runs.len()];
+            let mut paths =
+                vec![crate::VectorPath::new(crate::WindingRule::NonZero); runs.len() * 2];
             for c in commands {
                 let path = paths
                     .get_mut(c.run as usize)
@@ -559,7 +593,12 @@ pub mod coretext {
                     _ => return Err(Error("invalid glyph outline")),
                 });
             }
-            Ok(RunOutlines { paths, metrics })
+            let decoration_paths = paths.split_off(runs.len());
+            Ok(RunOutlines {
+                paths,
+                decoration_paths,
+                metrics,
+            })
         }
 
         fn text_boundaries(&mut self, text: &str) -> Result<TextBoundaries, Error> {
