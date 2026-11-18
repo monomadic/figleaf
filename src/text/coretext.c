@@ -26,10 +26,36 @@ void figleaf_ct_drop(void *font) {
     CGFontRelease((CGFontRef)font);
 }
 
+// Verify a requested feature exists in the supplied font, instead of accepting
+// CoreText's silent no-op for unknown tags. All table reads are bounds checked.
+static uint16_t be16(const uint8_t *p) { return (uint16_t)((p[0]<<8)|p[1]); }
+static uint32_t be32(const uint8_t *p) { return ((uint32_t)be16(p)<<16)|be16(p+2); }
+static bool has_feature(CTFontRef font, uint32_t tag) {
+    for(int i=0;i<2;i++) {
+        CFDataRef data=CTFontCopyTable(font,i?kCTFontTableGPOS:kCTFontTableGSUB,kCTFontTableOptionNoOptions);
+        if(!data)continue;
+        const uint8_t *p=CFDataGetBytePtr(data);size_t len=(size_t)CFDataGetLength(data);
+        bool found=false;
+        if(len>=10) {
+            size_t at=be16(p+6);
+            if(at && at+2<=len) {
+                size_t count=be16(p+at);
+                if(count<=(len-at-2)/6)for(size_t j=0;j<count;j++)if(be32(p+at+2+j*6)==tag)found=true;
+            }
+        }
+        CFRelease(data);if(found)return true;
+    }
+    if(tag==0x6b65726e) {
+        CFDataRef data=CTFontCopyTable(font,kCTFontTableKern,kCTFontTableOptionNoOptions);
+        if(data){CFRelease(data);return true;}
+    }
+    return false;
+}
 // Applies exactly the caller's axis values. An axis left out (optical size in
 // particular) is resolved by CoreText at the logical point size.
 void *figleaf_ct_instance(void *base, double size, const uint32_t *tags,
-                        const double *axis_values, size_t count) {
+                        const double *axis_values, size_t count, const uint32_t *feature_tags,
+                        const int32_t *feature_values, size_t feature_count) {
     CFMutableDictionaryRef axes = CFDictionaryCreateMutable(
         NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     for (size_t i = 0; i < count; i++) {
@@ -54,6 +80,24 @@ void *figleaf_ct_instance(void *base, double size, const uint32_t *tags,
         CFRelease(font);
         return NULL;
     }
+    if(font && feature_count) {
+        CFMutableArrayRef settings=CFArrayCreateMutable(NULL,0,&kCFTypeArrayCallBacks);
+        for(size_t i=0;i<feature_count;i++) {
+            if(!has_feature(font,feature_tags[i])) {CFRelease(settings);CFRelease(font);return NULL;}
+            uint32_t tag=feature_tags[i];uint8_t bytes[4]={tag>>24,tag>>16,tag>>8,tag};
+            CFStringRef name=CFStringCreateWithBytes(NULL,bytes,4,kCFStringEncodingASCII,false);
+            CFNumberRef value=CFNumberCreate(NULL,kCFNumberSInt32Type,&feature_values[i]);
+            const void *keys[]={kCTFontOpenTypeFeatureTag,kCTFontOpenTypeFeatureValue};
+            const void *values[]={name,value};
+            CFDictionaryRef setting=CFDictionaryCreate(NULL,keys,values,2,&kCFTypeDictionaryKeyCallBacks,&kCFTypeDictionaryValueCallBacks);
+            CFArrayAppendValue(settings,setting);CFRelease(setting);CFRelease(name);CFRelease(value);
+        }
+        const void *keys[]={kCTFontFeatureSettingsAttribute};const void *values[]={settings};
+        CFDictionaryRef attrs=CFDictionaryCreate(NULL,keys,values,1,&kCFTypeDictionaryKeyCallBacks,&kCFTypeDictionaryValueCallBacks);
+        CTFontDescriptorRef descriptor=CTFontDescriptorCreateWithAttributes(attrs);
+        CTFontRef featured=CTFontCreateCopyWithAttributes(font,0,NULL,descriptor);
+        CFRelease(font);CFRelease(descriptor);CFRelease(attrs);CFRelease(settings);font=featured;
+    }
     return (void *)font;
 }
 
@@ -74,7 +118,7 @@ int figleaf_ct_run(void *base, const uint8_t *text, size_t len,
                           kCTKernAttributeName};
     const void *values[] = {font, kCFBooleanTrue, kern};
     CFDictionaryRef attrs = CFDictionaryCreate(
-        NULL, keys, values, 3,
+        NULL, keys, values, tracking==0?2:3,
         &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFRelease(kern);
     CFAttributedStringRef attributed = CFAttributedStringCreate(NULL, string, attrs);
@@ -143,7 +187,7 @@ typedef struct {
     double height, tracking;
     double color[4];
     uint32_t decoration;
-    int32_t direction;
+    int32_t direction, kerning;
 } StyledRun;
 typedef struct { uint32_t run, kind; double points[6]; } OutlineCommand;
 typedef struct { OutlineCommand *commands; size_t *count; uint32_t run; int overflow; } OutlineSink;
@@ -174,7 +218,8 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
         CFNumberRef kern=CFNumberCreate(NULL,kCFNumberDoubleType,&r->tracking);
         CGColorRef color=CGColorCreate(space,r->color);
         CFAttributedStringSetAttribute(attributed,range,kCTFontAttributeName,font);
-        CFAttributedStringSetAttribute(attributed,range,kCTKernAttributeName,kern);
+        if(r->kerning!=0 && r->tracking==0)CFAttributedStringRemoveAttribute(attributed,range,kCTKernAttributeName);
+        else CFAttributedStringSetAttribute(attributed,range,kCTKernAttributeName,kern);
         CFAttributedStringSetAttribute(attributed,range,kCTForegroundColorAttributeName,color);
         int run_index=(int)i;
         CFNumberRef run_id=CFNumberCreate(NULL,kCFNumberIntType,&run_index);

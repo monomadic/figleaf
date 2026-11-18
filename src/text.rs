@@ -9,8 +9,9 @@ mod unicode;
 #[cfg(feature = "wgpu")]
 pub(crate) use rich::validate_truncation;
 pub use rich::{
-    ParagraphStyle, RunLine, RunMask, TextCase, TextDecoration, TextRun, TextTruncation,
-    layout_paragraphs, layout_runs, layout_text, resolve_runs, resolve_style, validate_runs,
+    ListMarker, ListOptions, OpenTypeFeature, ParagraphStyle, RunLine, RunMask, TextCase,
+    TextDecoration, TextRun, TextTruncation, layout_paragraphs, layout_runs, layout_text,
+    resolve_runs, resolve_style, validate_runs,
 };
 pub(crate) use unicode::break_space;
 pub use unicode::{TextBoundaries, TextDirection};
@@ -122,6 +123,19 @@ pub struct RunOutlines {
     pub metrics: Metrics,
 }
 pub trait Backend {
+    /// Backends must explicitly support overrides; never silently ignore them.
+    fn validate_open_type_features(
+        &mut self,
+        _style: Style,
+        features: &[OpenTypeFeature],
+    ) -> Result<(), Error> {
+        if features.is_empty() {
+            Ok(())
+        } else {
+            Err(Error("backend does not support OpenType overrides"))
+        }
+    }
+
     /// One nonzero path per input run, preserving its holes. Call `resolve_runs`
     /// first for case, direction, font fallback and natural heights.
     fn outline_runs(&mut self, _runs: &[TextRun]) -> Result<RunOutlines, Error> {
@@ -196,6 +210,7 @@ pub mod coretext {
         color: [f64; 4],
         decoration: u32,
         direction: i32,
+        kerning: i32,
     }
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
@@ -234,6 +249,9 @@ pub mod coretext {
             tags: *const u32,
             values: *const f64,
             count: usize,
+            feature_tags: *const u32,
+            feature_values: *const i32,
+            feature_count: usize,
         ) -> *mut c_void;
         fn figleaf_ct_instance_drop(font: *mut c_void);
         fn figleaf_ct_run(
@@ -268,7 +286,7 @@ pub mod coretext {
     /// fallback chains cover missing glyphs, never missing primary fonts.
     pub struct CoreText {
         fonts: Vec<Option<Loaded>>,
-        instances: Vec<(usize, u32, Instance)>,
+        instances: Vec<(usize, u32, Vec<OpenTypeFeature>, Instance)>,
         fallbacks: Vec<usize>,
         font_fallbacks: Vec<(usize, Vec<usize>)>,
     }
@@ -345,11 +363,17 @@ pub mod coretext {
                 .map_or(self.fallbacks.as_slice(), |(_, chain)| chain.as_slice())
         }
         fn instance(&mut self, style: Style) -> Result<usize, Error> {
-            if let Some(i) = self
-                .instances
-                .iter()
-                .position(|(f, s, _)| *f == style.font && *s == style.size.to_bits())
-            {
+            self.featured_instance(style, &[])
+        }
+        fn featured_instance(
+            &mut self,
+            style: Style,
+            features: &[OpenTypeFeature],
+        ) -> Result<usize, Error> {
+            rich::validate_features(features)?;
+            if let Some(i) = self.instances.iter().position(|(f, s, fs, _)| {
+                *f == style.font && *s == style.size.to_bits() && fs == features
+            }) {
                 return Ok(i);
             }
             let (font, tags, values) = self
@@ -361,6 +385,8 @@ pub mod coretext {
             if self.instances.len() >= 64 {
                 return Err(Error("CoreText font-instance budget exceeded"));
             }
+            let feature_tags: Vec<_> = features.iter().map(|f| u32::from_be_bytes(f.tag)).collect();
+            let feature_values: Vec<_> = features.iter().map(|f| i32::from(f.enabled)).collect();
             // Tags and values stay alive for this synchronous call and have equal length.
             let ptr = NonNull::new(unsafe {
                 figleaf_ct_instance(
@@ -369,11 +395,20 @@ pub mod coretext {
                     tags.as_ptr(),
                     values.as_ptr(),
                     tags.len(),
+                    feature_tags.as_ptr(),
+                    feature_values.as_ptr(),
+                    features.len(),
                 )
             })
-            .ok_or(Error("CoreText font instance failed"))?;
-            self.instances
-                .push((style.font, style.size.to_bits(), Instance(ptr)));
+            .ok_or(Error(
+                "CoreText font or requested OpenType feature unavailable",
+            ))?;
+            self.instances.push((
+                style.font,
+                style.size.to_bits(),
+                features.to_vec(),
+                Instance(ptr),
+            ));
             Ok(self.instances.len() - 1)
         }
         fn styled(
@@ -385,9 +420,19 @@ pub mod coretext {
         ) -> Result<Metrics, Error> {
             let mut input = Vec::new();
             for run in runs {
-                let i = self.instance(run.style)?;
+                if run.style.letter_spacing != 0.
+                    && run
+                        .open_type_features
+                        .iter()
+                        .any(|f| f.tag == *b"kern" && f.enabled)
+                {
+                    return Err(Error(
+                        "enabled kerning with nonzero tracking is unsupported",
+                    ));
+                }
+                let i = self.featured_instance(run.style, &run.open_type_features)?;
                 input.push(StyledRun {
-                    font: self.instances[i].2.0.as_ptr(),
+                    font: self.instances[i].3.0.as_ptr(),
                     text: run.text.as_ptr(),
                     len: run.text.len(),
                     height: run.style.line_height as f64,
@@ -395,6 +440,11 @@ pub mod coretext {
                     color: run.color.map(f64::from),
                     decoration: run.text_decoration as u32,
                     direction: run.direction as i32,
+                    kerning: run
+                        .open_type_features
+                        .iter()
+                        .find(|f| f.tag == *b"kern")
+                        .map_or(-1, |f| i32::from(f.enabled)),
                 });
             }
             let (ptr, w, h) = pixels.map_or((std::ptr::null_mut(), 0, 0), |(p, w, h)| {
@@ -447,7 +497,7 @@ pub mod coretext {
             // exactly w*h bytes and the repr(C) metrics struct matches the shim.
             let result = unsafe {
                 figleaf_ct_run(
-                    self.instances[index].2.0.as_ptr(),
+                    self.instances[index].3.0.as_ptr(),
                     text.as_ptr(),
                     text.len(),
                     style.line_height as f64,
@@ -467,6 +517,20 @@ pub mod coretext {
         }
     }
     impl Backend for CoreText {
+        fn validate_open_type_features(
+            &mut self,
+            style: Style,
+            features: &[OpenTypeFeature],
+        ) -> Result<(), Error> {
+            if style.letter_spacing != 0. && features.iter().any(|f| f.tag == *b"kern" && f.enabled)
+            {
+                return Err(Error(
+                    "enabled kerning with nonzero tracking is unsupported",
+                ));
+            }
+            self.featured_instance(style, features).map(|_| ())
+        }
+
         fn outline_runs(&mut self, runs: &[TextRun]) -> Result<RunOutlines, Error> {
             validate_runs(runs, MAX_WIDTH, 1., false)?;
             if runs.iter().any(|r| {
@@ -582,7 +646,7 @@ pub mod coretext {
                 if cluster == "\n"
                     || unsafe {
                         figleaf_ct_covers(
-                            self.instances[primary_instance].2.0.as_ptr(),
+                            self.instances[primary_instance].3.0.as_ptr(),
                             probe.as_ptr(),
                             probe.len(),
                         )
@@ -597,7 +661,7 @@ pub mod coretext {
                         let index = self.instance(style)?;
                         if unsafe {
                             figleaf_ct_covers(
-                                self.instances[index].2.0.as_ptr(),
+                                self.instances[index].3.0.as_ptr(),
                                 probe.as_ptr(),
                                 probe.len(),
                             )
@@ -656,7 +720,7 @@ pub mod coretext {
             checked.line_height = checked.size;
             validate("M", checked, 1., 1.)?;
             let index = self.instance(style)?;
-            Ok(unsafe { figleaf_ct_height(self.instances[index].2.0.as_ptr()) } as f32)
+            Ok(unsafe { figleaf_ct_height(self.instances[index].3.0.as_ptr()) } as f32)
         }
         fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
             validate_runs(runs, 1., 1., false)?;

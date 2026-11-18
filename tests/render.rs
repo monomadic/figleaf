@@ -2892,3 +2892,153 @@ fn text_image_and_pattern_paints_follow_glyph_coverage() {
         }
     }
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn opentype_features_change_shaping_and_reject_unavailable_features() {
+    use figleaf::text::{
+        Backend, FontSource, OpenTypeFeature as Feature, TextCase, TextRun, coretext::CoreText,
+        resolve_runs,
+    };
+    let mut backend = CoreText::new(&[
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/SourceSerif4.ttf"),
+            axes: &[],
+        }),
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+            axes: &[],
+        }),
+    ])
+    .unwrap();
+    let base = TextRun::new("office ffi").size(30., 40.);
+    let on = base
+        .clone()
+        .open_type_features(vec![Feature::new(*b"liga", true)]);
+    let off = base
+        .clone()
+        .open_type_features(vec![Feature::new(*b"liga", false)]);
+    let a = backend.measure_runs(std::slice::from_ref(&on)).unwrap();
+    let b = backend.measure_runs(std::slice::from_ref(&off)).unwrap();
+    assert!(
+        a.glyphs < b.glyphs,
+        "ligatures must change the shaped glyph sequence"
+    );
+    let raster = backend
+        .raster_runs(std::slice::from_ref(&on), 300., 2.)
+        .unwrap();
+    assert_eq!(raster.metrics.advance, a.advance);
+    let resolved = resolve_runs(&mut backend, &[on]).unwrap();
+    let outline = backend.outline_runs(&resolved).unwrap();
+    assert_eq!(outline.metrics.advance, a.advance);
+    let kerned = TextRun::new("AV").size(30., 40.);
+    let unkerned = kerned
+        .clone()
+        .open_type_features(vec![Feature::new(*b"kern", false)]);
+    assert!(
+        backend.measure_runs(&[kerned]).unwrap().advance
+            < backend.measure_runs(&[unkerned]).unwrap().advance
+    );
+    let caps = base.clone().text_case(TextCase::SmallCaps);
+    assert_ne!(
+        backend
+            .measure_runs(std::slice::from_ref(&caps))
+            .unwrap()
+            .advance,
+        backend
+            .measure_runs(std::slice::from_ref(&base))
+            .unwrap()
+            .advance
+    );
+    assert!(backend.measure_runs(&[caps.font(1)]).is_err());
+    assert!(
+        backend
+            .measure_runs(&[base
+                .clone()
+                .open_type_features(vec![Feature::new(*b"zzzz", true)])])
+            .is_err()
+    );
+    assert!(
+        backend
+            .measure_runs(&[base
+                .clone()
+                .open_type_features(vec![Feature::new(*b"kern", true)])
+                .letter_spacing(1.)])
+            .is_err()
+    );
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let make = |enabled| {
+        let mut c = Canvas::new();
+        c.text(
+            Text::new("office ffi", Rect::new(2., 2., 180., 44.))
+                .size(30., 40.)
+                .open_type_features(vec![Feature::new(*b"liga", enabled)]),
+        );
+        c
+    };
+    let canvas = make(true);
+    let a = gpu.render(&mut renderer, &canvas, [200, 50], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    let report = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &canvas,
+            [200, 50],
+            1.,
+            &mut backend,
+        )
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    let b = gpu.render(
+        &mut renderer,
+        &make(false),
+        [200, 50],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_ne!(a.rgba, b.rgba);
+}
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn list_markers_render_with_paints_strokes_and_cache() {
+    use figleaf::{
+        Paint,
+        text::{FontSource, ListOptions, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.text(
+        Text::new("First\nSecond", Rect::new(20., 2., 160., 70.))
+            .size(18., 26.)
+            .list_options(ListOptions::Ordered)
+            .hanging_list(true)
+            .paints(vec![Paint::Solid(hex(0x0000ff))])
+            .stroke(0.5, hex(0xff0000), StrokeAlign::Outside)
+            .wrap(),
+    );
+    let image = gpu.render(&mut renderer, &c, [200, 80], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    assert!(
+        image
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .enumerate()
+            .any(|(i, p)| i % 200 < 20 && p[3] > 0)
+    );
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [200, 80], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+}

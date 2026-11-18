@@ -564,7 +564,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, the Unicode profile below and
-explicit or automatic line heights. Small caps, custom decorations and scripts
+explicit or automatic line heights. Custom decorations and scripts
 outside the supported BMP profile remain unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
@@ -611,7 +611,8 @@ Styled runs can override either setting with the same builders; unset values
 inherit the text layer. Runs within one paragraph, including its terminating
 newline, must agree on paragraph settings. Conflicts fail closed. Spacing and
 indentation must be finite and nonnegative, and indentation must leave positive
-line width. Lists, list indentation and hanging punctuation remain unsupported.
+line width. Lists have their own spacing and nesting settings below; hanging
+punctuation remains unsupported.
 
 `text::layout_paragraphs(.., ParagraphStyle { spacing, indent })` exposes the same
 layout to hosts. `RunLine` carries `indent`, `available_width` and `spacing_after`;
@@ -638,7 +639,7 @@ in uppercase; transformations outside the supported character/byte limits fail.
 
 CoreText uses font metrics for solid, automatic-color/offset/thickness decorations,
 matching the continuous automatic lines in the reference. Decorations share run color, transforms, clipping and
-shadows. Small caps, custom decoration styles and disabled skip-ink remain plugin
+shadows. Custom decoration styles and disabled skip-ink remain plugin
 errors. No new dependencies. `cargo run --example decorations --all-features`
 renders [generated code beside Figma](docs/decorations-compare.png); glyph and
 antialiasing differences remain. Tests cover style boundaries, measurement,
@@ -736,3 +737,41 @@ not visual-parity evidence. Fallback matches explicitly assigned font pixels in
 tests, including unchanged uploads and failed-chain caching. Pinned OFL Noto
 reference fonts add 1.49 MB to tests/examples only (see `fonts/Noto.NOTICE.txt`);
 default builds remain dependency-free and do not embed these fonts.
+
+
+## Lists and OpenType styling
+
+Use `.list_options(text::ListOptions::Unordered)` or `Ordered`, `.indentation(1..=5)`,
+`.list_spacing(pixels)` and `.hanging_list(true)` on `Text` or each `TextRun`,
+with `.wrap()` on the text layer. List options default to level 1. Paragraphs
+retain their source strings; the layout result carries separate `ListMarker`s
+and baseline offsets. Wrapped continuation lines have no marker. Ordered counters
+cycle through decimal, alphabetic and Roman numbering by nesting level, resume
+when returning to a parent, and restart after ordinary paragraphs. List spacing
+replaces paragraph spacing between list items. Marker style and baseline come
+from the list's initial style, matching the mixed-style reference. As in Figma,
+plain paragraphs retain stored indentation levels without a visible list inset.
+
+`.open_type_features(vec![text::OpenTypeFeature::new(*b"liga", false)])` sets
+explicit boolean overrides; tags are lowercase OpenType tags. Features follow
+runs through fallback, measurement, wrapping, truncation, bitmap and outline
+rendering. `TextCase::SmallCaps` and `SmallCapsForced` request real `smcp` and
+`smcp` + `c2sc` features. CoreText checks the supplied font's GSUB/GPOS (or kern)
+tables; missing features report errors instead of substituting scaled capitals.
+Custom backends must opt into `validate_open_type_features`.
+
+Limits are 64 unique overrides and the existing 64 cached font-instance budget,
+now including feature combinations. RTL lists, vertical/random features, and
+explicitly enabled kerning with nonzero tracking remain hard errors. Default
+kerning is retained at zero tracking; the previous zero-valued kern attribute
+incorrectly disabled it. Other text/resource limits still apply.
+
+`cargo run --example lists_opentype --all-features --locked` renders the
+[12-case Figma comparison](docs/lists-opentype-compare.png): bullets, all five
+numbering levels, hanging lists, spacing, double digits, mixed styles, truncation
+and Source Serif 4 small caps. Reviewed at 2×; mean channel difference 0.56/255,
+with edge and pixel-position differences remaining. Explicit feature on/off
+coverage is synthetic (ligatures, metrics, outlines, cache invalidation and
+unsupported fonts); Figma's plugin feature map is read-only. No new dependencies.
+The bundled Source Serif 4 font adds 1,209,508 bytes to test/example assets only;
+it is not embedded in the library (see `fonts/SourceSerif4.NOTICE.txt`).

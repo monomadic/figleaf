@@ -1123,6 +1123,11 @@ pub struct Text {
     pub runs: Vec<text::TextRun>,
     pub text_decoration: text::TextDecoration,
     pub text_case: text::TextCase,
+    pub open_type_features: Vec<text::OpenTypeFeature>,
+    pub list_options: text::ListOptions,
+    pub indentation: usize,
+    pub list_spacing: f32,
+    pub hanging_list: bool,
     pub text_truncation: text::TextTruncation,
     pub max_lines: Option<usize>,
     pub paragraph_spacing: f32,
@@ -1165,6 +1170,11 @@ impl Text {
             runs: Vec::new(),
             text_decoration: text::TextDecoration::None,
             text_case: text::TextCase::Original,
+            open_type_features: Vec::new(),
+            list_options: text::ListOptions::None,
+            indentation: 0,
+            list_spacing: 0.,
+            hanging_list: false,
             text_truncation: text::TextTruncation::Disabled,
             max_lines: None,
             paragraph_spacing: 0.,
@@ -1204,6 +1214,29 @@ impl Text {
         self.max_lines = Some(value);
         self
     }
+    pub fn open_type_features(mut self, features: Vec<text::OpenTypeFeature>) -> Self {
+        self.open_type_features = features;
+        self
+    }
+    pub fn list_options(mut self, options: text::ListOptions) -> Self {
+        self.list_options = options;
+        if options != text::ListOptions::None && self.indentation == 0 {
+            self.indentation = 1;
+        }
+        self
+    }
+    pub fn indentation(mut self, level: usize) -> Self {
+        self.indentation = level;
+        self
+    }
+    pub fn list_spacing(mut self, spacing: f32) -> Self {
+        self.list_spacing = spacing;
+        self
+    }
+    pub fn hanging_list(mut self, hanging: bool) -> Self {
+        self.hanging_list = hanging;
+        self
+    }
     pub fn text_decoration(mut self, value: text::TextDecoration) -> Self {
         self.text_decoration = value;
         self
@@ -1224,7 +1257,12 @@ impl Text {
     }
     #[cfg(feature = "wgpu")]
     pub(crate) fn needs_layout(&self) -> bool {
-        self.paints.is_some()
+        !self.open_type_features.is_empty()
+            || self.list_options != text::ListOptions::None
+            || self.indentation != 0
+            || self.list_spacing != 0.
+            || self.hanging_list
+            || self.paints.is_some()
             || self.stroke.is_some()
             || !self.stroke_paints.is_empty()
             || !self.stroke_blend_modes.is_empty()

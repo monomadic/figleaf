@@ -1,0 +1,2275 @@
+{
+  "id": "493:553",
+  "name": "Temporary lists and OpenType validation",
+  "type": "FRAME",
+  "visible": true,
+  "width": 920,
+  "height": 1020,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      19000
+    ],
+    [
+      0,
+      1,
+      18400
+    ]
+  ],
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeMiterLimit": 4,
+  "dashPattern": [],
+  "effects": [],
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "clipsContent": false,
+  "layoutMode": "NONE",
+  "cornerRadius": 0,
+  "cornerSmoothing": 0,
+  "children": [
+    {
+      "id": "493:554",
+      "name": "Bullets",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 180,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 18,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 26
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "First item wraps over several words\nSecond item\nThird item",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "First item wraps over several words\nSecond item\nThird item",
+          "start": 0,
+          "end": 58,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "UNORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 58,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "UNORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "493:555",
+      "name": "Numbered nested",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 180,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          320
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 18,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 26
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "First\nNested\nDeeper\nNested again\nLast",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "First\nNested\n",
+          "start": 0,
+          "end": 13,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Deeper\n",
+          "start": 13,
+          "end": 20,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 2,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Nested again\nLast",
+          "start": 20,
+          "end": 37,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ]
+    },
+    {
+      "id": "493:556",
+      "name": "Hanging bullets",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 180,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          620
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 24,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 32
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "First item wraps over several words\nSecond",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": true,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "First item wraps over several words\nSecond",
+          "start": 0,
+          "end": 42,
+          "fontSize": 24,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 32
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "UNORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 42,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "UNORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "493:557",
+      "name": "List spacing",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 180,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          230
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 18,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 26
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "First\nSecond\nThird",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 6,
+      "paragraphIndent": 0,
+      "listSpacing": 10,
+      "styledSegments": [
+        {
+          "characters": "First\nSecond\nThird",
+          "start": 0,
+          "end": 18,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "UNORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 6,
+          "listSpacing": 10,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 18,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "UNORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "493:558",
+      "name": "Plain indentation",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 180,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          320
+        ],
+        [
+          0,
+          1,
+          230
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 18,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 26
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "First\nSecond\nThird",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "First\n",
+          "start": 0,
+          "end": 6,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Second\n",
+          "start": 6,
+          "end": 13,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Third",
+          "start": 13,
+          "end": 18,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 26
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 2,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ]
+    },
+    {
+      "id": "493:559",
+      "name": "Double digit",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 300,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          620
+        ],
+        [
+          0,
+          1,
+          230
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 14,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 22
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "item\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "item\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem\nitem",
+          "start": 0,
+          "end": 59,
+          "fontSize": 14,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 22
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 59,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "ORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "494:553",
+      "name": "ORIGINAL",
+      "type": "TEXT",
+      "visible": true,
+      "width": 850,
+      "height": 42,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          580
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Source Serif 4",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 36
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "Small Caps office AV 012345",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "Small Caps office AV 012345",
+          "start": 0,
+          "end": 27,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Source Serif 4",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 36
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 27,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "494:554",
+      "name": "SMALL_CAPS",
+      "type": "TEXT",
+      "visible": true,
+      "width": 850,
+      "height": 42,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          625
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Source Serif 4",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 26,
+      "textCase": "SMALL_CAPS",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 36
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "Small Caps office AV 012345",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "Small Caps office AV 012345",
+          "start": 0,
+          "end": 27,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Source Serif 4",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "SMALL_CAPS",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 36
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 27,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "494:555",
+      "name": "SMALL_CAPS_FORCED",
+      "type": "TEXT",
+      "visible": true,
+      "width": 850,
+      "height": 42,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          670
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Source Serif 4",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 26,
+      "textCase": "SMALL_CAPS_FORCED",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 36
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "Small Caps office AV 012345",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "Small Caps office AV 012345",
+          "start": 0,
+          "end": 27,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Source Serif 4",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "SMALL_CAPS_FORCED",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 36
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 27,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "496:553",
+      "name": "All levels",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 240,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          760
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 18,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 30
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "one\ntwo\nthree\nfour\nfive\nthree again\none again",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "one\n",
+          "start": 0,
+          "end": 4,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "two\n",
+          "start": 4,
+          "end": 8,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 2,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "three\n",
+          "start": 8,
+          "end": 14,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 3,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "four\n",
+          "start": 14,
+          "end": 19,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 4,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "five\n",
+          "start": 19,
+          "end": 24,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 5,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "three again\n",
+          "start": 24,
+          "end": 36,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 3,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "one again",
+          "start": 36,
+          "end": 45,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ]
+    },
+    {
+      "id": "496:554",
+      "name": "Mixed list styles",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 240,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          320
+        ],
+        [
+          0,
+          1,
+          760
+        ]
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 30
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "Red first\nGreen larger\nBlue last",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "Red first\n",
+          "start": 0,
+          "end": 10,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.800000011920929,
+                "g": 0,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Green larger\n",
+          "start": 10,
+          "end": 23,
+          "fontSize": 24,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0.6000000238418579,
+                "b": 0
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Blue last",
+          "start": 23,
+          "end": 32,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0.800000011920929
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ]
+    },
+    {
+      "id": "496:555",
+      "name": "Truncated list",
+      "type": "TEXT",
+      "visible": true,
+      "width": 270,
+      "height": 74,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          620
+        ],
+        [
+          0,
+          1,
+          760
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.10000000149011612,
+            "b": 0.10000000149011612
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 18,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 30
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "First wraps into another line\nSecond wraps too\nThird hidden",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "TRUNCATE",
+      "textTruncation": "ENDING",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "First wraps into another line\nSecond wraps too\nThird hidden",
+          "start": 0,
+          "end": 59,
+          "fontSize": 18,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 30
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.10000000149011612,
+                "b": 0.10000000149011612
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 59,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "ORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    }
+  ]
+}

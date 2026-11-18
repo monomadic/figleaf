@@ -40,6 +40,17 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     {
         return Err(Error("rich text requires case and decoration on each run"));
     }
+    if !t.runs.is_empty()
+        && (!t.open_type_features.is_empty()
+            || t.list_options != text::ListOptions::None
+            || t.indentation != 0
+            || t.list_spacing != 0.
+            || t.hanging_list)
+    {
+        return Err(Error(
+            "rich text requires OpenType and list settings on each run",
+        ));
+    }
     if !t.runs.is_empty() && t.paints.is_some() {
         return Err(Error("rich text requires paints on each run"));
     }
@@ -58,6 +69,11 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             paints: t.paints.clone(),
             text_decoration: t.text_decoration,
             text_case: t.text_case,
+            open_type_features: t.open_type_features.clone(),
+            list_options: t.list_options,
+            indentation: t.indentation,
+            list_spacing: t.list_spacing,
+            hanging_list: t.hanging_list,
             direction: text::TextDirection::Auto,
             paragraph_spacing: None,
             paragraph_indent: None,
@@ -112,7 +128,31 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     let outlined = t.stroke.is_some() || runs.iter().any(|r| r.paints.is_some());
     let mut stroke_paths = Vec::new();
     let mut content = Canvas::new();
-    for line in lines {
+    let mut positioned = Vec::new();
+    for mut line in lines {
+        if let Some(marker) = line.marker.take() {
+            let mut label = line.clone();
+            label.runs = marker.runs;
+            label.metrics = marker.metrics;
+            label.height = label
+                .runs
+                .iter()
+                .map(|r| r.style.line_height)
+                .reduce(f32::max)
+                .unwrap();
+            label.indent =
+                marker.x + place(t.align, line.available_width - line.metrics.advance as f32);
+            label.available_width = marker.metrics.advance as f32;
+            let dy = line.metrics.baseline as f32 - marker.metrics.baseline as f32
+                + line.baseline_offset;
+            positioned.push((label, dy, 0.));
+        }
+        let advance = line.height + line.spacing_after;
+        let dy = line.baseline_offset;
+        positioned.push((line, dy, advance));
+    }
+    for (line, dy, advance_y) in positioned {
+        y += dy;
         if !line.runs.is_empty() {
             if line.metrics.advance > f64::from(text::MAX_WIDTH) {
                 return Err(Error("styled line exceeds bitmap width limit"));
@@ -166,7 +206,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                         .unwrap_or_else(|| vec![Paint::Solid(run.color)]);
                     add_outline_shapes(&mut content, shape, raster_scale)?;
                 }
-                y += line.height + line.spacing_after;
+                y += advance_y - dy;
                 continue;
             }
             let width = (line.metrics.advance.ceil() as f32 + 1.).clamp(1., text::MAX_WIDTH);
@@ -211,7 +251,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                 .transform(t.transform),
             );
         }
-        y += line.height + line.spacing_after;
+        y += advance_y - dy;
     }
     if let Some(stroke) = t.stroke
         && !stroke_paths.is_empty()

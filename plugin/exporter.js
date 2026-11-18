@@ -227,7 +227,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const box = [0, 0, n.width, n.height];
       box.forEach(number);
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
-      const segments=n.type==='TEXT'&&n.getStyledTextSegments?n.getStyledTextSegments(['fontName','fontSize','fills','textCase','textDecoration','textDecorationStyle','textDecorationOffset','textDecorationThickness','textDecorationColor','textDecorationSkipInk','letterSpacing','lineHeight','listOptions','indentation','paragraphSpacing','paragraphIndent','openTypeFeatures','boundVariables']):null;
+      const segments=n.type==='TEXT'&&n.getStyledTextSegments?n.getStyledTextSegments(['fontName','fontSize','fills','textCase','textDecoration','textDecorationStyle','textDecorationOffset','textDecorationThickness','textDecorationColor','textDecorationSkipInk','letterSpacing','lineHeight','listOptions','listSpacing','indentation','paragraphSpacing','paragraphIndent','openTypeFeatures','boundVariables']):null;
       const mixedRuns=segments&&segments.length>1?segments:null;
       const fills = mixedRuns?mixedRuns.flatMap(s=>visible(s.fills||[])):visible(n.fills || []), strokes = visible(n.strokes || []);
       const allEffects=visible(n.effects || []);
@@ -351,7 +351,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(strokes.length && (n.dashPattern?.length || n.strokeCap && n.strokeCap!=='NONE')) reject('Dashed text strokes and endpoint decorations are unsupported.');
         if(strokes.length && (!Number.isFinite(n.strokeWeight)||n.strokeWeight<0||!['INSIDE','CENTER','OUTSIDE'].includes(n.strokeAlign))) reject('Invalid text stroke width or alignment.');
         if(strokes.length&&fills.some(blended))reject('Blended text fills combined with strokes are unsupported.');
-        if (n.hangingPunctuation || n.hangingList) reject('Hanging punctuation and hanging lists are unsupported.');
+        if (n.hangingPunctuation) reject('Hanging punctuation is unsupported.');
         const truncation=n.textTruncation??(n.textAutoResize==='TRUNCATE'?'ENDING':'DISABLED');
         if(!['DISABLED','ENDING'].includes(truncation))reject('Unsupported text truncation.');
         if(n.maxLines!=null && (!Number.isSafeInteger(n.maxLines)||n.maxLines<1||n.maxLines>1e7))reject('Invalid maximum line count.');
@@ -383,24 +383,32 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(mixedRuns&&paints.some(blended))reject('Blended paints inside styled text runs are unsupported.');
           for(const p of paints) if(p.type==='SOLID' && (!p.color || [p.color.r,p.color.g,p.color.b,p.color.a??1,p.opacity??1].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)))reject('Invalid text run color or opacity.');
           if(!s.fontName||typeof s.fontName!=='object'||typeof s.fontName.family!=='string'||typeof s.fontName.style!=='string'||typeof s.fontSize!=='number'||typeof s.letterSpacing!=='object'||typeof s.lineHeight!=='object')reject('Missing or invalid run text style.');
-          const cases={ORIGINAL:'Original',UPPER:'Upper',LOWER:'Lower',TITLE:'Title'}, decorations={NONE:'None',UNDERLINE:'Underline',STRIKETHROUGH:'Strikethrough'};
-          if(!cases[s.textCase])reject('Unsupported text case (small caps require font-feature support).');
+          const cases={ORIGINAL:'Original',UPPER:'Upper',LOWER:'Lower',TITLE:'Title',SMALL_CAPS:'SmallCaps',SMALL_CAPS_FORCED:'SmallCapsForced'}, decorations={NONE:'None',UNDERLINE:'Underline',STRIKETHROUGH:'Strikethrough'};
+          if(!cases[s.textCase])reject('Unsupported text case.');
           if(!decorations[s.textDecoration])reject('Unsupported text decoration.');
           if(s.textDecoration!=='NONE' && (s.textDecorationStyle!=null&&s.textDecorationStyle!=='SOLID' || s.textDecorationOffset!=null&&s.textDecorationOffset.unit!=='AUTO' || s.textDecorationThickness!=null&&s.textDecorationThickness.unit!=='AUTO' || s.textDecorationColor!=null&&s.textDecorationColor.value!=='AUTO' || s.textDecorationSkipInk===false))reject('Custom decoration style, offset, thickness, color, or disabled skip-ink is unsupported.');
-          if(s.listOptions?.type!==undefined&&s.listOptions.type!=='NONE'||s.indentation||Object.keys(s.openTypeFeatures||{}).length)reject('Lists, list indentation, and OpenType overrides are unsupported.');
+          const listType=s.listOptions?.type??'NONE', listTypes={NONE:'None',UNORDERED:'Unordered',ORDERED:'Ordered'};
+          const indentation=s.indentation??(listType==='NONE'?0:1),listSpacing=s.listSpacing??n.listSpacing??0;
+          if(!listTypes[listType]||!Number.isInteger(indentation)||indentation<0||indentation>5||listType!=='NONE'&&indentation===0)reject('Unsupported list type or indentation.');
+          if(!Number.isFinite(listSpacing)||listSpacing<0||listSpacing>1e7)reject('Invalid list spacing.');
+          if(listType!=='NONE'&&/[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/u.test(text||''))reject('RTL lists are unsupported.');
+          const features=Object.entries(s.openTypeFeatures||{}).sort(([a],[b])=>a.localeCompare(b));
+          if(features.length>64||features.some(([tag,value])=>!(/^[A-Z0-9]{4}$/).test(tag)||typeof value!=='boolean'||['VERT','VRT2','VKRN','VPAL','VHAL','VALT','VKNA','VCHW','VRTR','RAND'].includes(tag)))reject('Unsupported OpenType feature or value.');
+          if(['SMALL_CAPS','SMALL_CAPS_FORCED'].includes(s.textCase)&&features.some(([tag,value])=>!value&&(tag==='SMCP'||tag==='C2SC'&&s.textCase==='SMALL_CAPS_FORCED')))reject('Small caps conflicts with OpenType override.');
           if(Object.keys(s.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Text run variable bindings must be resolved before export.');
           if(!['PIXELS','PERCENT','AUTO'].includes(s.lineHeight?.unit))reject('Unknown text line height unit.');
           if(!['PIXELS','PERCENT'].includes(s.letterSpacing?.unit))reject('Unsupported letter spacing unit.');
           const height=s.lineHeight?.unit==='AUTO'?s.fontSize:s.lineHeight?.unit==='PERCENT'?s.fontSize*s.lineHeight.value/100:s.lineHeight?.value;
           const tracking=s.letterSpacing?.unit==='PERCENT'?s.fontSize*s.letterSpacing.value/100:s.letterSpacing?.value;
+          if(tracking!==0&&features.some(([tag,value])=>tag==='KERN'&&value))reject('Enabled kerning with nonzero tracking is unsupported.');
           if(/[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/u.test(text||'') && (s.textDecoration!=='NONE'||tracking!==0))reject('RTL decoration and tracking are unsupported.');
           if(s.textCase!=='ORIGINAL'&&[...(mixedRuns?s.characters:text)||''].some(c=>c!=='\n'&&!latinChar(c)))reject('Script-specific case transformations are unsupported.');
           if(!(s.fontSize>0&&s.fontSize<=128&&height>=s.fontSize&&height<=256&&Math.abs(tracking)<=s.fontSize&&n.width>0&&n.width<=2048))reject('Text exceeds figleaf’s size, line-height, tracking, or width limits.');
           const spacing=s.paragraphSpacing??n.paragraphSpacing??0, indent=s.paragraphIndent??n.paragraphIndent??0;
           if(typeof spacing!=='number'||!Number.isFinite(spacing)||spacing<0||spacing>1e7||typeof indent!=='number'||!Number.isFinite(indent)||indent<0||indent>1e7||indent>=n.width)reject('Invalid paragraph spacing or first-line indent.');
           for(const ch of (mixedRuns?s.characters:text)||'') {
-            if(paragraphSettings&&(paragraphSettings[0]!==spacing||paragraphSettings[1]!==indent))reject('Conflicting styles within one paragraph.');
-            paragraphSettings=ch==='\n'?null:[spacing,indent];
+            if(paragraphSettings&&JSON.stringify(paragraphSettings)!==JSON.stringify([spacing,indent,listType,indentation,listSpacing]))reject('Conflicting styles within one paragraph.');
+            paragraphSettings=ch==='\n'?null:[spacing,indent,listType,indentation,listSpacing];
           }
           for(const ch of (mixedRuns?s.characters:text)||'') {
             let mapped=ch;
@@ -414,10 +422,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             if(/[\p{L}\p{N}]/u.test(ch))inWord=true;
             else if(ch!=="'"&&ch!=='’')inWord=false;
           }
+          const listCode=`${listType!=='NONE'?`.list_options(figleaf::text::ListOptions::${listTypes[listType]})`:''}${indentation?`.indentation(${indentation})`:''}${listSpacing?`.list_spacing(${number(listSpacing)})`:''}${n.hangingList?'.hanging_list(true)':''}`;
+          const featureCode=features.length?`.open_type_features(vec![${features.map(([tag,value])=>`figleaf::text::OpenTypeFeature::new(*b"${tag.toLowerCase()}", ${value})`).join(', ')}])`:'';
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
         if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');

@@ -619,3 +619,26 @@ parity or live Desktop-plugin evidence. Richer text fills/strokes are next.
 - Synthetic tests exercise outline metrics, holes, paint changes, asset failures,
   unsupported combinations and unchanged-canvas zero uploads. This is exporter
   fixture validation, not completion of the live-plugin UI milestone.
+
+## 2026-11-19 — lists and OpenType styling
+
+- Added bulleted/ordered lists, five nesting levels, decimal/alphabetic/Roman
+  counters, list spacing and hanging markers. Markers remain separate from source
+  text; wrapping, truncation, mixed paints, strokes and caching share existing
+  rendering. Live mixed-size/color cases established the initial list marker
+  style and baseline, rather than guessing from each item's text.
+- Added boolean OpenType overrides and real small caps (`smcp`/`c2sc`), validated
+  against supplied fonts before shaping. Feature-aware font instances are cached;
+  missing features and backends that do not opt in fail closed. Preserved default
+  kerning at zero tracking by removing the old kerning-disabling zero attribute.
+- Exporter emits list settings and sorted feature tags, still read-only and
+  all-or-nothing. RTL lists, vertical/random features, and explicit kerning with
+  nonzero tracking remain unsupported. Source Serif 4 is a licensed test asset,
+  not a library dependency or runtime download.
+- Ran generated `lists_opentype` at 2× beside Figma: 12 editable text cases in
+  JetBrains Mono and Source Serif 4; [comparison](lists-opentype-compare.png), mean
+  channel difference 0.56/255. Small caps use the supplied font's real glyphs;
+  edge/position differences remain. Saved source snapshot/generated Rust and
+  removed temporary nodes. Explicit feature toggles are synthetic validation:
+  the Figma plugin API exposes that map read-only. This does not complete the
+  separate live development-plugin UI milestone.

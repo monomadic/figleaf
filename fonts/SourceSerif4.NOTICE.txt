@@ -1,0 +1,8 @@
+Reference font from https://github.com/google/fonts at 75706cfdd7c49a2be20f66c1e24c26f4f39a33b8
+SourceSerif4.ttf 1209508 bytes SHA256 97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b
+OFL-SourceSerif4.txt 4400 bytes SHA256 5f94c3fd3a23131a417ab5a0c8452de57e70c3cfb9f604d88241f7065ebf9fd9
+
+Original source (unmodified font bytes):
+https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/sourceserif4/SourceSerif4%5Bopsz%2Cwght%5D.ttf
+
+Used only by examples and tests; not embedded in the library.

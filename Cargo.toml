@@ -152,3 +152,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "text_paints"
 required-features = ["wgpu", "text-coretext"]
+
+[[example]]
+name = "lists_opentype"
+required-features = ["wgpu", "text-coretext"]

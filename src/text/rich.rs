@@ -2,6 +2,26 @@
 use super::{Backend, MAX_TEXT_BYTES, Metrics, Style, TextDirection};
 use crate::{Color, Error};
 
+/// A horizontal OpenType feature tag and its explicit on/off value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct OpenTypeFeature {
+    pub tag: [u8; 4],
+    pub enabled: bool,
+}
+impl OpenTypeFeature {
+    pub const fn new(tag: [u8; 4], enabled: bool) -> Self {
+        Self { tag, enabled }
+    }
+}
+/// Figma's paragraph list style. Counters are derived from paragraph order.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ListOptions {
+    #[default]
+    None,
+    Unordered,
+    Ordered,
+}
+
 /// Ending truncation adds an ellipsis to text hidden by the box or line limit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum TextTruncation {
@@ -28,6 +48,8 @@ pub enum TextCase {
     Upper,
     Lower,
     Title,
+    SmallCaps,
+    SmallCapsForced,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,6 +61,12 @@ pub struct TextRun {
     pub paints: Option<Vec<crate::Paint>>,
     pub text_decoration: TextDecoration,
     pub text_case: TextCase,
+    pub open_type_features: Vec<OpenTypeFeature>,
+    pub list_options: ListOptions,
+    /// List nesting level: 1–5; zero for ordinary paragraphs.
+    pub indentation: usize,
+    pub list_spacing: f32,
+    pub hanging_list: bool,
     /// Auto resolves once per paragraph and is retained across wrapped lines.
     pub direction: TextDirection,
     /// None inherits the text layer’s paragraph setting.
@@ -59,10 +87,38 @@ impl TextRun {
             paints: None,
             text_decoration: TextDecoration::None,
             text_case: TextCase::Original,
+            open_type_features: Vec::new(),
+            list_options: ListOptions::None,
+            indentation: 0,
+            list_spacing: 0.,
+            hanging_list: false,
             direction: TextDirection::Auto,
             paragraph_spacing: None,
             paragraph_indent: None,
         }
+    }
+    pub fn open_type_features(mut self, features: Vec<OpenTypeFeature>) -> Self {
+        self.open_type_features = features;
+        self
+    }
+    pub fn list_options(mut self, options: ListOptions) -> Self {
+        self.list_options = options;
+        if options != ListOptions::None && self.indentation == 0 {
+            self.indentation = 1;
+        }
+        self
+    }
+    pub fn indentation(mut self, level: usize) -> Self {
+        self.indentation = level;
+        self
+    }
+    pub fn list_spacing(mut self, spacing: f32) -> Self {
+        self.list_spacing = spacing;
+        self
+    }
+    pub fn hanging_list(mut self, hanging: bool) -> Self {
+        self.hanging_list = hanging;
+        self
     }
     pub fn text_decoration(mut self, value: TextDecoration) -> Self {
         self.text_decoration = value;
@@ -124,10 +180,172 @@ pub struct RunLine {
     pub available_width: f32,
     /// Extra gap after a paragraph break, never after the final paragraph.
     pub spacing_after: f32,
+    /// First-line marker, positioned independently of the editable source.
+    pub marker: Option<ListMarker>,
+    /// Lists retain their initial marker baseline across item style changes.
+    pub baseline_offset: f32,
     // Offsets into the resolved source preserve whitespace and soft-wrap tails
     // when the final visible line is refitted with an ellipsis.
     source_start: usize,
     paragraph_end: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct ListMarker {
+    pub runs: Vec<TextRun>,
+    pub metrics: Metrics,
+    /// Horizontal position relative to the text box, before line alignment.
+    pub x: f32,
+}
+#[derive(Clone)]
+struct ListParagraph {
+    marker: Option<ListMarker>,
+    inset: f32,
+    options: ListOptions,
+    spacing: f32,
+}
+fn list_settings(r: &TextRun) -> (ListOptions, usize, f32, bool) {
+    (
+        r.list_options,
+        r.indentation,
+        r.list_spacing,
+        r.hanging_list,
+    )
+}
+fn counter(n: usize, level: usize) -> String {
+    match (level - 1) % 3 {
+        0 => n.to_string(),
+        1 => {
+            let mut n = n;
+            let mut s = Vec::new();
+            while n > 0 {
+                n -= 1;
+                s.push((b'a' + (n % 26) as u8) as char);
+                n /= 26;
+            }
+            s.into_iter().rev().collect()
+        }
+        _ => {
+            let mut n = n;
+            let mut s = String::new();
+            for (v, d) in [
+                (1000, "m"),
+                (900, "cm"),
+                (500, "d"),
+                (400, "cd"),
+                (100, "c"),
+                (90, "xc"),
+                (50, "l"),
+                (40, "xl"),
+                (10, "x"),
+                (9, "ix"),
+                (5, "v"),
+                (4, "iv"),
+                (1, "i"),
+            ] {
+                while n >= v {
+                    s.push_str(d);
+                    n -= v;
+                }
+            }
+            s
+        }
+    }
+}
+fn list_paragraphs(
+    backend: &mut dyn Backend,
+    runs: &[TextRun],
+    string: &str,
+) -> Result<Vec<ListParagraph>, Error> {
+    let mut records = Vec::new();
+    let mut offset = 0;
+    let mut counts = [0usize; 5];
+    let mut group = 0usize;
+    let mut previous = ListOptions::None;
+    let mut prior_style: Option<TextRun> = None;
+    let mut widths = std::collections::BTreeMap::<(usize, usize), f32>::new();
+    for paragraph in string.split('\n') {
+        let end = offset + paragraph.len();
+        let parts = slice(runs, offset, (end + 1).min(string.len()));
+        let first = parts.first().unwrap_or(runs.last().unwrap());
+        let settings = list_settings(first);
+        if parts.iter().any(|r| list_settings(r) != settings) {
+            return Err(Error("conflicting list styles within one paragraph"));
+        }
+        let (options, level, spacing, hanging) = settings;
+        if options != previous {
+            counts = [0; 5];
+            group += 1;
+            prior_style = None;
+        }
+        if prior_style.is_none() {
+            prior_style = Some(first.clone());
+        }
+        let marker = if options == ListOptions::None {
+            None
+        } else {
+            if first.direction == TextDirection::RightToLeft {
+                return Err(Error("RTL lists are unsupported"));
+            }
+            counts[level - 1] += 1;
+            counts[level..].fill(0);
+            let mut marker = prior_style.clone().unwrap_or_else(|| first.clone());
+            marker.text = if options == ListOptions::Unordered {
+                "•".into()
+            } else {
+                format!("{}.", counter(counts[level - 1], level))
+            };
+            marker.text_decoration = TextDecoration::None;
+            marker.list_options = ListOptions::None;
+            marker.indentation = 0;
+            marker.list_spacing = 0.;
+            marker.hanging_list = false;
+            marker.paragraph_spacing = None;
+            marker.paragraph_indent = None;
+            let mut decimal = marker.clone();
+            decimal.text = format!("{}.", counts[level - 1]);
+            let decimal_runs = resolve_runs(backend, &[decimal])?;
+            let gutter_width = if options == ListOptions::Ordered {
+                measure(backend, &decimal_runs)?.advance as f32
+            } else {
+                0.
+            };
+            let marker_runs = resolve_runs(backend, &[marker])?;
+            let metrics = measure(backend, &marker_runs)?;
+            let width = widths.entry((group, level)).or_default();
+            *width = width.max(gutter_width);
+            Some(ListMarker {
+                runs: marker_runs,
+                metrics,
+                x: 0.,
+            })
+        };
+        records.push((
+            ListParagraph {
+                marker,
+                inset: 0.,
+                options,
+                spacing,
+            },
+            group,
+            level,
+            prior_style.as_ref().unwrap().style.size,
+            hanging,
+        ));
+        previous = options;
+        offset = end + 1;
+    }
+    Ok(records
+        .into_iter()
+        .map(|(mut p, group, level, size, hanging)| {
+            if let Some(marker) = &mut p.marker {
+                let gutter = (size * 1.2).max(widths[&(group, level)]);
+                p.inset = (level - 1) as f32 * size * 1.2 + if hanging { 0. } else { gutter };
+                marker.x = p.inset - size * 0.3 - marker.metrics.advance as f32;
+            }
+            p
+        })
+        .collect())
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -172,6 +390,14 @@ pub fn validate_runs(
         ));
     }
     for run in runs {
+        validate_features(&run.open_type_features)?;
+        if run.indentation > 5
+            || run.list_options != ListOptions::None && run.indentation == 0
+            || !run.list_spacing.is_finite()
+            || !(0. ..=1e7).contains(&run.list_spacing)
+        {
+            return Err(Error("invalid list indentation or spacing"));
+        }
         paragraph_style(run, ParagraphStyle::default()).validate(f32::MAX)?;
         if run.text.is_empty()
             || run
@@ -194,6 +420,37 @@ pub fn validate_runs(
     }
     Ok(())
 }
+pub(crate) fn validate_features(features: &[OpenTypeFeature]) -> Result<(), Error> {
+    if features.len() > 64 {
+        return Err(Error("more than 64 OpenType overrides"));
+    }
+    for (i, f) in features.iter().enumerate() {
+        if !f
+            .tag
+            .iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+            || features[..i].iter().any(|p| p.tag == f.tag)
+            || matches!(
+                &f.tag,
+                b"vert"
+                    | b"vrt2"
+                    | b"vkrn"
+                    | b"vpal"
+                    | b"vhal"
+                    | b"valt"
+                    | b"vkna"
+                    | b"vchw"
+                    | b"vrtr"
+                    | b"rand"
+            )
+        {
+            return Err(Error(
+                "invalid, duplicate, vertical or random OpenType feature",
+            ));
+        }
+    }
+    Ok(())
+}
 /// Resolve Auto (zero) using the selected font. No guessed size multiplier.
 pub fn resolve_style(backend: &mut dyn Backend, mut style: Style) -> Result<Style, Error> {
     if style.line_height == 0. {
@@ -212,6 +469,29 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
     let mut resolved = runs.to_vec();
     let mut in_word = false;
     for run in &mut resolved {
+        validate_features(&run.open_type_features)?;
+        if matches!(
+            run.text_case,
+            TextCase::SmallCaps | TextCase::SmallCapsForced
+        ) {
+            let tags: &[[u8; 4]] = if run.text_case == TextCase::SmallCapsForced {
+                &[*b"smcp", *b"c2sc"]
+            } else {
+                &[*b"smcp"]
+            };
+            for tag in tags {
+                if let Some(feature) = run.open_type_features.iter().find(|f| f.tag == *tag) {
+                    if !feature.enabled {
+                        return Err(Error("small caps conflicts with OpenType override"));
+                    }
+                } else {
+                    run.open_type_features
+                        .push(OpenTypeFeature::new(*tag, true));
+                }
+            }
+        }
+        run.open_type_features.sort();
+        validate_features(&run.open_type_features)?;
         let mut transformed = String::new();
         for c in run.text.chars() {
             let upper =
@@ -267,6 +547,7 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
     let mut resolved = backend.resolve_fonts(&resolved)?;
     for run in &mut resolved {
         run.style = resolve_style(backend, run.style)?;
+        backend.validate_open_type_features(run.style, &run.open_type_features)?;
     }
     Ok(resolved)
 }
@@ -323,9 +604,10 @@ pub fn layout_paragraphs(
     let string: String = runs.iter().map(|r| r.text.as_str()).collect();
     let boundaries = backend.text_boundaries(&string)?;
     boundaries.validate(&string)?;
+    let lists = list_paragraphs(backend, runs, &string)?;
     let mut lines = Vec::new();
     let mut offset = 0;
-    for paragraph in string.split('\n') {
+    for (paragraph_index, paragraph) in string.split('\n').enumerate() {
         let mut start = offset;
         let end = offset + paragraph.len();
         let covered_end = (end + 1).min(string.len());
@@ -352,7 +634,11 @@ pub fn layout_paragraphs(
         settings.validate(width)?;
         let mut first = true;
         loop {
-            let indent = if first { settings.indent } else { 0. };
+            let list = &lists[paragraph_index];
+            let indent = list.inset + if first { settings.indent } else { 0. };
+            if indent >= width {
+                return Err(Error("list indentation leaves no line width"));
+            }
             let available_width = width - indent;
             let mut stop = end;
             if wrap && start < end {
@@ -437,6 +723,24 @@ pub fn layout_paragraphs(
                 indent,
                 available_width,
                 spacing_after: 0.,
+                marker: if first {
+                    lists[paragraph_index].marker.clone().map(|mut m| {
+                        m.x += settings.indent;
+                        m
+                    })
+                } else {
+                    None
+                },
+                baseline_offset: lists[paragraph_index].marker.as_ref().map_or(0., |m| {
+                    let marker_height = m
+                        .runs
+                        .iter()
+                        .map(|r| r.style.line_height)
+                        .reduce(f32::max)
+                        .unwrap();
+                    m.metrics.baseline as f32 + (height - marker_height) / 2.
+                        - metrics.baseline as f32
+                }),
                 source_start: start,
                 paragraph_end: end,
             });
@@ -452,7 +756,16 @@ pub fn layout_paragraphs(
             }
             if start >= end {
                 if end < string.len() {
-                    lines.last_mut().unwrap().spacing_after = settings.spacing;
+                    let list = &lists[paragraph_index];
+                    lines.last_mut().unwrap().spacing_after = if list.options != ListOptions::None
+                        && lists
+                            .get(paragraph_index + 1)
+                            .is_some_and(|p| p.options != ListOptions::None)
+                    {
+                        list.spacing
+                    } else {
+                        settings.spacing
+                    };
                 }
                 break;
             }
@@ -601,6 +914,14 @@ fn ellipsize(
         }
     }
     let (runs, metrics, height) = best.unwrap();
+    if line
+        .runs
+        .first()
+        .is_some_and(|r| r.list_options != ListOptions::None)
+    {
+        line.baseline_offset +=
+            line.metrics.baseline as f32 - metrics.baseline as f32 + (height - line.height) / 2.;
+    }
     line.runs = runs;
     line.metrics = metrics;
     line.height = height;
@@ -1177,6 +1498,168 @@ mod truncation_tests {
                 ParagraphStyle::default(),
                 TextTruncation::Ending,
                 None
+            )
+            .is_err()
+        );
+    }
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+    struct Mono;
+    impl Backend for Mono {
+        fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
+            Ok(Metrics {
+                advance: runs
+                    .iter()
+                    .map(|r| r.text.chars().count() as f64 * 6.)
+                    .sum(),
+                baseline: 9.,
+                ascent: 8.,
+                descent: 2.,
+                lines: 1,
+                ..Default::default()
+            })
+        }
+        fn raster(
+            &mut self,
+            _: &str,
+            _: Style,
+            _: f32,
+            _: f32,
+        ) -> Result<super::super::Mask, Error> {
+            unreachable!()
+        }
+    }
+    fn list(s: &str, level: usize) -> TextRun {
+        TextRun::new(s)
+            .size(10., 12.)
+            .list_options(ListOptions::Ordered)
+            .indentation(level)
+    }
+    fn marker(line: &RunLine) -> String {
+        line.marker
+            .as_ref()
+            .unwrap()
+            .runs
+            .iter()
+            .map(|r| r.text.as_str())
+            .collect()
+    }
+    #[test]
+    fn nested_counters_resume_and_plain_paragraphs_restart() {
+        let runs = [
+            list("one\n", 1),
+            list("two\n", 2),
+            list("three\n", 3),
+            list("four\n", 4),
+            list("five\n", 5),
+            list("again\n", 3),
+            list("parent\n", 1),
+            TextRun::new("plain\n").size(10., 12.),
+            list("new", 1),
+        ];
+        let lines = layout_runs(&mut Mono, &runs, 200., true).unwrap();
+        assert_eq!(
+            lines
+                .iter()
+                .filter(|l| l.marker.is_some())
+                .map(marker)
+                .collect::<Vec<_>>(),
+            ["1.", "a.", "i.", "1.", "a.", "ii.", "2.", "1."]
+        );
+        assert_eq!(counter(27, 2), "aa");
+        assert_eq!(counter(49, 3), "xlix");
+    }
+    #[test]
+    fn wraps_keep_one_marker_and_spacing_replaces_paragraph_gap() {
+        let run = list("one two three\nnext", 1)
+            .list_spacing(4.)
+            .paragraph_spacing(20.);
+        let lines = layout_runs(&mut Mono, std::slice::from_ref(&run), 48., true).unwrap();
+        assert_eq!(lines.iter().filter(|l| l.marker.is_some()).count(), 2);
+        assert!(lines[1].marker.is_none());
+        assert_eq!(lines[0].indent, lines[1].indent);
+        assert_eq!(lines[lines.len() - 2].spacing_after, 4.);
+        assert_eq!(lines.last().unwrap().spacing_after, 0.);
+        let truncated = layout_text(
+            &mut Mono,
+            &[run],
+            [48., 100.],
+            true,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            Some(2),
+        )
+        .unwrap();
+        assert_eq!(truncated.len(), 2);
+        assert_eq!(marker(&truncated[0]), "1.");
+        assert!(truncated[1].marker.is_none());
+        assert!(truncated[1].runs.iter().any(|r| r.text.contains('…')));
+    }
+    #[test]
+    fn counter_gutters_hanging_and_invalid_settings() {
+        let source = (0..12).map(|_| "x").collect::<Vec<_>>().join("\n");
+        let lines = layout_runs(&mut Mono, &[list(&source, 1)], 100., true).unwrap();
+        assert!(lines.iter().all(|l| l.indent == 18.));
+        assert_eq!(marker(&lines[11]), "12.");
+        let hanging =
+            layout_runs(&mut Mono, &[list("x", 1).hanging_list(true)], 100., true).unwrap();
+        assert_eq!(hanging[0].indent, 0.);
+        assert!(hanging[0].marker.as_ref().unwrap().x < 0.);
+        for r in [
+            list("x", 0),
+            list("x", 6),
+            list("x", 1).list_spacing(f32::NAN),
+        ] {
+            assert!(layout_runs(&mut Mono, &[r], 100., true).is_err());
+        }
+        assert!(layout_runs(&mut Mono, &[list("a", 1), list("b", 2)], 100., true).is_err());
+        assert!(layout_runs(&mut Mono, &[list("x", 1)], 5., true).is_err());
+    }
+    #[test]
+    fn mixed_items_keep_initial_marker_style_and_gutter() {
+        let first = list("first\n", 1).color([1., 0., 0., 1.]);
+        let second = list("second", 1).size(16., 20.).color([0., 1., 0., 1.]);
+        let lines = layout_runs(&mut Mono, &[first.clone(), second], 200., true).unwrap();
+        let marker = &lines[1].marker.as_ref().unwrap().runs[0];
+        assert_eq!(marker.color, first.color);
+        assert_eq!(marker.style, first.style);
+        assert_eq!(lines[0].indent, lines[1].indent);
+    }
+    #[test]
+    fn feature_validation_and_backend_opt_in_are_fail_closed() {
+        for features in [
+            vec![OpenTypeFeature::new(*b"LIGA", true)],
+            vec![OpenTypeFeature::new(*b"vert", true)],
+            vec![
+                OpenTypeFeature::new(*b"liga", true),
+                OpenTypeFeature::new(*b"liga", false),
+            ],
+        ] {
+            assert!(
+                validate_runs(
+                    &[TextRun::new("x").open_type_features(features)],
+                    100.,
+                    1.,
+                    false
+                )
+                .is_err()
+            );
+        }
+        assert!(
+            resolve_runs(
+                &mut Mono,
+                &[TextRun::new("x")
+                    .open_type_features(vec![OpenTypeFeature::new(*b"liga", false)])]
+            )
+            .is_err()
+        );
+        assert!(
+            resolve_runs(
+                &mut Mono,
+                &[TextRun::new("x").text_case(TextCase::SmallCaps)]
             )
             .is_err()
         );

@@ -636,7 +636,7 @@ test('paragraph spacing and first-line indentation export layer and per-paragrap
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
 test('paragraph validation rejects invalid values, conflicts and list indentation',()=>{
-  for(const patch of [{paragraphSpacing:-1},{paragraphSpacing:NaN},{paragraphIndent:-1},{paragraphIndent:100},{paragraphIndent:Infinity},{hangingList:true}]) {
+  for(const patch of [{paragraphSpacing:-1},{paragraphSpacing:NaN},{paragraphIndent:-1},{paragraphIndent:100},{paragraphIndent:Infinity},{indentation:6}]) {
     const r=exportHierarchy([text(patch)]);assert.equal(r.code,null);assert.ok(r.errors.length);
   }
   assert.deepEqual(exportHierarchy([text({paragraphSpacing:12,paragraphIndent:16})]).errors,[]);
@@ -660,7 +660,7 @@ test('decorations and case export exact styled Rust and compile',()=>{
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
 test('unsupported decoration options, small caps and transformed scope fail without partial code',()=>{
-  for(const patch of [{textCase:'SMALL_CAPS'},{textCase:'SMALL_CAPS_FORCED'},{textCase:'UNKNOWN'},
+  for(const patch of [{textCase:'UNKNOWN'},
     {textCase:'UPPER',characters:'µ'},{textCase:'UPPER',characters:'ȿ'},
     {textDecorationStyle:'WAVY'},{textDecorationStyle:'DOTTED'},
     {textDecorationOffset:{unit:'PIXELS',value:2}},{textDecorationThickness:{unit:'PERCENT',value:10}},
@@ -670,7 +670,7 @@ test('unsupported decoration options, small caps and transformed scope fail with
   }
   for(const textCase of ['ORIGINAL','UPPER','LOWER','TITLE'])
     assert.deepEqual(exportHierarchy([text({textCase,textDecoration:'UNDERLINE'})]).errors,[]);
-  const root=mixedTextFixture();root.children[0].styledSegments[1].textCase='SMALL_CAPS';
+  const root=mixedTextFixture();root.children[0].styledSegments[1].textCase='UNKNOWN';
   assert.equal(exportHierarchy([root]).code,null);
 });
 
@@ -762,4 +762,37 @@ test('live text paint fixture generates exact Rust and compiles',()=>{
     fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);assert_eq!(c.items().len(),15);}');
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('list settings and OpenType overrides export deterministically and compile',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'lists-opentype-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/lists_opentype.rs'),'utf8'));
+  assert.match(result.code,/ListOptions::Ordered/);assert.match(result.code,/ListOptions::Unordered/);
+  assert.match(result.code,/\.indentation\(5\)/);assert.match(result.code,/\.list_spacing\(10.0\)/);
+  assert.match(result.code,/\.hanging_list\(true\)/);assert.match(result.code,/TextCase::SmallCapsForced/);
+  const feature=exportHierarchy([text({characters:'office 0123',fontName:{family:'Source Serif 4',style:'Regular'},openTypeFeatures:{TNUM:true,LIGA:false,KERN:true}})]);
+  assert.deepEqual(feature.errors,[]);assert.match(feature.code,/OpenTypeFeature::new\(\*b"kern", true\).*OpenTypeFeature::new\(\*b"liga", false\).*OpenTypeFeature::new\(\*b"tnum", true\)/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-lists-opentype-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    for(const [code,slots] of [[result.code,'[0,1]'],[feature.code,'[0]']]) {
+      fs.writeFileSync(path.join(tmp,'main.rs'),code+`\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,${slots});}`);
+      execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+    }
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported lists and OpenType combinations fail without partial output',()=>{
+  for(const patch of [{listOptions:{type:'UNKNOWN'}},{listOptions:{type:'ORDERED'},indentation:0},
+    {indentation:6},{indentation:1.5},{listSpacing:-1},{listSpacing:Infinity},
+    {listOptions:{type:'UNORDERED'},characters:'العربية'},
+    {openTypeFeatures:{liga:true}},{openTypeFeatures:{LIGA:1}},{openTypeFeatures:{VERT:true}},
+    {openTypeFeatures:{RAND:true}},{openTypeFeatures:{KERN:true},letterSpacing:{unit:'PIXELS',value:1}},
+    {textCase:'SMALL_CAPS',openTypeFeatures:{SMCP:false}}]) {
+    const r=exportHierarchy([text(patch)]);assert.equal(r.code,null,JSON.stringify(patch));assert.ok(r.errors.length);
+  }
+  const root=mixedTextFixture();root.children[0].styledSegments[1].listSpacing=12;
+  assert.equal(exportHierarchy([root]).code,null);
+  for(const textCase of ['SMALL_CAPS','SMALL_CAPS_FORCED'])assert.deepEqual(exportHierarchy([text({textCase})]).errors,[]);
 });

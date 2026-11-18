@@ -278,7 +278,7 @@ Paragraph spacing and first-line indentation export `.paragraph_spacing(..)` and
 `.paragraph_indent(..)` on plain text or individual styled runs. Figma’s paragraph
 ranges are preserved: a newline belongs to the preceding paragraph. Conflicting
 settings within one paragraph, negative/nonfinite values, an indent consuming
-the full width, lists and hanging text suppress all Rust. The
+the full width, and hanging punctuation suppress all Rust. The
 [paragraph comparison](../docs/paragraphs-compare.png) covers generated output;
 no filesystem writes, partial output or live variable runtime are introduced.
 
@@ -286,7 +286,7 @@ no filesystem writes, partial output or live variable runtime are introduced.
 Text decorations and case export `.text_decoration(..)` and `.text_case(..)` on
 plain text or individual runs, retaining original characters. Supported values
 are underline/strikethrough and original/upper/lower/title case. Automatic solid
-decorations use the supplied font; small caps, wavy/dotted lines, custom offsets,
+decorations use the supplied font; wavy/dotted lines, custom offsets,
 thickness/colors and disabled skip-ink still suppress all Rust. Transformed text
 must also fit the Latin/512-byte limits. The [comparison](../docs/decorations-compare.png)
 uses generated Rust; this does not replace live Desktop plugin validation.
@@ -318,3 +318,19 @@ limits, blended fill stacks/ranges, and blended fills combined with strokes
 remain hard errors. See the [text comparison](../docs/text-paints-compare.png).
 The fixture validates exporter output; live development-plugin UI validation
 remains a separate task.
+
+
+Lists export native `.list_options(..)`, `.indentation(..)`, `.list_spacing(..)`
+and `.hanging_list(..)` settings per paragraph. Numbering and marker positions
+are computed by the layout solver, leaving the source text intact. OpenType's
+uppercase Figma tags become sorted lowercase `OpenTypeFeature::new(*b"liga", ..)`
+overrides. Small caps and forced small caps retain their text-case settings;
+the supplied font must provide the real features. The renderer diagnoses absent
+features rather than silently ignoring them.
+
+Invalid/conflicting paragraph settings, indentation outside 0–5 (1–5 for lists),
+RTL lists, malformed/vertical/random features, and enabled kerning with nonzero
+tracking suppress all output. [Lists and small caps](../docs/lists-opentype-compare.png)
+were reviewed against a live Figma export; explicit feature toggles have synthetic
+shaping/export tests because the plugin API exposes them read-only. The exporter
+still only displays Rust and performs no filesystem writes.

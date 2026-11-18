@@ -23,9 +23,12 @@ Completed implementation notes and comparisons are in the
    (2026-11-18), with [representative script comparisons](docs/scripts-compare.png).
    Richer text fills and aligned/stacked strokes are done (2026-11-19),
    with [mixed paints and silhouette comparisons](docs/text-paints-compare.png).
-   **Next: remaining list/OpenType styling**,
-   including small caps, custom decorations, RTL decoration/tracking and broader
-   Unicode coverage, then text paint blends and advanced stroke styles. Preserve hard errors for each unsupported case until implemented.
+   Lists, OpenType overrides and real small caps are done (2026-11-19), with
+   [list and small-caps comparisons](docs/lists-opentype-compare.png).
+   **Next: custom decorations**, then RTL lists/decoration/tracking, broader
+   Unicode coverage, text paint blends and advanced stroke styles. Vertical/random
+   font features and explicit kerning with tracking remain unsupported.
+   Preserve hard errors until each case is implemented.
    **Done when:** generated Rust retains supported run styles and paragraph
    behavior; measured and rendered text agree; representative labels, paragraphs,
    mixed runs and non-Latin samples are reviewed beside Figma. Test wrapping,
