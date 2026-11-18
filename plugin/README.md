@@ -258,9 +258,9 @@ font/style is listed in the generated font manifest; the host supplies the exact
 font bytes/axes. Run-level variable bindings are verified against the text node.
 
 Ranges must cover the text exactly; missing fonts, unsupported run paints or
-blend modes, malformed ranges and unsupported paragraph/decorative styles suppress
+blend modes, malformed ranges and unsupported list/decorative styles suppress
 all output. Limits are 128 runs and 512 UTF-8 bytes per layer. Non-Latin shaping
-and remaining paragraph/decorative styles are future work. The
+and remaining list/decorative styles are future work. The
 [generated comparison](../docs/text-runs-compare.png) was reviewed beside Figma;
 live plugin execution remains a separate roadmap item.
 
@@ -270,3 +270,12 @@ runs. The supplied font resolves the height at render time; no guessed pixels
 are emitted. Missing fonts and backends without natural-height/styled-text support
 fail closed. [Automatic-height comparison](../docs/auto-height-compare.png) was
 reviewed beside Figma; the plugin still only displays Rust and writes no files.
+
+
+Paragraph spacing and first-line indentation export `.paragraph_spacing(..)` and
+`.paragraph_indent(..)` on plain text or individual styled runs. Figma’s paragraph
+ranges are preserved: a newline belongs to the preceding paragraph. Conflicting
+settings within one paragraph, negative/nonfinite values, an indent consuming
+the full width, lists and hanging text suppress all Rust. The
+[paragraph comparison](../docs/paragraphs-compare.png) covers generated output;
+no filesystem writes, partial output or live variable runtime are introduced.

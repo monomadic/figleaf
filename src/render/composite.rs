@@ -630,7 +630,7 @@ pub(super) fn validate(
                     }
                 }
             }
-            Item::Text(t) if (!t.runs.is_empty() || t.line_height == 0.) => {
+            Item::Text(t) if t.needs_layout() => {
                 *count += 1;
                 if *count > 128 {
                     return Err(Error("canvas exceeds 128 composite scopes"));

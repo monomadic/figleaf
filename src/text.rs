@@ -6,7 +6,8 @@ use crate::Error;
 
 mod rich;
 pub use rich::{
-    RunLine, RunMask, TextRun, layout_runs, resolve_runs, resolve_style, validate_runs,
+    ParagraphStyle, RunLine, RunMask, TextRun, layout_paragraphs, layout_runs, resolve_runs,
+    resolve_style, validate_runs,
 };
 
 pub const MAX_FONTS: usize = 64;

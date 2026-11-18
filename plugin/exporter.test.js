@@ -54,7 +54,7 @@ test('unsupported features never produce partial Rust', () => {
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(65).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
     node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
     text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNDERLINE'}),text({characters:'🐈'}),
-    text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:4}),text({textTruncation:'ENDING'}),
+    text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:-4}),text({textTruncation:'ENDING'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
     text({fills:[solid,solid]}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
   ];
@@ -620,4 +620,26 @@ test('automatic line height stays automatic in plain and mixed Rust output',()=>
     fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0,1]);assert_eq!(c.items().len(),5);}');
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('paragraph spacing and first-line indentation export layer and per-paragraph settings',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'paragraphs-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/paragraphs.rs'),'utf8'));
+  assert.match(result.code,/paragraph_spacing\(18.0\)/);assert.match(result.code,/paragraph_indent\(30.0\)/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-paragraphs-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);assert_eq!(c.items().len(),4);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('paragraph validation rejects invalid values, conflicts and list indentation',()=>{
+  for(const patch of [{paragraphSpacing:-1},{paragraphSpacing:NaN},{paragraphIndent:-1},{paragraphIndent:100},{paragraphIndent:Infinity},{hangingList:true}]) {
+    const r=exportHierarchy([text(patch)]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  assert.deepEqual(exportHierarchy([text({paragraphSpacing:12,paragraphIndent:16})]).errors,[]);
+  const root=mixedTextFixture();root.children[0].styledSegments[1].paragraphIndent=12;
+  const r=exportHierarchy([root]);assert.equal(r.code,null);assert.ok(r.errors.some(e=>/Conflicting styles/.test(e.message)));
 });

@@ -518,3 +518,20 @@ Small mixed-size baseline differences remain. Synthetic tests cover resolved
 metrics, invalid backends, missing fonts and unchanged uploads. Paragraph spacing
 and indentation are next in [TASKS.md](../TASKS.md); live Desktop plugin validation
 remains separate.
+
+
+## Paragraph spacing and first-line indentation — 2026-11-18
+
+Layer defaults and per-run overrides retain paragraph settings. Indentation
+reduces only the first line’s wrapping width; continuation lines use the full
+box. Paragraph gaps occur at newlines, including empty paragraphs, without a
+final trailing gap. Horizontal/vertical alignment uses these layout dimensions.
+Plugin output preserves Figma paragraph ranges and validates conflicting styles;
+negative/nonfinite settings, exhausted first-line width and list/hanging styles
+remain hard errors. No filesystem writes or new dependencies.
+
+Generated Rust [reviewed beside Figma](paragraphs-compare.png), mean 0.57/255 at
+2×, covering wrapped text, empty paragraphs, center alignment and per-paragraph
+settings. Synthetic tests cover right/bottom alignment, trailing newlines,
+validation and unchanged/changed caches. Decorations and case handling are next
+in [TASKS.md](../TASKS.md); live plugin validation remains separate.

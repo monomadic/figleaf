@@ -1121,6 +1121,8 @@ pub struct Text {
     pub string: String,
     /// Explicit styled runs. When nonempty, the plain string must be empty.
     pub runs: Vec<text::TextRun>,
+    pub paragraph_spacing: f32,
+    pub paragraph_indent: f32,
     /// The line is `line_height` tall and placed in this box by the alignments.
     pub rect: Rect,
     /// Index into the fonts the text backend was built with.
@@ -1152,6 +1154,8 @@ impl Text {
             clips: Vec::new(),
             string: string.into(),
             runs: Vec::new(),
+            paragraph_spacing: 0.,
+            paragraph_indent: 0.,
             rect,
             font: 0,
             size: 12.,
@@ -1172,6 +1176,23 @@ impl Text {
         let mut text = Self::new("", rect);
         text.runs = runs;
         text
+    }
+    /// Extra space between paragraphs, excluding soft wraps and the final tail.
+    pub fn paragraph_spacing(mut self, value: f32) -> Self {
+        self.paragraph_spacing = value;
+        self
+    }
+    /// First-line offset from the left edge; continuation lines use the full width.
+    pub fn paragraph_indent(mut self, value: f32) -> Self {
+        self.paragraph_indent = value;
+        self
+    }
+    #[cfg(feature = "wgpu")]
+    pub(crate) fn needs_layout(&self) -> bool {
+        !self.runs.is_empty()
+            || self.line_height == 0.
+            || self.paragraph_spacing != 0.
+            || self.paragraph_indent != 0.
     }
     pub fn font(mut self, font: usize) -> Self {
         self.font = font;
@@ -1242,7 +1263,8 @@ impl Text {
         }
     }
     /// Top-left of a line `advance` wide, in logical units.
-    /// Requires a resolved explicit height; use `text::layout_runs` for Auto.
+    /// Requires a resolved explicit height and zero paragraph spacing/indentation;
+    /// use `text::layout_paragraphs` for paragraph-aware placement.
     pub fn origin(&self, advance: f32) -> [f32; 2] {
         self.line_origin(advance, 0, 1)
     }

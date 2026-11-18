@@ -132,3 +132,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "auto_height"
 required-features = ["wgpu", "text-coretext"]
+
+[[example]]
+name = "paragraphs"
+required-features = ["wgpu", "text-coretext"]

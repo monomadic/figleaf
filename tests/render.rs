@@ -2414,3 +2414,76 @@ fn automatic_line_height_uses_supplied_font_metrics_and_caches() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0);
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn paragraphs_align_with_total_spacing_and_invalidate_cached_layout() {
+    use figleaf::{
+        paint::Align,
+        text::{FontSource, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let make = |spacing, indent| {
+        let mut c = Canvas::new();
+        c.text(
+            Text::new("A\nB", Rect::new(0., 0., 100., 100.))
+                .size(16., 24.)
+                .paragraph_spacing(spacing)
+                .paragraph_indent(indent)
+                .align(Align::End, Align::End)
+                .wrap(),
+        );
+        c
+    };
+    let c = make(8., 20.);
+    let image = gpu.render(&mut renderer, &c, [100, 100], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [100, 100], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let no_indent = gpu.render(
+        &mut renderer,
+        &make(8., 0.),
+        [100, 100],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(
+        image.rgba, no_indent.rgba,
+        "right alignment keeps the same right edge"
+    );
+    let wider_gap = gpu.render(
+        &mut renderer,
+        &make(20., 20.),
+        [100, 100],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_ne!(wider_gap.rgba, image.rgba);
+    for y in 76..100 {
+        for x in 0..100 {
+            assert_eq!(
+                image.pixel(x, y),
+                wider_gap.pixel(x, y),
+                "final line has no trailing paragraph gap"
+            );
+        }
+    }
+    let bad = make(f32::NAN, 20.);
+    let image = gpu.render(&mut renderer, &bad, [100, 100], 1., [0.; 4], &mut backend);
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &bad, [100, 100], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+}

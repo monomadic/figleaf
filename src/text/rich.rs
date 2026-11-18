@@ -7,6 +7,9 @@ pub struct TextRun {
     pub text: String,
     pub style: Style,
     pub color: Color,
+    /// None inherits the text layer’s paragraph setting.
+    pub paragraph_spacing: Option<f32>,
+    pub paragraph_indent: Option<f32>,
 }
 impl TextRun {
     pub fn new(text: impl Into<String>) -> Self {
@@ -19,7 +22,17 @@ impl TextRun {
                 letter_spacing: 0.,
             },
             color: [0., 0., 0., 1.],
+            paragraph_spacing: None,
+            paragraph_indent: None,
         }
+    }
+    pub fn paragraph_spacing(mut self, value: f32) -> Self {
+        self.paragraph_spacing = Some(value);
+        self
+    }
+    pub fn paragraph_indent(mut self, value: f32) -> Self {
+        self.paragraph_indent = Some(value);
+        self
     }
     pub fn font(mut self, font: usize) -> Self {
         self.style.font = font;
@@ -56,6 +69,38 @@ pub struct RunLine {
     pub runs: Vec<TextRun>,
     pub height: f32,
     pub metrics: Metrics,
+    /// First-line inset; zero on wrapped continuation lines.
+    pub indent: f32,
+    pub available_width: f32,
+    /// Extra gap after a paragraph break, never after the final paragraph.
+    pub spacing_after: f32,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ParagraphStyle {
+    pub spacing: f32,
+    pub indent: f32,
+}
+impl ParagraphStyle {
+    pub fn validate(self, width: f32) -> Result<(), Error> {
+        if !width.is_finite()
+            || width <= 0.
+            || !self.spacing.is_finite()
+            || !(0. ..=1e7).contains(&self.spacing)
+            || !self.indent.is_finite()
+            || !(0. ..=1e7).contains(&self.indent)
+            || self.indent >= width
+        {
+            return Err(Error("invalid paragraph spacing or first-line indent"));
+        }
+        Ok(())
+    }
+}
+fn paragraph_style(run: &TextRun, default: ParagraphStyle) -> ParagraphStyle {
+    ParagraphStyle {
+        spacing: run.paragraph_spacing.unwrap_or(default.spacing),
+        indent: run.paragraph_indent.unwrap_or(default.indent),
+    }
 }
 
 pub fn validate_runs(
@@ -73,6 +118,7 @@ pub fn validate_runs(
         ));
     }
     for run in runs {
+        paragraph_style(run, ParagraphStyle::default()).validate(f32::MAX)?;
         if run.text.is_empty()
             || run
                 .color
@@ -150,6 +196,18 @@ pub fn layout_runs(
     width: f32,
     wrap: bool,
 ) -> Result<Vec<RunLine>, Error> {
+    layout_paragraphs(backend, runs, width, wrap, ParagraphStyle::default())
+}
+/// Wrap and measure paragraphs with layer defaults and per-run overrides.
+/// All runs in the same paragraph (including its newline) must agree on settings.
+pub fn layout_paragraphs(
+    backend: &mut dyn Backend,
+    runs: &[TextRun],
+    width: f32,
+    wrap: bool,
+    defaults: ParagraphStyle,
+) -> Result<Vec<RunLine>, Error> {
+    defaults.validate(width)?;
     validate_runs(runs, width, 1., wrap)?;
     let resolved = resolve_runs(backend, runs)?;
     let runs = resolved.as_slice();
@@ -159,7 +217,27 @@ pub fn layout_runs(
     for paragraph in string.split('\n') {
         let mut start = offset;
         let end = offset + paragraph.len();
+        let covered_end = (end + 1).min(string.len());
+        let mut at = 0;
+        let mut settings = None;
+        for run in runs {
+            let lo = at;
+            at += run.text.len();
+            if lo < covered_end && at > offset {
+                let current = paragraph_style(run, defaults);
+                current.validate(width)?;
+                if settings.is_some_and(|previous| previous != current) {
+                    return Err(Error("conflicting styles within one paragraph"));
+                }
+                settings = Some(current);
+            }
+        }
+        let settings = settings.unwrap_or_else(|| paragraph_style(runs.last().unwrap(), defaults));
+        settings.validate(width)?;
+        let mut first = true;
         loop {
+            let indent = if first { settings.indent } else { 0. };
+            let available_width = width - indent;
             let mut stop = end;
             if wrap && start < end {
                 let mut fit = None;
@@ -176,7 +254,7 @@ pub fn layout_runs(
                     } else {
                         measure(backend, &slice(runs, start, trimmed))?.advance
                     };
-                    if wide > width as f64 + 0.001 {
+                    if wide > available_width as f64 + 0.001 {
                         break;
                     }
                     fit = Some(candidate);
@@ -188,7 +266,7 @@ pub fn layout_runs(
                         for (i, c) in string[start..end].char_indices().skip(1) {
                             let candidate = start + i + c.len_utf8();
                             if measure(backend, &slice(runs, start, candidate))?.advance
-                                > width as f64 + 0.001
+                                > available_width as f64 + 0.001
                             {
                                 break;
                             }
@@ -229,6 +307,9 @@ pub fn layout_runs(
                 runs: part,
                 height,
                 metrics,
+                indent,
+                available_width,
+                spacing_after: 0.,
             });
             start = stop;
             if wrap {
@@ -237,8 +318,12 @@ pub fn layout_runs(
                 }
             }
             if start >= end {
+                if end < string.len() {
+                    lines.last_mut().unwrap().spacing_after = settings.spacing;
+                }
                 break;
             }
+            first = false;
         }
         offset = end + 1;
     }
@@ -359,5 +444,143 @@ mod auto_tests {
             assert!(layout_runs(&mut FontMetrics(metric), &runs, 100., true).is_err());
         }
         assert!(layout_runs(&mut super::super::NoText, &runs, 100., true).is_err());
+    }
+}
+
+#[cfg(test)]
+mod paragraph_tests {
+    use super::*;
+    struct Mono;
+    impl Backend for Mono {
+        fn raster(
+            &mut self,
+            _: &str,
+            _: Style,
+            _: f32,
+            _: f32,
+        ) -> Result<super::super::Mask, Error> {
+            Err(Error("measure only"))
+        }
+        fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
+            Ok(Metrics {
+                advance: runs
+                    .iter()
+                    .map(|r| r.text.chars().count() as f64 * 10.)
+                    .sum(),
+                lines: 1,
+                ..Default::default()
+            })
+        }
+    }
+    #[test]
+    fn paragraph_breaks_space_once_and_only_first_lines_indent() {
+        let lines = layout_paragraphs(
+            &mut Mono,
+            &[TextRun::new("one two three\n\nlast")],
+            80.,
+            true,
+            ParagraphStyle {
+                spacing: 10.,
+                indent: 30.,
+            },
+        )
+        .unwrap();
+        let strings: Vec<String> = lines
+            .iter()
+            .map(|l| l.runs.iter().map(|r| r.text.as_str()).collect())
+            .collect();
+        assert_eq!(strings, ["one", "two", "three", "", "last"]);
+        assert_eq!(
+            lines.iter().map(|l| l.indent).collect::<Vec<_>>(),
+            [30., 0., 0., 30., 30.]
+        );
+        assert_eq!(
+            lines.iter().map(|l| l.spacing_after).collect::<Vec<_>>(),
+            [0., 0., 10., 10., 0.]
+        );
+        assert_eq!(
+            lines
+                .iter()
+                .map(|l| l.height + l.spacing_after)
+                .sum::<f32>(),
+            100.
+        );
+    }
+    #[test]
+    fn paragraph_overrides_follow_newlines_and_have_no_final_gap() {
+        let runs = [
+            TextRun::new("one\n")
+                .paragraph_spacing(6.)
+                .paragraph_indent(10.),
+            TextRun::new("two\n")
+                .paragraph_spacing(12.)
+                .paragraph_indent(20.),
+            TextRun::new("last")
+                .paragraph_spacing(100.)
+                .paragraph_indent(0.),
+        ];
+        let lines = layout_paragraphs(
+            &mut Mono,
+            &runs,
+            100.,
+            true,
+            ParagraphStyle {
+                spacing: 50.,
+                indent: 5.,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            lines.iter().map(|l| l.spacing_after).collect::<Vec<_>>(),
+            [6., 12., 0.]
+        );
+        assert_eq!(
+            lines.iter().map(|l| l.indent).collect::<Vec<_>>(),
+            [10., 20., 0.]
+        );
+        let trailing = layout_runs(
+            &mut Mono,
+            &[TextRun::new("a\n").paragraph_spacing(8.)],
+            100.,
+            true,
+        )
+        .unwrap();
+        assert_eq!(trailing.len(), 2);
+        assert_eq!(trailing[0].spacing_after, 8.);
+        assert_eq!(trailing[1].spacing_after, 0.);
+    }
+    #[test]
+    fn malformed_or_conflicting_paragraph_styles_fail_closed() {
+        for style in [
+            ParagraphStyle {
+                spacing: -1.,
+                indent: 0.,
+            },
+            ParagraphStyle {
+                spacing: f32::NAN,
+                indent: 0.,
+            },
+            ParagraphStyle {
+                spacing: 0.,
+                indent: -1.,
+            },
+            ParagraphStyle {
+                spacing: 0.,
+                indent: 80.,
+            },
+            ParagraphStyle {
+                spacing: 0.,
+                indent: f32::INFINITY,
+            },
+        ] {
+            assert!(
+                layout_paragraphs(&mut Mono, &[TextRun::new("text")], 80., true, style).is_err()
+            );
+        }
+        let conflict = [
+            TextRun::new("same ").paragraph_spacing(4.),
+            TextRun::new("paragraph").paragraph_spacing(8.),
+        ];
+        assert!(layout_runs(&mut Mono, &conflict, 200., true).is_err());
     }
 }

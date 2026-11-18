@@ -348,7 +348,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       let expression = null;
       if (n.type === 'TEXT') {
         if (strokes.length) reject('Text strokes are unsupported.');
-        if (n.paragraphSpacing || n.paragraphIndent || n.hangingPunctuation || n.hangingList) reject('Paragraph spacing, indentation, and hanging text are unsupported.');
+        if (n.hangingPunctuation || n.hangingList) reject('Hanging punctuation and hanging lists are unsupported.');
         if (n.textTruncation && n.textTruncation !== 'DISABLED' || n.maxLines != null) reject('Text truncation and maximum line counts are unsupported.');
         if (n.hasMissingFont) reject('The text uses a missing font.');
         if (!['LEFT','CENTER','RIGHT'].includes(n.textAlignHorizontal) || !['TOP','CENTER','BOTTOM'].includes(n.textAlignVertical)) reject('Unsupported text alignment.');
@@ -369,6 +369,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         }
         const styles=segments?.length?segments:[n];
         const generated=[];
+        let paragraphSettings=null;
         for(const s of styles) {
           const paints=visible(s.fills||[]);
           if(paints.length!==1||paints[0]?.type!=='SOLID')reject('Text requires exactly one solid fill per run.');
@@ -376,17 +377,23 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           for(const p of paints) if(p.type==='SOLID' && (!p.color || [p.color.r,p.color.g,p.color.b,p.color.a??1,p.opacity??1].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)))reject('Invalid text run color or opacity.');
           if(!s.fontName||typeof s.fontName!=='object'||typeof s.fontName.family!=='string'||typeof s.fontName.style!=='string'||typeof s.fontSize!=='number'||typeof s.letterSpacing!=='object'||typeof s.lineHeight!=='object')reject('Missing or invalid run text style.');
           if(s.textCase!=='ORIGINAL'||s.textDecoration!=='NONE')reject('Text case transformations and decorations are unsupported.');
-          if(s.listOptions?.type!==undefined&&s.listOptions.type!=='NONE'||s.indentation||s.paragraphSpacing||s.paragraphIndent||Object.keys(s.openTypeFeatures||{}).length)reject('Lists, indentation, paragraph spacing, and OpenType overrides are unsupported.');
+          if(s.listOptions?.type!==undefined&&s.listOptions.type!=='NONE'||s.indentation||Object.keys(s.openTypeFeatures||{}).length)reject('Lists, list indentation, and OpenType overrides are unsupported.');
           if(Object.keys(s.boundVariables||{}).length&&!verifiedBindings.has(n))reject('Text run variable bindings must be resolved before export.');
           if(!['PIXELS','PERCENT','AUTO'].includes(s.lineHeight?.unit))reject('Unknown text line height unit.');
           if(!['PIXELS','PERCENT'].includes(s.letterSpacing?.unit))reject('Unsupported letter spacing unit.');
           const height=s.lineHeight?.unit==='AUTO'?s.fontSize:s.lineHeight?.unit==='PERCENT'?s.fontSize*s.lineHeight.value/100:s.lineHeight?.value;
           const tracking=s.letterSpacing?.unit==='PERCENT'?s.fontSize*s.letterSpacing.value/100:s.letterSpacing?.value;
           if(!(s.fontSize>0&&s.fontSize<=128&&height>=s.fontSize&&height<=256&&Math.abs(tracking)<=s.fontSize&&n.width>0&&n.width<=2048))reject('Text exceeds figleaf’s size, line-height, tracking, or width limits.');
+          const spacing=s.paragraphSpacing??n.paragraphSpacing??0, indent=s.paragraphIndent??n.paragraphIndent??0;
+          if(typeof spacing!=='number'||!Number.isFinite(spacing)||spacing<0||spacing>1e7||typeof indent!=='number'||!Number.isFinite(indent)||indent<0||indent>1e7||indent>=n.width)reject('Invalid paragraph spacing or first-line indent.');
+          for(const ch of (mixedRuns?s.characters:text)||'') {
+            if(paragraphSettings&&(paragraphSettings[0]!==spacing||paragraphSettings[1]!==indent))reject('Conflicting styles within one paragraph.');
+            paragraphSettings=ch==='\n'?null:[spacing,indent];
+          }
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
         for (const type of ['DROP_SHADOW','INNER_SHADOW']) {

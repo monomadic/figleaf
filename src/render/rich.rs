@@ -43,16 +43,26 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             text: t.string.clone(),
             style: t.style(),
             color: t.color,
+            paragraph_spacing: None,
+            paragraph_indent: None,
         }]
     } else {
         t.runs.clone()
     };
+    let paragraph = text::ParagraphStyle {
+        spacing: t.paragraph_spacing,
+        indent: t.paragraph_indent,
+    };
+    paragraph.validate(t.rect.w)?;
     if runs.len() == 1 && runs[0].text.is_empty() {
         return Ok(Composite::new(Canvas::new()));
     }
     text::validate_runs(&runs, t.rect.w, raster_scale, t.wrap)?;
-    let lines = text::layout_runs(backend, &runs, t.rect.w, t.wrap)?;
-    let height: f32 = lines.iter().map(|l| l.height).sum();
+    let lines = text::layout_paragraphs(backend, &runs, t.rect.w, t.wrap, paragraph)?;
+    let height: f32 = lines.iter().map(|l| l.height + l.spacing_after).sum();
+    if !height.is_finite() || height > 1e7 {
+        return Err(Error("paragraph block exceeds layout limits"));
+    }
     let place = |align, spare: f32| match align {
         crate::paint::Align::Start => 0.,
         crate::paint::Align::Center => spare / 2.,
@@ -87,7 +97,9 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                     "text backend violated styled bitmap or metric limits",
                 ));
             }
-            let x = t.rect.x + place(t.align, t.rect.w - line.metrics.advance as f32);
+            let x = t.rect.x
+                + line.indent
+                + place(t.align, line.available_width - line.metrics.advance as f32);
             let baseline = y + line.metrics.baseline as f32;
             let origin = [x, y + baseline.round() - baseline]
                 .map(|v| (v * raster_scale).round() / raster_scale);
@@ -102,7 +114,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                 .transform(t.transform),
             );
         }
-        y += line.height;
+        y += line.height + line.spacing_after;
     }
     let mut scope = Composite::new(content).effect_transform(t.transform);
     for (inner, effect) in [(false, t.drop_shadow), (true, t.inner_shadow)] {

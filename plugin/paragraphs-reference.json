@@ -1,0 +1,486 @@
+{
+  "id": "476:553",
+  "name": "Temporary paragraph validation",
+  "type": "FRAME",
+  "visible": true,
+  "width": 640,
+  "height": 400,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      19000
+    ],
+    [
+      0,
+      1,
+      18400
+    ]
+  ],
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "effects": [],
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "clipsContent": true,
+  "cornerRadius": 0,
+  "cornerSmoothing": 0,
+  "topLeftRadius": 0,
+  "topRightRadius": 0,
+  "bottomLeftRadius": 0,
+  "bottomRightRadius": 0,
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "children": [
+    {
+      "id": "476:554",
+      "name": "Indented paragraphs",
+      "type": "TEXT",
+      "visible": true,
+      "width": 280,
+      "height": 350,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          16
+        ],
+        [
+          0,
+          1,
+          16
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.11999999731779099,
+            "b": 0.1599999964237213
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "characters": "First paragraph wraps across several lines of text.\nSecond paragraph has its own first-line indent.\n\nAfter an empty paragraph.",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 14,
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 22
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "paragraphSpacing": 12,
+      "paragraphIndent": 24,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "First paragraph wraps across several lines of text.\nSecond paragraph has its own first-line indent.\n\nAfter an empty paragraph.",
+          "start": 0,
+          "end": 126,
+          "fontSize": 14,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 22
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.11999999731779099,
+                "b": 0.1599999964237213
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 12,
+          "paragraphIndent": 24,
+          "openTypeFeatures": {}
+        }
+      ]
+    },
+    {
+      "id": "476:555",
+      "name": "Centered paragraphs",
+      "type": "TEXT",
+      "visible": true,
+      "width": 280,
+      "height": 150,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          336
+        ],
+        [
+          0,
+          1,
+          16
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.11999999731779099,
+            "b": 0.1599999964237213
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "characters": "Centered text wraps onto a second line.\nNext paragraph.",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 14,
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 22
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "textAlignHorizontal": "CENTER",
+      "textAlignVertical": "CENTER",
+      "paragraphSpacing": 8,
+      "paragraphIndent": 24,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "Centered text wraps onto a second line.\nNext paragraph.",
+          "start": 0,
+          "end": 55,
+          "fontSize": 14,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 22
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.11999999731779099,
+                "b": 0.1599999964237213
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 8,
+          "paragraphIndent": 24,
+          "openTypeFeatures": {}
+        }
+      ]
+    },
+    {
+      "id": "476:556",
+      "name": "Different paragraph styles",
+      "type": "TEXT",
+      "visible": true,
+      "width": 280,
+      "height": 190,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          336
+        ],
+        [
+          0,
+          1,
+          190
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.10000000149011612,
+            "g": 0.11999999731779099,
+            "b": 0.1599999964237213
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "characters": "A short paragraph.\nThis second paragraph wraps and uses different spacing.\nFinal paragraph.",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 14,
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 22
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "A short paragraph.\n",
+          "start": 0,
+          "end": 19,
+          "fontSize": 14,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 22
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.11999999731779099,
+                "b": 0.1599999964237213
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 6,
+          "paragraphIndent": 12,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "This second paragraph wraps and uses different spacing.\n",
+          "start": 19,
+          "end": 75,
+          "fontSize": 14,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 22
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.11999999731779099,
+                "b": 0.1599999964237213
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 18,
+          "paragraphIndent": 30,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "Final paragraph.",
+          "start": 75,
+          "end": 91,
+          "fontSize": 14,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 22
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.10000000149011612,
+                "g": 0.11999999731779099,
+                "b": 0.1599999964237213
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 6,
+          "paragraphIndent": 12,
+          "openTypeFeatures": {}
+        }
+      ]
+    }
+  ]
+}

@@ -287,7 +287,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Gradients on text, more than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
-grid, baseline alignment and space-between for wrapped lines, and for text: paragraph spacing, hyphenation, truncation,
+grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation, truncation,
 non-Latin scripts and any backend other than CoreText.
 
 ## Where it came from
@@ -563,8 +563,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, Latin characters, solid run colors and
-explicit or automatic line heights. Decorations, paragraph spacing,
-truncation, scripts beyond the existing Latin scope and richer text paints are
+explicit or automatic line heights. Decorations, truncation, scripts beyond the existing Latin scope and richer text paints are
 still unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
@@ -596,3 +595,31 @@ The plugin emits `.auto_line_height()` for Figma Auto instead of baking a height
 blank paragraphs and centered alignment. Mean channel difference: 2.58/255 at
 2×; small mixed-size baseline differences remain. Synthetic tests cover font
 metrics, empty lines, invalid backends, missing fonts and unchanged uploads.
+
+
+## Paragraph spacing and indentation
+
+`Text::paragraph_spacing(pixels)` adds space between newline-delimited paragraphs,
+including empty ones, without adding space after soft wraps or after the final
+paragraph. `Text::paragraph_indent(pixels)` insets only each paragraph’s first
+line; wrapping uses the reduced first-line width and full continuation widths.
+Center/right alignment uses that line’s available width. Vertical alignment
+includes paragraph gaps in the block height.
+
+Styled runs can override either setting with the same builders; unset values
+inherit the text layer. Runs within one paragraph, including its terminating
+newline, must agree on paragraph settings. Conflicts fail closed. Spacing and
+indentation must be finite and nonnegative, and indentation must leave positive
+line width. Lists, list indentation and hanging punctuation remain unsupported.
+
+`text::layout_paragraphs(.., ParagraphStyle { spacing, indent })` exposes the same
+layout to hosts. `RunLine` carries `indent`, `available_width` and `spacing_after`;
+sum `height + spacing_after` for the block height. `layout_runs` uses zero layer
+defaults while retaining run overrides. Cached rendering uploads nothing when
+unchanged, and updates when paragraph settings change. No new dependencies.
+
+`cargo run --example paragraphs --all-features` renders plugin-generated Rust
+[beside Figma](docs/paragraphs-compare.png), mean 0.57/255 at 2×. The fixture covers
+wrapping, empty paragraphs, centered alignment and different settings per
+paragraph. Glyph edges still differ. Synthetic tests cover right/bottom alignment,
+trailing breaks, conflicts, invalid values and cache invalidation.
