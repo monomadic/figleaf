@@ -2693,3 +2693,65 @@ fn truncated_text_matches_visible_literal_and_caches_limit_changes_and_errors() 
     assert_eq!(renderer.problems().len(), 1);
     assert!(image.rgba.iter().all(|v| *v == 0));
 }
+
+#[test]
+#[cfg(feature = "text-coretext")]
+fn script_fallback_render_matches_explicit_fonts_and_caches_failures() {
+    use figleaf::text::{FontSource, TextRun, coretext::CoreText};
+    let fonts = [
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+            axes: &[],
+        }),
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/NotoSansDevanagari.ttf"),
+            axes: &[],
+        }),
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/NotoSansArabic.ttf"),
+            axes: &[],
+        }),
+    ];
+    let mut backend = CoreText::new(&fonts)
+        .unwrap()
+        .with_fallback_fonts(&[1, 2])
+        .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut c = Canvas::new();
+    c.text(Text::new("Fonts: हिन्दी / العربية", Rect::new(0., 0., 400., 40.)).size(22., 40.));
+    let actual = gpu.render(&mut renderer, &c, [800, 80], 2., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [800, 80], 2., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let mut explicit = Canvas::new();
+    explicit.text(Text::rich(
+        vec![
+            TextRun::new("Fonts: ").size(22., 40.),
+            TextRun::new("हिन्दी").font(1).size(22., 40.),
+            TextRun::new(" / ").size(22., 40.),
+            TextRun::new("العربية").font(2).size(22., 40.),
+        ],
+        Rect::new(0., 0., 400., 40.),
+    ));
+    let expected = gpu.render(
+        &mut renderer,
+        &explicit,
+        [800, 80],
+        2.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(actual.rgba, expected.rgba);
+    let mut missing = CoreText::new(&fonts[..1]).unwrap();
+    let mut fresh = Renderer::new(&gpu.device, gpu.format);
+    let image = gpu.render(&mut fresh, &c, [800, 80], 2., [0.; 4], &mut missing);
+    assert_eq!(fresh.problems().len(), 1);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+    let report = fresh
+        .prepare(&gpu.device, &gpu.queue, &c, [800, 80], 2., &mut missing)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+}

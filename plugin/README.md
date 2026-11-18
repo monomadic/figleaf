@@ -36,7 +36,7 @@ full ellipses, filled vector paths, stroked straight lines, solid and linear/rad
 Nested transforms compose; the root translation is omitted but its linear matrix is retained.
 All ancestor frame clips are retained, including unequal corner radii and crossing
 transforms. The same clip stack applies to shapes and text.
-Latin text supports mixed runs with one solid fill per run, explicit or automatic line heights, and
+Supported Unicode text supports mixed runs with one solid fill per run, explicit or automatic line heights, and
 caller-supplied font indices. Code comments identify each required family/style;
 the host must supply the exact font and variable-font configuration. Normal
 figleaf text limits still apply (including a maximum 2048-unit raster width).
@@ -259,8 +259,8 @@ font bytes/axes. Run-level variable bindings are verified against the text node.
 
 Ranges must cover the text exactly; missing fonts, unsupported run paints or
 blend modes, malformed ranges and unsupported list/decorative styles suppress
-all output. Limits are 128 runs and 512 UTF-8 bytes per layer. Non-Latin shaping
-and remaining list/decorative styles are future work. The
+all output. Limits are 128 runs and 512 UTF-8 bytes per layer. Remaining list/decorative styles and scripts outside the supported Unicode profile
+are future work. The
 [generated comparison](../docs/text-runs-compare.png) was reviewed beside Figma;
 live plugin execution remains a separate roadmap item.
 
@@ -297,3 +297,14 @@ truncation leaves any stored line limit inactive. Invalid modes or line counts
 suppress all output. [Generated reference](../docs/truncation-compare.png) covers
 fixed/partial heights, auto-height line limits, mixed styles and paragraph gaps.
 The plugin still only displays Rust; live Desktop validation remains separate.
+
+
+Script-aware output preserves supported BMP text, combining marks and explicit
+font/style ranges. The host uses CoreText with exact font bytes and optionally
+explicit fallback slots; generated comments explain this requirement. The plugin
+cannot recover Figma’s implicit glyph fallback chain and does not guess it.
+Emoji, variation selectors, explicit bidi controls, non-Latin case conversion and
+RTL decorations/tracking suppress all Rust. Missing glyph coverage and font
+changes inside a grapheme are diagnosed by the renderer. The
+[script comparison](../docs/scripts-compare.png) covers generated output;
+whole-plugin Desktop validation remains an open task.

@@ -288,7 +288,8 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 Gradients on text, more than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation,
-non-Latin scripts and any backend other than CoreText.
+emoji, explicit bidi controls, RTL decorations/tracking, script-specific case conversion,
+and any backend other than CoreText.
 
 ## Where it came from
 
@@ -562,8 +563,8 @@ backends opt into `measure_runs`/`raster_runs`; their defaults report unsupporte
 styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
-Limits remain 512 UTF-8 bytes, 128 runs, Latin characters, solid run colors and
-explicit or automatic line heights. Small caps, custom decorations, scripts beyond the existing Latin scope and richer text paints are
+Limits remain 512 UTF-8 bytes, 128 runs, the Unicode profile below, solid run colors and
+explicit or automatic line heights. Small caps, custom decorations, scripts outside the supported BMP profile and richer text paints are
 still unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
@@ -665,3 +666,37 @@ auto-height maximum lines, mixed styles, paragraph gaps and untruncated exact fi
 (mean difference 1.31/255 at 2×; glyph edges still differ). Tests also cover UTF-8,
 invalid limits, hidden missing fonts and unchanged uploads. Missing ellipsis glyphs
 or exhausted text budgets report errors; there is no three-dot or bitmap fallback.
+
+
+## Script-aware text and explicit fallback
+
+CoreText shapes supported BMP scripts, including Greek/Cyrillic, Hebrew/Arabic,
+Indic, Southeast Asian and CJK text. CoreFoundation supplies grapheme boundaries
+and Unicode line-break opportunities, including dictionary breaks; emergency
+wrapping and truncation keep clusters intact. Paragraph direction survives soft
+wraps and mixed Latin/RTL lines. RTL ending ellipses retain the final wrapped word
+and can hang beyond the box, as in the checked Figma export.
+
+Use `CoreText::new(&sources)?.with_fallback_fonts(&[1, 2])?` for an ordered list of
+host-supplied slots, or `.with_fallback_for(primary, &[...])?` for a face-specific
+chain. Resolution keeps complete graphemes and joining-script words in one font,
+before automatic line-height measurement. A missing primary font, exhausted chain
+or run budget is an error. No system-font lookup, guessed weight or new dependency.
+Custom backends opt into `text_boundaries` and `resolve_fonts`; Latin defaults
+remain available. `layout_text` exposes the same shaped lines used by rendering.
+
+The exporter retains Unicode and explicit font/style slots. Figma does not expose
+its implicit glyph fallback chain, so generated comments require host provisioning
+rather than inventing fallback faces. Emoji/color glyphs, variation selectors,
+explicit bidi controls, RTL decoration/tracking, non-Latin case conversion, and
+font changes inside a grapheme remain hard errors. Scalar `caret_offsets` stays
+Latin-only; this adds no input runtime. Existing byte/run/bitmap budgets still apply.
+
+[Generated comparison](docs/scripts-compare.png) was reviewed beside Figma: Greek,
+Cyrillic, Devanagari conjuncts, combining accents, Arabic with English/numbers,
+RTL truncation and explicit mixed fonts. Mean difference is 1.53/255 at 2×; font
+rasterization differs. CJK punctuation and Thai dictionary boundaries have tests,
+not visual-parity evidence. Fallback matches explicitly assigned font pixels in
+tests, including unchanged uploads and failed-chain caching. Pinned OFL Noto
+reference fonts add 1.49 MB to tests/examples only (see `fonts/Noto.NOTICE.txt`);
+default builds remain dependency-free and do not embed these fonts.

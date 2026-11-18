@@ -1,0 +1,974 @@
+{
+  "id": "486:553",
+  "name": "Temporary script validation",
+  "type": "FRAME",
+  "visible": true,
+  "width": 640,
+  "height": 540,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      19000
+    ],
+    [
+      0,
+      1,
+      18400
+    ]
+  ],
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "effects": [],
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "clipsContent": false,
+  "layoutMode": "NONE",
+  "cornerRadius": 0,
+  "cornerSmoothing": 0,
+  "children": [
+    {
+      "id": "486:554",
+      "name": "Greek and Cyrillic",
+      "type": "TEXT",
+      "visible": true,
+      "width": 600,
+      "height": 76,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.1882352977991104,
+            "b": 0.30980393290519714
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 22,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 32
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac \u03b3\u03c1\u03ac\u03bc\u03bc\u03b1\u03c4\u03b1 \u03ba\u03b1\u03b9 \u03bb\u03ad\u03be\u03b5\u03b9\u03c2. \u0420\u0443\u0441\u0441\u043a\u0438\u0439 \u0442\u0435\u043a\u0441\u0442 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u0442\u0441\u044f.",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac \u03b3\u03c1\u03ac\u03bc\u03bc\u03b1\u03c4\u03b1 \u03ba\u03b1\u03b9 \u03bb\u03ad\u03be\u03b5\u03b9\u03c2. \u0420\u0443\u0441\u0441\u043a\u0438\u0439 \u0442\u0435\u043a\u0441\u0442 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u0442\u0441\u044f.",
+          "start": 0,
+          "end": 56,
+          "fontSize": 22,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 32
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 56,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "486:555",
+      "name": "Devanagari shaping",
+      "type": "TEXT",
+      "visible": true,
+      "width": 285,
+      "height": 160,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          120
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.1882352977991104,
+            "b": 0.30980393290519714
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Devanagari",
+        "style": "Regular"
+      },
+      "fontSize": 24,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 36
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "\u0928\u092e\u0938\u094d\u0924\u0947 \u0926\u0941\u0928\u093f\u092f\u093e\u0964 \u0939\u093f\u0928\u094d\u0926\u0940 \u092e\u0947\u0902 \u0938\u0902\u092f\u0941\u0915\u094d\u0924 \u0905\u0915\u094d\u0937\u0930 \u0914\u0930 \u0936\u092c\u094d\u0926 \u0938\u0939\u0940 \u0926\u093f\u0916\u0924\u0947 \u0939\u0948\u0902\u0964",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "\u0928\u092e\u0938\u094d\u0924\u0947 \u0926\u0941\u0928\u093f\u092f\u093e\u0964 \u0939\u093f\u0928\u094d\u0926\u0940 \u092e\u0947\u0902 \u0938\u0902\u092f\u0941\u0915\u094d\u0924 \u0905\u0915\u094d\u0937\u0930 \u0914\u0930 \u0936\u092c\u094d\u0926 \u0938\u0939\u0940 \u0926\u093f\u0916\u0924\u0947 \u0939\u0948\u0902\u0964",
+          "start": 0,
+          "end": 62,
+          "fontSize": 24,
+          "fontName": {
+            "family": "Noto Sans Devanagari",
+            "style": "Regular"
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 36
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 62,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "486:556",
+      "name": "Arabic mixed paragraph",
+      "type": "TEXT",
+      "visible": true,
+      "width": 285,
+      "height": 170,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          335
+        ],
+        [
+          0,
+          1,
+          120
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.1882352977991104,
+            "b": 0.30980393290519714
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 24,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 40
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645 \u0647\u0630\u0627 \u0646\u0635 \u0639\u0631\u0628\u064a \u0645\u0639 English 123 \u0644\u0627\u062e\u062a\u0628\u0627\u0631 \u0627\u0644\u062a\u0641\u0627\u0641 \u0627\u0644\u0633\u0637\u0648\u0631",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645 \u0647\u0630\u0627 \u0646\u0635 \u0639\u0631\u0628\u064a \u0645\u0639 English 123 \u0644\u0627\u062e\u062a\u0628\u0627\u0631 \u0627\u0644\u062a\u0641\u0627\u0641 \u0627\u0644\u0633\u0637\u0648\u0631",
+          "start": 0,
+          "end": 62,
+          "fontSize": 24,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 40
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 62,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "486:557",
+      "name": "Combining marks",
+      "type": "TEXT",
+      "visible": true,
+      "width": 285,
+      "height": 96,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          310
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.1882352977991104,
+            "b": 0.30980393290519714
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "JetBrains Mono",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400
+        }
+      },
+      "fontSize": 22,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 32
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "Cafe\u0301 a\u0301e\u0301i\u0301o\u0301u\u0301 a\u0301e\u0301i\u0301o\u0301u\u0301 a\u0301e\u0301i\u0301o\u0301u\u0301",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "Cafe\u0301 a\u0301e\u0301i\u0301o\u0301u\u0301 a\u0301e\u0301i\u0301o\u0301u\u0301 a\u0301e\u0301i\u0301o\u0301u\u0301",
+          "start": 0,
+          "end": 38,
+          "fontSize": 22,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 32
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 38,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "486:558",
+      "name": "Arabic ending truncation",
+      "type": "TEXT",
+      "visible": true,
+      "width": 285,
+      "height": 40,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          335
+        ],
+        [
+          0,
+          1,
+          310
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.1882352977991104,
+            "b": 0.30980393290519714
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 24,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 40
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645 \u0647\u0630\u0627 \u0646\u0635 \u0639\u0631\u0628\u064a \u0645\u0639 English 123 \u0644\u0627\u062e\u062a\u0628\u0627\u0631 \u0627\u0644\u062a\u0641\u0627\u0641 \u0627\u0644\u0633\u0637\u0648\u0631",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "TRUNCATE",
+      "textTruncation": "ENDING",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645 \u0647\u0630\u0627 \u0646\u0635 \u0639\u0631\u0628\u064a \u0645\u0639 English 123 \u0644\u0627\u062e\u062a\u0628\u0627\u0631 \u0627\u0644\u062a\u0641\u0627\u0641 \u0627\u0644\u0633\u0637\u0648\u0631",
+          "start": 0,
+          "end": 62,
+          "fontSize": 24,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 40
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 62,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "486:559",
+      "name": "Explicit fallback reference",
+      "type": "TEXT",
+      "visible": true,
+      "width": 600,
+      "height": 56,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          20
+        ],
+        [
+          0,
+          1,
+          450
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.1882352977991104,
+            "b": 0.30980393290519714
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontSize": 22,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 40
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "Fonts: \u0939\u093f\u0928\u094d\u0926\u0940 / \u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "styledSegments": [
+        {
+          "characters": "Fonts: ",
+          "start": 0,
+          "end": 7,
+          "fontSize": 22,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 40
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "\u0939\u093f\u0928\u094d\u0926\u0940",
+          "start": 7,
+          "end": 13,
+          "fontSize": 22,
+          "fontName": {
+            "family": "Noto Sans Devanagari",
+            "style": "Regular"
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 40
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": " / ",
+          "start": 13,
+          "end": 16,
+          "fontSize": 22,
+          "fontName": {
+            "family": "JetBrains Mono",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 40
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+          "start": 16,
+          "end": 23,
+          "fontSize": 22,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 40
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.1882352977991104,
+                "b": 0.30980393290519714
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ]
+    }
+  ]
+}

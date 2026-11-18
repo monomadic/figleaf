@@ -1,5 +1,5 @@
 //! Explicit styled runs. Offsets are derived from strings, never caller byte ranges.
-use super::{Backend, MAX_TEXT_BYTES, Metrics, Style};
+use super::{Backend, MAX_TEXT_BYTES, Metrics, Style, TextDirection};
 use crate::{Color, Error};
 
 /// Ending truncation adds an ellipsis to text hidden by the box or line limit.
@@ -37,6 +37,8 @@ pub struct TextRun {
     pub color: Color,
     pub text_decoration: TextDecoration,
     pub text_case: TextCase,
+    /// Auto resolves once per paragraph and is retained across wrapped lines.
+    pub direction: TextDirection,
     /// None inherits the text layer’s paragraph setting.
     pub paragraph_spacing: Option<f32>,
     pub paragraph_indent: Option<f32>,
@@ -54,6 +56,7 @@ impl TextRun {
             color: [0., 0., 0., 1.],
             text_decoration: TextDecoration::None,
             text_case: TextCase::Original,
+            direction: TextDirection::Auto,
             paragraph_spacing: None,
             paragraph_indent: None,
         }
@@ -229,10 +232,18 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
                 in_word = false;
             }
         }
+        if run.text_case != TextCase::Original
+            && transformed
+                .chars()
+                .any(|c| c != '\n' && !super::latin_char(c))
+        {
+            return Err(Error(
+                "script-specific case transformations are unsupported",
+            ));
+        }
         run.text = transformed;
         // Resolution is idempotent: wrapping must not title-case continuation lines.
         run.text_case = TextCase::Original;
-        run.style = resolve_style(backend, run.style)?;
     }
     let bytes: usize = resolved.iter().map(|r| r.text.len()).sum();
     if bytes > MAX_TEXT_BYTES
@@ -246,9 +257,13 @@ pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<T
             "case-transformed text exceeds the supported Latin scope or byte limit",
         ));
     }
+    let mut resolved = backend.resolve_fonts(&resolved)?;
+    for run in &mut resolved {
+        run.style = resolve_style(backend, run.style)?;
+    }
     Ok(resolved)
 }
-fn slice(runs: &[TextRun], start: usize, end: usize) -> Vec<TextRun> {
+pub(super) fn slice(runs: &[TextRun], start: usize, end: usize) -> Vec<TextRun> {
     let mut offset = 0;
     let mut out = Vec::new();
     for run in runs {
@@ -299,6 +314,8 @@ pub fn layout_paragraphs(
     let resolved = resolve_runs(backend, runs)?;
     let runs = resolved.as_slice();
     let string: String = runs.iter().map(|r| r.text.as_str()).collect();
+    let boundaries = backend.text_boundaries(&string)?;
+    boundaries.validate(&string)?;
     let mut lines = Vec::new();
     let mut offset = 0;
     for paragraph in string.split('\n') {
@@ -307,10 +324,15 @@ pub fn layout_paragraphs(
         let covered_end = (end + 1).min(string.len());
         let mut at = 0;
         let mut settings = None;
+        let mut direction = None;
         for run in runs {
             let lo = at;
             at += run.text.len();
             if lo < covered_end && at > offset {
+                if direction.is_some_and(|d| d != run.direction) {
+                    return Err(Error("conflicting paragraph direction"));
+                }
+                direction = Some(run.direction);
                 let current = paragraph_style(run, defaults);
                 current.validate(width)?;
                 if settings.is_some_and(|previous| previous != current) {
@@ -328,14 +350,18 @@ pub fn layout_paragraphs(
             let mut stop = end;
             if wrap && start < end {
                 let mut fit = None;
-                let mut ends: Vec<usize> = string[start..end]
-                    .char_indices()
-                    .filter(|(i, c)| *c == ' ' && !string[start..start + *i].ends_with(' '))
-                    .map(|(i, _)| start + i)
+                let mut ends: Vec<usize> = boundaries
+                    .lines
+                    .iter()
+                    .copied()
+                    .filter(|&i| i > start && i < end)
                     .collect();
                 ends.push(end);
                 for candidate in ends {
-                    let trimmed = string[start..candidate].trim_end_matches(' ').len() + start;
+                    let trimmed = string[start..candidate]
+                        .trim_end_matches(super::break_space)
+                        .len()
+                        + start;
                     let wide = if trimmed == start {
                         0.
                     } else {
@@ -349,9 +375,13 @@ pub fn layout_paragraphs(
                 stop = match fit {
                     Some(n) => n,
                     None => {
-                        let mut cut = start + string[start..end].chars().next().unwrap().len_utf8();
-                        for (i, c) in string[start..end].char_indices().skip(1) {
-                            let candidate = start + i + c.len_utf8();
+                        let mut clusters = boundaries
+                            .graphemes
+                            .iter()
+                            .copied()
+                            .filter(|&i| i > start && i <= end);
+                        let mut cut = clusters.next().ok_or(Error("missing grapheme boundary"))?;
+                        for candidate in clusters {
                             if measure(backend, &slice(runs, start, candidate))?.advance
                                 > available_width as f64 + 0.001
                             {
@@ -364,7 +394,10 @@ pub fn layout_paragraphs(
                 };
             }
             let trimmed = if wrap {
-                start + string[start..stop].trim_end_matches(' ').len()
+                start
+                    + string[start..stop]
+                        .trim_end_matches(super::break_space)
+                        .len()
             } else {
                 stop
             };
@@ -402,8 +435,12 @@ pub fn layout_paragraphs(
             });
             start = stop;
             if wrap {
-                while start < end && string.as_bytes()[start] == b' ' {
-                    start += 1;
+                while start < end {
+                    let c = string[start..end].chars().next().unwrap();
+                    if !super::break_space(c) {
+                        break;
+                    }
+                    start += c.len_utf8();
                 }
             }
             if start >= end {
@@ -480,12 +517,33 @@ fn ellipsize(
     let mut previous_fits = false;
     // Include the whole remaining paragraph, not just the old wrapped line.
     // Shape every candidate as a complete attributed line to retain kerning.
-    for end in source[line.source_start..line.paragraph_end]
-        .char_indices()
-        .map(|(i, _)| line.source_start + i)
-        .chain(std::iter::once(line.paragraph_end))
-    {
-        let end = line.source_start + source[line.source_start..end].trim_end_matches(' ').len();
+    let boundaries = backend.text_boundaries(source)?;
+    boundaries.validate(source)?;
+    let rtl = line
+        .runs
+        .first()
+        .is_some_and(|r| r.direction == TextDirection::RightToLeft)
+        && line.metrics.advance <= f64::from(line.available_width) + 0.001;
+    // Figma appends the RTL ending marker to the existing wrapped line, allowing
+    // it to hang beyond the left edge instead of removing the final word.
+    let ends: Vec<usize> = if rtl {
+        vec![line.source_start + line.runs.iter().map(|r| r.text.len()).sum::<usize>()]
+    } else {
+        std::iter::once(line.source_start)
+            .chain(
+                boundaries
+                    .graphemes
+                    .iter()
+                    .copied()
+                    .filter(|&i| i > line.source_start && i <= line.paragraph_end),
+            )
+            .collect()
+    };
+    for end in ends {
+        let end = line.source_start
+            + source[line.source_start..end]
+                .trim_end_matches(super::break_space)
+                .len();
         let mut offset = 0;
         let style = runs
             .iter()
@@ -519,7 +577,7 @@ fn ellipsize(
         if candidate.iter().map(|r| r.text.len()).sum::<usize>() > MAX_TEXT_BYTES
             || candidate.len() > 128
         {
-            if previous_fits {
+            if previous_fits || rtl {
                 return Err(Error("ellipsis exceeds the styled text resource limits"));
             }
             break;

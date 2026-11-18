@@ -574,3 +574,28 @@ glyph-edge differences are visible. Synthetic tests cover disabled limits, UTF-8
 narrow boxes, source budgets, bottom/right alignment, failures and unchanged
 uploads. Script-aware shaping/fallback/line breaking is next; live Desktop
 plugin validation remains separate.
+
+
+## Script shaping, explicit fallback and Unicode line breaking — 2026-11-18
+
+CoreText now shapes a documented monochrome BMP profile with resolved paragraph
+direction retained across soft wraps. CoreFoundation supplies grapheme boundaries
+and Unicode line-break opportunities; emergency wrapping and ellipses never split
+clusters. RTL ellipses follow the observed Figma hanging-marker behavior. Explicit
+host fallback slots (global or per primary font) resolve whole graphemes and
+joining-script words before font-derived auto height. Missing primary fonts,
+missing coverage and resource overflows fail closed; no system faces are guessed.
+
+Plugin output retains Unicode and explicit font manifests, and states that Figma’s
+implicit fallback chain is unavailable. Emoji/color glyphs, variation selectors,
+bidi controls, RTL decoration/tracking, non-Latin case conversion and font changes
+inside graphemes remain unsupported. No new library dependencies; two pinned OFL
+Noto test/example fonts add 1.49 MB, with hashes/licenses in `fonts/`.
+
+[Generated comparison](scripts-compare.png), reviewed beside Figma at 2×, covers
+Greek/Cyrillic, Devanagari conjuncts, combining accents, Arabic with English and
+numbers, RTL truncation and mixed fonts. Mean channel difference 1.53/255; glyph
+rasterization differs. Tests verify fallback against explicit-font pixels, CJK
+punctuation/Thai dictionary boundaries, nonbreaking spaces, joins, invalid inputs,
+failed chains and unchanged uploads. Those boundary tests are not CJK/Thai visual
+parity or live Desktop-plugin evidence. Richer text fills/strokes are next.

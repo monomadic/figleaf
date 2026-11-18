@@ -51,6 +51,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             color: t.color,
             text_decoration: t.text_decoration,
             text_case: t.text_case,
+            direction: text::TextDirection::Auto,
             paragraph_spacing: None,
             paragraph_indent: None,
         }]
@@ -114,8 +115,12 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                     "text backend violated styled bitmap or metric limits",
                 ));
             }
+            let rtl = line
+                .runs
+                .first()
+                .is_some_and(|r| r.direction == text::TextDirection::RightToLeft);
             let x = t.rect.x
-                + line.indent
+                + if rtl { 0. } else { line.indent }
                 + place(t.align, line.available_width - line.metrics.advance as f32);
             let baseline = y + line.metrics.baseline as f32;
             let origin = [x, y + baseline.round() - baseline]

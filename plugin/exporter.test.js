@@ -701,3 +701,26 @@ test('truncation validates limits and preserves disabled and legacy settings',()
   const root=mixedTextFixture();root.children[0].textTruncation='ENDING';root.children[0].maxLines=0;
   assert.equal(exportHierarchy([root]).code,null);
 });
+
+test('script-aware text exports intact Unicode and explicit font manifests',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'scripts-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/scripts.rs'),'utf8'));
+  for(const value of ['Ελληνικά','हिन्दी','العربية','CoreText::with_fallback_fonts'])assert.ok(result.code.includes(value));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-scripts-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0,1,2]);assert_eq!(c.items().len(),7);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported script controls, emoji, casing and RTL styles stay hard errors',()=>{
+  for(const patch of [{characters:'🙂'},{characters:'a\u202eb'},{characters:'a\ufe0f'},
+    {characters:'ΕΛΛΗΝΙΚΑ',textCase:'LOWER'},{characters:'عربي',textDecoration:'UNDERLINE'},
+    {characters:'عربي',letterSpacing:{unit:'PIXELS',value:1}}]) {
+    const r=exportHierarchy([text(patch)]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  for(const characters of ['हिन्दी','العربية','日本語、中文。','ภาษาไทย','e\u0301'])
+    assert.deepEqual(exportHierarchy([text({characters})]).errors,[]);
+});

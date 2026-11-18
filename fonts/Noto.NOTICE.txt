@@ -1,0 +1,9 @@
+Reference fonts from https://github.com/google/fonts at 75706cfdd7c49a2be20f66c1e24c26f4f39a33b8
+NotoSansArabic.ttf 844676 bytes SHA256 63111b5b2e074dd48cc67692e0a2726d86ee94c1c37fe8598257b7b4e87e869e
+OFL-NotoSansArabic.txt 4382 bytes SHA256 07fc70bfeb985cc1a87a8587d0a0c80bab11c86c9dc3fd95b6f0cb332f983e96
+NotoSansDevanagari.ttf 641944 bytes SHA256 14ec4af41f27482216d1c2229f417ff9b1425e1babb014e57d1d40d03229853e
+OFL-NotoSansDevanagari.txt 4386 bytes SHA256 a216f6f8d85c7228093e0ee5e258d9d377e6671f68acb4db1930b29583d0f331
+
+Original sources (unmodified font bytes):
+https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosansarabic/NotoSansArabic%5Bwdth%2Cwght%5D.ttf
+https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosansdevanagari/NotoSansDevanagari%5Bwdth%2Cwght%5D.ttf

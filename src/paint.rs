@@ -1216,6 +1216,7 @@ impl Text {
     #[cfg(feature = "wgpu")]
     pub(crate) fn needs_layout(&self) -> bool {
         !self.runs.is_empty()
+            || !self.string.is_ascii()
             || self.text_truncation != text::TextTruncation::Disabled
             || self.max_lines.is_some()
             || self.text_decoration != text::TextDecoration::None

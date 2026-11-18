@@ -1,16 +1,19 @@
-//! Explicit-font, grayscale Latin text, borrowed from figui. No system
-//! fallback, bidi or emoji. Styled runs retain explicit fonts and colors. A backend turns one line into a bounded
-//! alpha mask; the renderer tints it. [`wrap`] breaks a paragraph into lines.
+//! Explicit-font monochrome text with script-aware shaping and bounded Unicode
+//! segmentation. Styled runs retain fonts, colors and paragraph direction. CoreText
+//! fallback uses only host-supplied slots; no system font discovery or emoji.
 //! Fonts and their variable axes are caller-supplied; nothing here names a font.
 use crate::Error;
 
 mod rich;
+mod unicode;
 #[cfg(feature = "wgpu")]
 pub(crate) use rich::validate_truncation;
 pub use rich::{
     ParagraphStyle, RunLine, RunMask, TextCase, TextDecoration, TextRun, TextTruncation,
     layout_paragraphs, layout_runs, layout_text, resolve_runs, resolve_style, validate_runs,
 };
+pub(crate) use unicode::break_space;
+pub use unicode::{TextBoundaries, TextDirection};
 
 pub const MAX_FONTS: usize = 64;
 pub const MAX_AXES: usize = 8;
@@ -28,7 +31,7 @@ pub struct Axis {
 /// The characters the single-line Latin scope accepts: printable Basic Latin
 /// through Latin Extended-B, general punctuation, currency, letterlike symbols,
 /// arrows and mathematical operators. No controls, line breaks, bidi or emoji.
-pub fn supported_char(c: char) -> bool {
+pub(crate) fn latin_char(c: char) -> bool {
     matches!(
         c as u32,
         0x20..=0x7E
@@ -41,13 +44,29 @@ pub fn supported_char(c: char) -> bool {
     )
 }
 
+/// Monochrome BMP text: Latin, Greek/Cyrillic, Hebrew/Arabic, Indic, Southeast
+/// Asian and CJK scripts. Emoji, variation selectors and bidi controls fail closed.
+pub fn supported_char(c: char) -> bool {
+    latin_char(c)
+        || matches!(c as u32,
+        0x0300..=0x1fff | 0x2000..=0x200d | 0x202f | 0x2060 |
+        0x2c00..=0xd7ff | 0xf900..=0xfdcf | 0xfdf0..=0xffef)
+            && !matches!(c as u32, 0x061c | 0x180e | 0xfe00..=0xfe0f | 0xfeff)
+            && !c.is_control()
+}
+
+#[cfg(feature = "text-coretext")]
+pub(crate) fn is_rtl_char(c: char) -> bool {
+    matches!(c as u32,0x0590..=0x08ff|0xfb1d..=0xfdff|0xfe70..=0xfefc)
+}
+
 pub fn validate_characters(text: &str) -> Result<(), Error> {
     if text.len() > MAX_TEXT_BYTES {
         return Err(Error("text exceeds 512 bytes"));
     }
     if !text.chars().all(supported_char) {
         return Err(Error(
-            "text has characters outside the single-line Latin scope",
+            "text has characters outside the supported single-line Unicode scope",
         ));
     }
     Ok(())
@@ -97,6 +116,14 @@ pub struct Mask {
     pub metrics: Metrics,
 }
 pub trait Backend {
+    /// Return grapheme boundaries and legal Unicode line-break opportunities.
+    fn text_boundaries(&mut self, text: &str) -> Result<TextBoundaries, Error> {
+        TextBoundaries::latin(text)
+    }
+    /// Resolve explicit font fallback before line-height resolution and layout.
+    fn resolve_fonts(&mut self, runs: &[TextRun]) -> Result<Vec<TextRun>, Error> {
+        Ok(runs.to_vec())
+    }
     fn natural_line_height(&mut self, _style: Style) -> Result<f32, Error> {
         Err(Error("backend does not support automatic line height"))
     }
@@ -156,8 +183,18 @@ pub mod coretext {
         tracking: f64,
         color: [f64; 4],
         decoration: u32,
+        direction: i32,
     }
     unsafe extern "C" {
+        fn figleaf_ct_boundaries(
+            text: *const u8,
+            len: usize,
+            graphemes: *mut u32,
+            lines: *mut u32,
+            counts: *mut u32,
+        ) -> i32;
+        fn figleaf_ct_covers(font: *mut c_void, text: *const u8, len: usize) -> bool;
+        fn figleaf_ct_direction(text: *const u8, len: usize) -> i32;
         fn figleaf_ct_height(font: *mut c_void) -> f64;
         fn figleaf_ct_runs(
             runs: *const StyledRun,
@@ -206,11 +243,13 @@ pub mod coretext {
     /// A font with its axis tags and values, in matching order.
     type Loaded = (Font, Vec<u32>, Vec<f64>);
     /// Caller-supplied fonts, indexed by `Style::font`. A `None` slot is a font
-    /// the host could not supply: text using it fails with a diagnostic instead
-    /// of falling back. No automatic font discovery.
+    /// the host could not supply: text using it fails with a diagnostic. Optional
+    /// fallback chains cover missing glyphs, never missing primary fonts.
     pub struct CoreText {
         fonts: Vec<Option<Loaded>>,
         instances: Vec<(usize, u32, Instance)>,
+        fallbacks: Vec<usize>,
+        font_fallbacks: Vec<(usize, Vec<usize>)>,
     }
     impl CoreText {
         pub fn new(sources: &[Option<FontSource>]) -> Result<Self, Error> {
@@ -239,7 +278,50 @@ pub mod coretext {
             Ok(Self {
                 fonts,
                 instances: Vec::new(),
+                fallbacks: Vec::new(),
+                font_fallbacks: Vec::new(),
             })
+        }
+        /// Ordered fallback slots supplied by the host. Missing primary fonts are
+        /// still errors; only missing glyphs select a fallback. No system discovery.
+        pub fn with_fallback_fonts(mut self, slots: &[usize]) -> Result<Self, Error> {
+            if slots.len() > MAX_FONTS
+                || slots
+                    .iter()
+                    .any(|&i| self.fonts.get(i).is_none_or(Option::is_none))
+            {
+                return Err(Error("invalid explicit fallback font slots"));
+            }
+            self.fallbacks = slots.to_vec();
+            Ok(self)
+        }
+        /// Override the fallback order for one primary slot (for example, use a
+        /// bold fallback for a bold primary instead of guessing a matching face).
+        pub fn with_fallback_for(mut self, primary: usize, slots: &[usize]) -> Result<Self, Error> {
+            if self.fonts.get(primary).is_none_or(Option::is_none)
+                || slots.len() > MAX_FONTS
+                || slots
+                    .iter()
+                    .any(|&i| self.fonts.get(i).is_none_or(Option::is_none))
+            {
+                return Err(Error("invalid explicit fallback font slots"));
+            }
+            if let Some((_, chain)) = self
+                .font_fallbacks
+                .iter_mut()
+                .find(|(font, _)| *font == primary)
+            {
+                *chain = slots.to_vec();
+            } else {
+                self.font_fallbacks.push((primary, slots.to_vec()));
+            }
+            Ok(self)
+        }
+        fn fallback_slots(&self, primary: usize) -> &[usize] {
+            self.font_fallbacks
+                .iter()
+                .find(|(font, _)| *font == primary)
+                .map_or(self.fallbacks.as_slice(), |(_, chain)| chain.as_slice())
         }
         fn instance(&mut self, style: Style) -> Result<usize, Error> {
             if let Some(i) = self
@@ -290,6 +372,7 @@ pub mod coretext {
                     tracking: run.style.letter_spacing as f64,
                     color: run.color.map(f64::from),
                     decoration: run.text_decoration as u32,
+                    direction: run.direction as i32,
                 });
             }
             let (ptr, w, h) = pixels.map_or((std::ptr::null_mut(), 0, 0), |(p, w, h)| {
@@ -352,6 +435,159 @@ pub mod coretext {
         }
     }
     impl Backend for CoreText {
+        fn text_boundaries(&mut self, text: &str) -> Result<TextBoundaries, Error> {
+            if text.len() > MAX_TEXT_BYTES || text.is_empty() {
+                return Err(Error("invalid segmentation input"));
+            }
+            let mut graphemes = [0u32; MAX_TEXT_BYTES];
+            let mut lines = [0u32; MAX_TEXT_BYTES];
+            let mut counts = [0u32; 2];
+            let status = unsafe {
+                figleaf_ct_boundaries(
+                    text.as_ptr(),
+                    text.len(),
+                    graphemes.as_mut_ptr(),
+                    lines.as_mut_ptr(),
+                    counts.as_mut_ptr(),
+                )
+            };
+            if status != 0 || counts.iter().any(|&n| n as usize > MAX_TEXT_BYTES) {
+                return Err(Error("Unicode segmentation failed"));
+            }
+            let result = TextBoundaries {
+                graphemes: graphemes[..counts[0] as usize]
+                    .iter()
+                    .map(|&n| n as usize)
+                    .collect(),
+                lines: lines[..counts[1] as usize]
+                    .iter()
+                    .map(|&n| n as usize)
+                    .collect(),
+            };
+            result.validate(text)?;
+            Ok(result)
+        }
+        fn resolve_fonts(&mut self, runs: &[TextRun]) -> Result<Vec<TextRun>, Error> {
+            let source: String = runs.iter().map(|r| r.text.as_str()).collect();
+            if source.is_empty() {
+                return Ok(runs.to_vec());
+            }
+            if source.chars().any(is_rtl_char)
+                && runs.iter().any(|r| {
+                    r.text_decoration != TextDecoration::None || r.style.letter_spacing != 0.
+                })
+            {
+                return Err(Error("RTL decoration and tracking are not supported"));
+            }
+            let boundaries = self.text_boundaries(&source)?;
+            let mut result: Vec<TextRun> = Vec::new();
+            let mut start = 0;
+            for end in boundaries.graphemes {
+                let cluster = &source[start..end];
+                let mut parts = rich::slice(runs, start, end);
+                let mut checked = parts[0].style;
+                if checked.line_height == 0. {
+                    checked.line_height = checked.size;
+                }
+                validate("M", checked, 1., 1.)?;
+                let primary = parts[0].style.font;
+                if parts.iter().any(|r| r.style.font != primary) {
+                    return Err(Error("font changes inside a grapheme are unsupported"));
+                }
+                // Keep a joining-script word in one font if its primary font
+                // lacks any character. Per-letter fallback would break joining.
+                let mut probe = cluster;
+                if cluster.chars().any(is_rtl_char) {
+                    let lo = source[..start]
+                        .char_indices()
+                        .rev()
+                        .find(|(_, c)| !is_rtl_char(*c) && *c != '\u{200c}' && *c != '\u{200d}')
+                        .map_or(0, |(i, c)| i + c.len_utf8());
+                    let hi = source[end..]
+                        .char_indices()
+                        .find(|(_, c)| !is_rtl_char(*c) && *c != '\u{200c}' && *c != '\u{200d}')
+                        .map_or(source.len(), |(i, _)| end + i);
+                    if rich::slice(runs, lo, hi)
+                        .iter()
+                        .all(|r| r.style.font == primary)
+                    {
+                        probe = &source[lo..hi];
+                    }
+                }
+                let primary_instance = self.instance(parts[0].style)?;
+                let mut chosen = None;
+                if cluster == "\n"
+                    || unsafe {
+                        figleaf_ct_covers(
+                            self.instances[primary_instance].2.0.as_ptr(),
+                            probe.as_ptr(),
+                            probe.len(),
+                        )
+                    }
+                {
+                    chosen = Some(primary);
+                }
+                if chosen.is_none() {
+                    for slot in self.fallback_slots(primary).to_vec() {
+                        let mut style = parts[0].style;
+                        style.font = slot;
+                        let index = self.instance(style)?;
+                        if unsafe {
+                            figleaf_ct_covers(
+                                self.instances[index].2.0.as_ptr(),
+                                probe.as_ptr(),
+                                probe.len(),
+                            )
+                        } {
+                            chosen = Some(slot);
+                            break;
+                        }
+                    }
+                }
+                let font = chosen.ok_or(Error("no supplied font covers a complete grapheme"))?;
+                let paragraph_start = source[..start].rfind('\n').map_or(0, |i| i + 1);
+                let paragraph_end = source[start..]
+                    .find('\n')
+                    .map_or(source.len(), |i| start + i);
+                let paragraph = &source[paragraph_start..paragraph_end];
+                let rtl = unsafe { figleaf_ct_direction(paragraph.as_ptr(), paragraph.len()) } == 1;
+                for part in &mut parts {
+                    part.style.font = font;
+                    if part.direction == TextDirection::Auto {
+                        part.direction = if rtl {
+                            TextDirection::RightToLeft
+                        } else {
+                            TextDirection::LeftToRight
+                        };
+                    }
+                    if part.direction == TextDirection::RightToLeft
+                        && (part.text_decoration != TextDecoration::None
+                            || part.style.letter_spacing != 0.)
+                    {
+                        return Err(Error("RTL decoration and tracking are not supported"));
+                    }
+                    let merged = result.last_mut().is_some_and(|last| {
+                        let mut check = last.clone();
+                        check.text.clone_from(&part.text);
+                        if check == *part {
+                            last.text.push_str(&part.text);
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    if !merged {
+                        result.push(part.clone());
+                    }
+                }
+                start = end;
+            }
+            if result.len() > 128 {
+                return Err(Error("fallback exceeds styled run limit"));
+            }
+            Ok(result)
+        }
+
         fn natural_line_height(&mut self, style: Style) -> Result<f32, Error> {
             let mut checked = style;
             checked.line_height = checked.size;
@@ -406,6 +642,18 @@ pub mod coretext {
             width: f32,
             scale: f32,
         ) -> Result<Mask, Error> {
+            if !self.fallback_slots(style.font).is_empty() || !text.chars().all(latin_char) {
+                let mut run = TextRun::new(text);
+                run.style = style;
+                run.color = [1.; 4];
+                let mask = self.raster_runs(&[run], width, scale)?;
+                return Ok(Mask {
+                    width: mask.width,
+                    height: mask.height,
+                    alpha: mask.rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect(),
+                    metrics: mask.metrics,
+                });
+            }
             let style = resolve_style(self, style)?;
             let [w, h] = validate(text, style, width, scale)?;
             let mut alpha = vec![0; w as usize * h as usize];
@@ -418,6 +666,11 @@ pub mod coretext {
             })
         }
         fn measure(&mut self, text: &str, style: Style) -> Result<Metrics, Error> {
+            if !self.fallback_slots(style.font).is_empty() || !text.chars().all(latin_char) {
+                let mut run = TextRun::new(text);
+                run.style = style;
+                return self.measure_runs(&[run]);
+            }
             let style = resolve_style(self, style)?;
             validate(text, style, 1., 1.)?;
             self.run(text, style, 1., None)
@@ -433,8 +686,8 @@ pub struct Line {
 }
 
 /// Breaks `text` into lines no wider than `width`, as Figma's fixed-width text
-/// box does: at spaces, and at every `\n`. The spaces at a break belong to
-/// neither line. A word wider than the box is cut where it stops fitting.
+/// box does: at backend-provided Unicode opportunities and every `\n`. Breakable
+/// spaces are trimmed. Emergency breaks preserve complete grapheme clusters.
 ///
 /// A host that lays text out calls this to learn the height:
 /// `lines.len() as f32 * style.line_height`.
@@ -444,9 +697,31 @@ pub fn wrap(
     style: Style,
     width: f32,
 ) -> Result<Vec<Line>, Error> {
+    if !text.chars().all(|c| latin_char(c) || c == '\n') {
+        let mut run = TextRun::new(text);
+        run.style = style;
+        return layout_runs(backend, &[run], width, true).map(|lines| {
+            lines
+                .into_iter()
+                .map(|l| Line {
+                    text: l.runs.iter().map(|r| r.text.as_str()).collect(),
+                    advance: l.metrics.advance as f32,
+                })
+                .collect()
+        });
+    }
     if !width.is_finite() || width <= 0. {
         return Err(Error("unsupported text request"));
     }
+    validate_characters(&text.replace('\n', " "))?;
+    if text.is_empty() {
+        return Ok(vec![Line {
+            text: String::new(),
+            advance: 0.,
+        }]);
+    }
+    let boundaries = backend.text_boundaries(text)?;
+    boundaries.validate(text)?;
     let style = resolve_style(backend, style)?;
     let mut advance = |s: &str| -> Result<f32, Error> {
         if s.is_empty() {
@@ -455,19 +730,23 @@ pub fn wrap(
         Ok(backend.measure(s, style)?.advance as f32)
     };
     let mut lines = Vec::new();
+    let mut paragraph_start = 0;
     for paragraph in text.split('\n') {
         let mut rest = paragraph;
         loop {
             // The longest run of whole words that fits.
             let mut fit: Option<(usize, f32)> = None;
-            let mut ends: Vec<usize> = rest
-                .char_indices()
-                .filter(|&(i, c)| c == ' ' && !rest[..i].ends_with(' '))
-                .map(|(i, _)| i)
+            let offset = paragraph_start + paragraph.len() - rest.len();
+            let mut ends: Vec<usize> = boundaries
+                .lines
+                .iter()
+                .copied()
+                .filter(|&i| i > offset && i < offset + rest.len())
+                .map(|i| i - offset)
                 .collect();
             ends.push(rest.len());
             for end in ends {
-                let wide = advance(rest[..end].trim_end_matches(' '))?;
+                let wide = advance(rest[..end].trim_end_matches(break_space))?;
                 if wide > width + 0.001 {
                     break;
                 }
@@ -478,27 +757,34 @@ pub fn wrap(
                 // Not even the first word fits: keep the characters that do,
                 // and at least one.
                 None => {
-                    let mut cut = rest.chars().next().map_or(0, char::len_utf8);
+                    let mut clusters = boundaries
+                        .graphemes
+                        .iter()
+                        .copied()
+                        .filter(|&i| i > offset && i <= offset + rest.len())
+                        .map(|i| i - offset);
+                    let mut cut = clusters.next().unwrap_or(0);
                     let mut wide = advance(&rest[..cut])?;
-                    for (i, c) in rest.char_indices().skip(1) {
-                        let next = advance(&rest[..i + c.len_utf8()])?;
+                    for end in clusters {
+                        let next = advance(&rest[..end])?;
                         if next > width + 0.001 {
                             break;
                         }
-                        (cut, wide) = (i + c.len_utf8(), next);
+                        (cut, wide) = (end, next);
                     }
                     (cut, wide)
                 }
             };
             lines.push(Line {
-                text: rest[..end].trim_end_matches(' ').to_string(),
+                text: rest[..end].trim_end_matches(break_space).to_string(),
                 advance: wide,
             });
-            rest = rest[end..].trim_start_matches(' ');
+            rest = rest[end..].trim_start_matches(break_space);
             if rest.is_empty() {
                 break;
             }
         }
+        paragraph_start += paragraph.len() + 1;
     }
     Ok(lines)
 }
@@ -515,6 +801,9 @@ pub fn caret_offsets(
     text: &str,
     style: Style,
 ) -> Result<Vec<f32>, Error> {
+    if !text.chars().all(latin_char) {
+        return Err(Error("scalar caret offsets support Latin text only"));
+    }
     let style = resolve_style(backend, style)?;
     let mut offsets = vec![0.];
     for (i, c) in text.char_indices() {
@@ -603,7 +892,7 @@ mod tests {
             letter_spacing: 0.,
         };
         assert!(validate("abc", s, 100., 2.).is_ok());
-        for t in ["", "a\nb", "🙂", "مرحبا"] {
+        for t in ["", "a\nb", "🙂", "a\u{202e}b"] {
             assert!(validate(t, s, 100., 1.).is_err());
         }
         assert!(validate("abc", s, f32::NAN, 1.).is_err());
@@ -687,5 +976,167 @@ mod backend_tests {
             Box::new(coretext::CoreText::new(&[font(axes)]).unwrap())
         });
         assert!(coretext::CoreText::new(&[bad()]).is_err());
+    }
+}
+
+#[cfg(all(test, feature = "text-coretext"))]
+mod script_tests {
+    use super::*;
+    fn backend(fallback: bool) -> coretext::CoreText {
+        let fonts = [
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+                axes: &[],
+            }),
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/NotoSansDevanagari.ttf"),
+                axes: &[],
+            }),
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/NotoSansArabic.ttf"),
+                axes: &[],
+            }),
+        ];
+        let b = coretext::CoreText::new(&fonts).unwrap();
+        if fallback {
+            b.with_fallback_fonts(&[1, 2]).unwrap()
+        } else {
+            b
+        }
+    }
+    #[test]
+    fn native_boundaries_preserve_clusters_and_unicode_break_rules() {
+        let mut b = backend(false);
+        let style = Style {
+            font: 0,
+            size: 12.,
+            line_height: 16.,
+            letter_spacing: 0.,
+        };
+        assert_eq!(wrap(&mut b, "ab-cd", style, 32.).unwrap()[0].text, "ab-");
+        let marks = b.text_boundaries("e\u{301}x").unwrap();
+        assert_eq!(marks.graphemes, vec![3, 4]);
+        let conjunct = b.text_boundaries("क्षि").unwrap();
+        assert_eq!(conjunct.graphemes, vec!["क्षि".len()]);
+        let cjk = b.text_boundaries("你好，世界。").unwrap();
+        assert!(!cjk.lines.contains(&"你好".len()), "no break before comma");
+        assert!(
+            !cjk.lines.contains(&"你好，世界".len()),
+            "no break before full stop"
+        );
+        assert!(cjk.lines.len() > 1);
+        let nbsp = b.text_boundaries("hello\u{a0}world").unwrap();
+        assert_eq!(nbsp.lines, vec!["hello\u{a0}world".len()]);
+        let thai = "ภาษาไทยภาษาไทย";
+        let breaks = b.text_boundaries(thai).unwrap();
+        assert!(breaks.lines.len() > 1 && breaks.lines.len() < thai.chars().count());
+        for text in ["a\u{200b}b", "क्\u{200d}ष"] {
+            assert!(
+                backend(true)
+                    .measure_runs(&[TextRun::new(text).size(24., 40.)])
+                    .is_ok(),
+                "{text}"
+            );
+        }
+    }
+    #[test]
+    fn explicit_fallback_preserves_complete_clusters_and_automatic_font_height() {
+        let input = [TextRun::new("Fonts: हिन्दी / العربية").size(22., 40.)];
+        assert!(backend(false).measure_runs(&input).is_err());
+        let mut b = backend(true);
+        let resolved = resolve_runs(&mut b, &input).unwrap();
+        assert_eq!(
+            resolved.iter().map(|r| r.style.font).collect::<Vec<_>>(),
+            [0, 1, 0, 2]
+        );
+        assert_eq!(
+            resolved.iter().map(|r| r.text.as_str()).collect::<String>(),
+            input[0].text
+        );
+        let explicit = [
+            TextRun::new("Fonts: ").size(22., 40.),
+            TextRun::new("हिन्दी").font(1).size(22., 40.),
+            TextRun::new(" / ").size(22., 40.),
+            TextRun::new("العربية").font(2).size(22., 40.),
+        ];
+        let actual = b.raster_runs(&input, 400., 2.).unwrap();
+        let expected = b.raster_runs(&explicit, 400., 2.).unwrap();
+        assert_eq!(actual.rgba, expected.rgba);
+        assert_eq!(actual.metrics.advance, expected.metrics.advance);
+        let auto = resolve_runs(&mut b, &[TextRun::new("हिन्दी").auto_line_height()]).unwrap();
+        assert_eq!(auto[0].style.font, 1);
+        assert_eq!(
+            auto[0].style.line_height,
+            b.natural_line_height(auto[0].style).unwrap()
+        );
+        assert!(
+            coretext::CoreText::new(&[None])
+                .unwrap()
+                .with_fallback_fonts(&[0])
+                .is_err()
+        );
+        assert!(b.measure_runs(&[TextRun::new("valid").font(63)]).is_err());
+        let mut restricted = backend(true).with_fallback_for(0, &[2]).unwrap();
+        assert!(restricted.measure_runs(&[TextRun::new("हिन्दी")]).is_err());
+    }
+    #[test]
+    fn rtl_context_and_cluster_safe_truncation_survive_wrapping() {
+        let mut b = backend(true);
+        let input = [
+            TextRun::new("مرحبا بالعالم هذا نص عربي مع English 123 لاختبار التفاف السطور")
+                .font(2)
+                .size(24., 40.),
+        ];
+        let lines = layout_runs(&mut b, &input, 285., true).unwrap();
+        assert!(lines.len() > 1);
+        assert!(lines.iter().all(|l| {
+            l.runs
+                .iter()
+                .all(|r| r.direction == TextDirection::RightToLeft)
+        }));
+        let truncated = layout_text(
+            &mut b,
+            &input,
+            [285., 40.],
+            true,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        let first: String = lines[0].runs.iter().map(|r| r.text.as_str()).collect();
+        assert_eq!(
+            truncated[0]
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            format!("{first}…")
+        );
+        let text = "a\u{301}".repeat(12);
+        let lines = layout_text(
+            &mut b,
+            &[TextRun::new(&text).size(22., 32.)],
+            [60., 32.],
+            true,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        let displayed: String = lines[0].runs.iter().map(|r| r.text.as_str()).collect();
+        assert!(displayed.ends_with("\u{301}…"));
+        assert!(layout_runs(&mut NoText, &[TextRun::new("हिन्दी")], 100., true).is_err());
+        for text in ["🙂", "a\u{202e}b", "a\u{fe0f}"] {
+            assert!(validate_characters(text).is_err());
+        }
+        assert!(
+            b.measure_runs(&[TextRun::new("عربي").text_decoration(TextDecoration::Underline)])
+                .is_err()
+        );
+        assert!(
+            b.measure_runs(&[TextRun::new("ΕΛΛΗΝΙΚΑ").text_case(TextCase::Lower)])
+                .is_err()
+        );
     }
 }

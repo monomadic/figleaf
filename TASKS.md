@@ -18,9 +18,12 @@ Completed implementation notes and comparisons are in the
    [including mixed styles](docs/decorations-compare.png).
    Ending truncation and maximum line counts are done (2026-11-18),
    [including partial heights and mixed styles](docs/truncation-compare.png).
-   **Next: script-aware shaping, fallback and line breaking**, then richer text
-   fills/strokes and remaining list/OpenType
-   styling, including small caps and custom decorations. Preserve hard errors for each unsupported case until implemented.
+   Script-aware shaping, explicit fallback and Unicode line breaking are done
+   for the [documented BMP profile](README.md#script-aware-text-and-explicit-fallback)
+   (2026-11-18), with [representative script comparisons](docs/scripts-compare.png).
+   **Next: richer text fills/strokes**, then remaining list/OpenType styling,
+   including small caps, custom decorations, RTL decoration/tracking and broader
+   Unicode coverage. Preserve hard errors for each unsupported case until implemented.
    **Done when:** generated Rust retains supported run styles and paragraph
    behavior; measured and rendered text agree; representative labels, paragraphs,
    mixed runs and non-Latin samples are reviewed beside Figma. Test wrapping,
@@ -81,7 +84,7 @@ Completed implementation notes and comparisons are in the
   resolved smoothed/complex stroke geometry, multiple paints, gradients,
   images/patterns, flattened opacity, blend modes, shadows and normal blur.
   Support has explicit exceptions and resource limits; see [README](README.md).
-- **Text/layout:** Latin text with explicit styled runs through CoreText, wrapping
+- **Text/layout:** supported BMP scripts with explicit styled runs/fallback through CoreText, wrapping
   and text shadows;
   fixed/hug/fill auto layout with horizontal wrapping. Text measurement is
   supplied by the caller. Remaining text styling and layout semantics are above.

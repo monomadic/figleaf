@@ -4,7 +4,9 @@ const __html__ = "<!doctype html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\
  * Kept independent of the UI so the same validator is exercised by tests. */
 function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map(), resources = {}) {
   const errors = [], lines = [], fonts = [];
-  let maskIndex = 0, compositeIndex=0;
+  let maskIndex = 0, compositeIndex=0, unicodeText=false;
+  const latinChar=c=>{const p=c.codePointAt(0);return p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff;};
+  const supportedChar=c=>{const p=c.codePointAt(0);return latinChar(c)|| (p>=0x300&&p<=0x1fff||p>=0x2000&&p<=0x200d||p===0x202f||p===0x2060||p>=0x2c00&&p<=0xd7ff||p>=0xf900&&p<=0xfdcf||p>=0xfdf0&&p<=0xffef)&&![0x61c,0x180e,0xfeff].includes(p)&&!(p>=0xfe00&&p<=0xfe0f);};
   const imageNames=new Map(), patternNames=new Map(), patternStack=new Set();
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
@@ -358,7 +360,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if (typeof text !== 'string') reject('Missing text content.');
         else {
           if (unescape(encodeURIComponent(text)).length > 512) reject('Text exceeds the 512-byte limit.');
-          if ([...text].some(c => { const p = c.codePointAt(0); return c !== '\n' && !(p>=0x20&&p<=0x7e || p>=0xa0&&p<=0xac || p>=0xae&&p<=0x24f || p>=0x2010&&p<=0x2027 || p>=0x2030&&p<=0x205e || p>=0x20a0&&p<=0x20bf || p>=0x2100&&p<=0x22ff); })) reject('Text contains characters outside figleaf’s Latin text scope.');
+          if ([...text].some(c=>c!=='\n'&&!supportedChar(c)))reject('Text contains unsupported controls, emoji, variation selectors or script blocks.');
+          if ([...text].some(c=>c!=='\n'&&!latinChar(c)))unicodeText=true;
         }
         if(segments) {
           if(segments.length>128)reject('Text exceeds 128 styled runs.');
@@ -388,6 +391,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(!['PIXELS','PERCENT'].includes(s.letterSpacing?.unit))reject('Unsupported letter spacing unit.');
           const height=s.lineHeight?.unit==='AUTO'?s.fontSize:s.lineHeight?.unit==='PERCENT'?s.fontSize*s.lineHeight.value/100:s.lineHeight?.value;
           const tracking=s.letterSpacing?.unit==='PERCENT'?s.fontSize*s.letterSpacing.value/100:s.letterSpacing?.value;
+          if(/[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/u.test(text||'') && (s.textDecoration!=='NONE'||tracking!==0))reject('RTL decoration and tracking are unsupported.');
+          if(s.textCase!=='ORIGINAL'&&[...(mixedRuns?s.characters:text)||''].some(c=>c!=='\n'&&!latinChar(c)))reject('Script-specific case transformations are unsupported.');
           if(!(s.fontSize>0&&s.fontSize<=128&&height>=s.fontSize&&height<=256&&Math.abs(tracking)<=s.fontSize&&n.width>0&&n.width<=2048))reject('Text exceeds figleaf’s size, line-height, tracking, or width limits.');
           const spacing=s.paragraphSpacing??n.paragraphSpacing??0, indent=s.paragraphIndent??n.paragraphIndent??0;
           if(typeof spacing!=='number'||!Number.isFinite(spacing)||spacing<0||spacing>1e7||typeof indent!=='number'||!Number.isFinite(indent)||indent<0||indent>1e7||indent>=n.width)reject('Invalid paragraph spacing or first-line indent.');
@@ -402,6 +407,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             } else if(s.textCase==='LOWER') {
               const lower=ch==='İ'?'i':ch.toLowerCase();if([...lower].length===1)mapped=lower;
             }
+            if(s.textCase!=='ORIGINAL'&&mapped!=='\n'&&!latinChar(mapped))reject('Script-specific case transformations are unsupported.');
             transformedText+=mapped;
             if(/[\p{L}\p{N}]/u.test(ch))inWord=true;
             else if(ch!=="'"&&ch!=='’')inWord=false;
@@ -412,7 +418,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
-        if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>{const p=c.codePointAt(0);return c!=='\n'&&!(p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff);}))reject('Case-transformed text exceeds the supported Latin scope or byte limit.');
+        if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');
         for (const type of ['DROP_SHADOW','INNER_SHADOW']) {
           if (effects.filter(e => e.type === type).length > 1) reject(`Text allows only one ${type}.`);
         }
@@ -542,6 +548,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     '// Root placement is omitted; its rotation/scale and all descendant transforms are preserved.',
     ...(compositeRoot?['// The selection is isolated: backdrop-dependent blends use only its included content.']:[]),
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
+    ...(unicodeText?['// Unicode text requires a script-aware backend (CoreText).', '// Supply exact font bytes; optional fallback is host-owned via CoreText::with_fallback_fonts.', '// Figma does not expose its implicit glyph fallback chain; no system fonts are guessed.']:[]),
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
     'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment, Composite, BlendMode};',
