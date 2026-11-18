@@ -140,3 +140,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "decorations"
 required-features = ["wgpu", "text-coretext"]
+
+[[example]]
+name = "truncation"
+required-features = ["wgpu", "text-coretext"]

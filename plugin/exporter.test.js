@@ -54,7 +54,7 @@ test('unsupported features never produce partial Rust', () => {
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(65).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
     node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
     text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNKNOWN'}),text({characters:'🐈'}),
-    text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:-4}),text({textTruncation:'ENDING'}),
+    text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:-4}),text({textTruncation:'UNKNOWN'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
     text({fills:[solid,solid]}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
   ];
@@ -671,5 +671,33 @@ test('unsupported decoration options, small caps and transformed scope fail with
   for(const textCase of ['ORIGINAL','UPPER','LOWER','TITLE'])
     assert.deepEqual(exportHierarchy([text({textCase,textDecoration:'UNDERLINE'})]).errors,[]);
   const root=mixedTextFixture();root.children[0].styledSegments[1].textCase='SMALL_CAPS';
+  assert.equal(exportHierarchy([root]).code,null);
+});
+
+test('truncation and maximum lines export exact Rust and compile',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'truncation-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const result=exportHierarchy([root]);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/truncation.rs'),'utf8'));
+  assert.match(result.code,/text_truncation\(figleaf::text::TextTruncation::Ending\)/);
+  assert.match(result.code,/max_lines\(2\)/);
+  assert.ok(result.code.includes('Alpha beta gamma delta epsilon zeta eta theta'));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-truncation-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);assert_eq!(c.items().len(),13);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('truncation validates limits and preserves disabled and legacy settings',()=>{
+  for(const maxLines of [0,-1,1.5,NaN,Infinity,10000001,'2']) {
+    const r=exportHierarchy([text({textTruncation:'ENDING',maxLines})]);assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+  const disabled=exportHierarchy([text({textTruncation:'DISABLED',maxLines:2})]);
+  assert.deepEqual(disabled.errors,[]);assert.match(disabled.code,/max_lines\(2\)/);assert.doesNotMatch(disabled.code,/TextTruncation::Ending/);
+  const legacy=exportHierarchy([text({textAutoResize:'TRUNCATE'})]);
+  assert.deepEqual(legacy.errors,[]);assert.match(legacy.code,/TextTruncation::Ending/);
+  const bad=exportHierarchy([text({textTruncation:'MIDDLE'})]);assert.equal(bad.code,null);
+  const root=mixedTextFixture();root.children[0].textTruncation='ENDING';root.children[0].maxLines=0;
   assert.equal(exportHierarchy([root]).code,null);
 });

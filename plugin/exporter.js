@@ -347,7 +347,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (n.type === 'TEXT') {
         if (strokes.length) reject('Text strokes are unsupported.');
         if (n.hangingPunctuation || n.hangingList) reject('Hanging punctuation and hanging lists are unsupported.');
-        if (n.textTruncation && n.textTruncation !== 'DISABLED' || n.maxLines != null) reject('Text truncation and maximum line counts are unsupported.');
+        const truncation=n.textTruncation??(n.textAutoResize==='TRUNCATE'?'ENDING':'DISABLED');
+        if(!['DISABLED','ENDING'].includes(truncation))reject('Unsupported text truncation.');
+        if(n.maxLines!=null && (!Number.isSafeInteger(n.maxLines)||n.maxLines<1||n.maxLines>1e7))reject('Invalid maximum line count.');
         if (n.hasMissingFont) reject('The text uses a missing font.');
         if (!['LEFT','CENTER','RIGHT'].includes(n.textAlignHorizontal) || !['TOP','CENTER','BOTTOM'].includes(n.textAlignVertical)) reject('Unsupported text alignment.');
         const text = n.characters;
@@ -417,6 +419,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const align = { LEFT:'Start', TOP:'Start', CENTER:'Center', RIGHT:'End', BOTTOM:'End' };
           expression=mixedRuns?`Text::rich(vec![${generated.join(', ')}], ${rect(box)})`:generated[0];
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
+          if(truncation==='ENDING')expression+='.text_truncation(figleaf::text::TextTruncation::Ending)';
+          if(n.maxLines!=null)expression+=`.max_lines(${n.maxLines})`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
         }
       } else if (n.type === 'LINE' && !resolved) {

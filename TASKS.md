@@ -16,9 +16,10 @@ Completed implementation notes and comparisons are in the
    [including per-paragraph settings](docs/paragraphs-compare.png).
    Basic underline/strikethrough and upper/lower/title case are done (2026-11-18),
    [including mixed styles](docs/decorations-compare.png).
-   **Next: truncation/maximum lines.** Percentage tracking already exports
-   as resolved pixel values. Follow with script-aware shaping, fallback and
-   line breaking, then richer text fills/strokes and remaining list/OpenType
+   Ending truncation and maximum line counts are done (2026-11-18),
+   [including partial heights and mixed styles](docs/truncation-compare.png).
+   **Next: script-aware shaping, fallback and line breaking**, then richer text
+   fills/strokes and remaining list/OpenType
    styling, including small caps and custom decorations. Preserve hard errors for each unsupported case until implemented.
    **Done when:** generated Rust retains supported run styles and paragraph
    behavior; measured and rendered text agree; representative labels, paragraphs,

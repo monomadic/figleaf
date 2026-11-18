@@ -62,11 +62,20 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
         indent: t.paragraph_indent,
     };
     paragraph.validate(t.rect.w)?;
+    text::validate_truncation(t.rect.h, t.max_lines)?;
     if runs.len() == 1 && runs[0].text.is_empty() {
         return Ok(Composite::new(Canvas::new()));
     }
     text::validate_runs(&runs, t.rect.w, raster_scale, t.wrap)?;
-    let lines = text::layout_paragraphs(backend, &runs, t.rect.w, t.wrap, paragraph)?;
+    let lines = text::layout_text(
+        backend,
+        &runs,
+        [t.rect.w, t.rect.h],
+        t.wrap,
+        paragraph,
+        t.text_truncation,
+        t.max_lines,
+    )?;
     let height: f32 = lines.iter().map(|l| l.height + l.spacing_after).sum();
     if !height.is_finite() || height > 1e7 {
         return Err(Error("paragraph block exceeds layout limits"));

@@ -2,6 +2,14 @@
 use super::{Backend, MAX_TEXT_BYTES, Metrics, Style};
 use crate::{Color, Error};
 
+/// Ending truncation adds an ellipsis to text hidden by the box or line limit.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TextTruncation {
+    #[default]
+    Disabled,
+    Ending,
+}
+
 /// Figma's basic text decoration, using the supplied font's metrics.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
@@ -106,6 +114,10 @@ pub struct RunLine {
     pub available_width: f32,
     /// Extra gap after a paragraph break, never after the final paragraph.
     pub spacing_after: f32,
+    // Offsets into the resolved source preserve whitespace and soft-wrap tails
+    // when the final visible line is refitted with an ellipsis.
+    source_start: usize,
+    paragraph_end: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -385,6 +397,8 @@ pub fn layout_paragraphs(
                 indent,
                 available_width,
                 spacing_after: 0.,
+                source_start: start,
+                paragraph_end: end,
             });
             start = stop;
             if wrap {
@@ -403,6 +417,130 @@ pub fn layout_paragraphs(
         offset = end + 1;
     }
     Ok(lines)
+}
+
+/// Layout and optionally truncate a text box. With Ending, line midpoints decide
+/// height visibility (including paragraph gaps); at least the first line remains.
+/// `max_lines` only takes effect with Ending. Returned metrics include ellipses.
+pub fn layout_text(
+    backend: &mut dyn Backend,
+    runs: &[TextRun],
+    size: [f32; 2],
+    wrap: bool,
+    paragraph: ParagraphStyle,
+    truncation: TextTruncation,
+    max_lines: Option<usize>,
+) -> Result<Vec<RunLine>, Error> {
+    validate_truncation(size[1], max_lines)?;
+    validate_runs(runs, size[0], 1., wrap)?;
+    let resolved = resolve_runs(backend, runs)?;
+    let mut lines = layout_paragraphs(backend, &resolved, size[0], wrap, paragraph)?;
+    if truncation == TextTruncation::Disabled {
+        return Ok(lines);
+    }
+    let mut top = 0.;
+    let mut visible = 0;
+    for line in &lines {
+        if visible >= max_lines.unwrap_or(usize::MAX)
+            || (visible > 0 && top + line.height / 2. > size[1] + 0.001)
+        {
+            break;
+        }
+        visible += 1;
+        top += line.height + line.spacing_after;
+    }
+    let hidden = visible < lines.len();
+    lines.truncate(visible);
+    let source: String = resolved.iter().map(|r| r.text.as_str()).collect();
+    let last = lines.len().saturating_sub(1);
+    for (index, line) in lines.iter_mut().enumerate() {
+        if index == last && hidden || line.metrics.advance > f64::from(line.available_width) + 0.001
+        {
+            ellipsize(backend, &resolved, &source, line)?;
+        }
+    }
+    Ok(lines)
+}
+pub(crate) fn validate_truncation(height: f32, max_lines: Option<usize>) -> Result<(), Error> {
+    if !height.is_finite()
+        || !(0. ..=1e7).contains(&height)
+        || max_lines.is_some_and(|n| n == 0 || n > 10_000_000)
+    {
+        return Err(Error("invalid text height or maximum line count"));
+    }
+    Ok(())
+}
+fn ellipsize(
+    backend: &mut dyn Backend,
+    runs: &[TextRun],
+    source: &str,
+    line: &mut RunLine,
+) -> Result<(), Error> {
+    let mut best = None;
+    let mut previous_fits = false;
+    // Include the whole remaining paragraph, not just the old wrapped line.
+    // Shape every candidate as a complete attributed line to retain kerning.
+    for end in source[line.source_start..line.paragraph_end]
+        .char_indices()
+        .map(|(i, _)| line.source_start + i)
+        .chain(std::iter::once(line.paragraph_end))
+    {
+        let end = line.source_start + source[line.source_start..end].trim_end_matches(' ').len();
+        let mut offset = 0;
+        let style = runs
+            .iter()
+            .find(|r| {
+                offset += r.text.len();
+                end < offset
+            })
+            .unwrap_or_else(|| runs.last().unwrap());
+        let mut ellipsis = style.clone();
+        ellipsis.text = "…".into();
+        // Figma's ellipsis takes the first omitted character's style, but is not
+        // underlined or struck through along with the source text.
+        ellipsis.text_decoration = TextDecoration::None;
+        let mut candidate = slice(runs, line.source_start, end);
+        let merged = candidate.last_mut().is_some_and(|last| {
+            let mut comparable = last.clone();
+            comparable.text.clone_from(&ellipsis.text);
+            if comparable == ellipsis {
+                last.text.push('…');
+                true
+            } else {
+                false
+            }
+        });
+        if !merged {
+            candidate.push(ellipsis);
+        }
+        // Do not shorten an otherwise fitting line just to satisfy a resource
+        // cap. Oversized candidates beyond the width do not invalidate an earlier
+        // fitting prefix of a valid 512-byte source.
+        if candidate.iter().map(|r| r.text.len()).sum::<usize>() > MAX_TEXT_BYTES
+            || candidate.len() > 128
+        {
+            if previous_fits {
+                return Err(Error("ellipsis exceeds the styled text resource limits"));
+            }
+            break;
+        }
+        let metrics = measure(backend, &candidate)?;
+        previous_fits = metrics.advance <= f64::from(line.available_width) + 0.001;
+        if previous_fits || best.is_none() {
+            let height = candidate
+                .iter()
+                .map(|r| r.style.line_height)
+                .reduce(f32::max)
+                .unwrap();
+            best = Some((candidate, metrics, height));
+        }
+    }
+    let (runs, metrics, height) = best.unwrap();
+    line.runs = runs;
+    line.metrics = metrics;
+    line.height = height;
+    line.spacing_after = 0.;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -706,5 +844,276 @@ mod case_tests {
             .is_err()
         );
         assert!(resolve_runs(&mut super::super::NoText, &[TextRun::new("a".repeat(513))]).is_err());
+    }
+}
+
+#[cfg(test)]
+mod truncation_tests {
+    use super::*;
+    struct Mono;
+    impl Backend for Mono {
+        fn raster(
+            &mut self,
+            _: &str,
+            _: Style,
+            _: f32,
+            _: f32,
+        ) -> Result<super::super::Mask, Error> {
+            Err(Error("measure only"))
+        }
+        fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
+            Ok(Metrics {
+                advance: runs
+                    .iter()
+                    .map(|r| r.text.chars().count() as f64 * 10.)
+                    .sum(),
+                baseline: 20.,
+                ascent: 20.,
+                descent: 8.,
+                lines: 1,
+                ..Default::default()
+            })
+        }
+    }
+    const SOURCE: &str = "Alpha beta gamma delta epsilon zeta eta theta";
+    fn layout(height: f32, limit: Option<usize>, mode: TextTruncation) -> Vec<RunLine> {
+        layout_text(
+            &mut Mono,
+            &[TextRun::new(SOURCE).size(20., 28.)],
+            [200., height],
+            true,
+            ParagraphStyle::default(),
+            mode,
+            limit,
+        )
+        .unwrap()
+    }
+    fn strings(lines: &[RunLine]) -> Vec<String> {
+        lines
+            .iter()
+            .map(|l| l.runs.iter().map(|r| r.text.as_str()).collect())
+            .collect()
+    }
+    #[test]
+    fn last_line_refits_the_remaining_paragraph_and_partial_height_matches_figma() {
+        for height in [0., 10., 28., 41.] {
+            let lines = layout(height, None, TextTruncation::Ending);
+            assert_eq!(strings(&lines), ["Alpha beta gamma de…"]);
+            assert_eq!(lines[0].metrics.advance, 200.);
+        }
+        for height in [42., 55., 56.] {
+            assert_eq!(
+                strings(&layout(height, None, TextTruncation::Ending)),
+                ["Alpha beta gamma", "delta epsilon zeta…"]
+            );
+        }
+        assert_eq!(
+            strings(&layout(200., Some(1), TextTruncation::Ending)),
+            ["Alpha beta gamma de…"]
+        );
+        assert_eq!(
+            strings(&layout(0., Some(1), TextTruncation::Disabled)),
+            ["Alpha beta gamma", "delta epsilon zeta", "eta theta"]
+        );
+        assert_eq!(
+            strings(&layout(200., Some(3), TextTruncation::Ending)),
+            ["Alpha beta gamma", "delta epsilon zeta", "eta theta"]
+        );
+    }
+    #[test]
+    fn paragraph_gaps_indent_and_empty_lines_keep_their_meaning() {
+        let runs = [TextRun::new(
+            "First paragraph\nSecond paragraph has a longer ending\nThird paragraph",
+        )
+        .size(20., 28.)];
+        let paragraph = ParagraphStyle {
+            spacing: 12.,
+            indent: 20.,
+        };
+        let lines = layout_text(
+            &mut Mono,
+            &runs,
+            [200., 85.],
+            true,
+            paragraph,
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            strings(&lines),
+            [
+                "First paragraph",
+                "Second paragraph",
+                "has a longer ending…"
+            ]
+        );
+        assert_eq!(lines[0].spacing_after, 12.);
+        assert_eq!(lines[2].spacing_after, 0.);
+        let lines = layout_text(
+            &mut Mono,
+            &runs,
+            [200., 76.],
+            true,
+            paragraph,
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        assert_eq!(strings(&lines), ["First paragraph", "Second paragraph…"]);
+        assert_eq!(lines[1].spacing_after, 0.);
+        let lines = layout_text(
+            &mut Mono,
+            &[TextRun::new("a\n\nb").size(20., 28.)],
+            [200., 200.],
+            true,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            Some(2),
+        )
+        .unwrap();
+        assert_eq!(strings(&lines), ["a", "…"]);
+    }
+    #[test]
+    fn ellipsis_uses_first_omitted_style_without_decoration_or_case_changes() {
+        let runs = [
+            TextRun::new("Alpha beta gamma de").size(20., 28.),
+            TextRun::new("lta epsilon zeta")
+                .size(20., 28.)
+                .color([1., 0., 0., 1.])
+                .text_decoration(TextDecoration::Underline)
+                .text_case(TextCase::Upper),
+        ];
+        let lines = layout_text(
+            &mut Mono,
+            &runs,
+            [200., 28.],
+            true,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        assert_eq!(strings(&lines), ["Alpha beta gamma de…"]);
+        let ellipsis = lines[0].runs.last().unwrap();
+        assert_eq!(ellipsis.text, "…");
+        assert_eq!(ellipsis.color, [1., 0., 0., 1.]);
+        assert_eq!(ellipsis.text_decoration, TextDecoration::None);
+        assert_eq!(runs[1].text, "lta epsilon zeta");
+        // Removing source characters cannot split a UTF-8 character.
+        let lines = layout_text(
+            &mut Mono,
+            &[TextRun::new("é".repeat(256))],
+            [25., 10.],
+            false,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        assert_eq!(strings(&lines), ["é…"]);
+    }
+    #[test]
+    fn narrow_boxes_and_full_source_budget_are_bounded() {
+        let lines = layout_text(
+            &mut Mono,
+            &[TextRun::new("a".repeat(512))],
+            [200., 10.],
+            false,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        assert_eq!(strings(&lines), [format!("{}…", "a".repeat(19))]);
+        let lines = layout_text(
+            &mut Mono,
+            &[TextRun::new("abc")],
+            [1., 10.],
+            false,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            None,
+        )
+        .unwrap();
+        assert_eq!(strings(&lines), ["…"]);
+        for (height, limit) in [
+            (f32::NAN, None),
+            (-1., None),
+            (10., Some(0)),
+            (10., Some(usize::MAX)),
+        ] {
+            assert!(
+                layout_text(
+                    &mut Mono,
+                    &[TextRun::new("abc")],
+                    [100., height],
+                    true,
+                    ParagraphStyle::default(),
+                    TextTruncation::Ending,
+                    limit
+                )
+                .is_err()
+            );
+        }
+    }
+    #[test]
+    fn ellipsis_failures_are_errors_instead_of_fallback_or_extra_shortening() {
+        struct Tiny {
+            missing_ellipsis: bool,
+        }
+        impl Backend for Tiny {
+            fn raster(
+                &mut self,
+                _: &str,
+                _: Style,
+                _: f32,
+                _: f32,
+            ) -> Result<super::super::Mask, Error> {
+                Err(Error("measure only"))
+            }
+            fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
+                if self.missing_ellipsis && runs.iter().any(|r| r.text.contains('…')) {
+                    return Err(Error("font has no ellipsis"));
+                }
+                Ok(Metrics {
+                    advance: runs.iter().map(|r| r.text.chars().count() as f64).sum(),
+                    lines: 1,
+                    ..Default::default()
+                })
+            }
+        }
+        let args = &[TextRun::new("first\nsecond")];
+        assert!(
+            layout_text(
+                &mut Tiny {
+                    missing_ellipsis: true
+                },
+                args,
+                [100., 10.],
+                true,
+                ParagraphStyle::default(),
+                TextTruncation::Ending,
+                None
+            )
+            .is_err()
+        );
+        let source = format!("{}\nb", "a".repeat(510));
+        // The fitting prefix plus ellipsis would exceed the byte budget. Do not
+        // quietly remove extra characters to make that resource limit fit.
+        assert!(
+            layout_text(
+                &mut Tiny {
+                    missing_ellipsis: false
+                },
+                &[TextRun::new(source)],
+                [600., 10.],
+                true,
+                ParagraphStyle::default(),
+                TextTruncation::Ending,
+                None
+            )
+            .is_err()
+        );
     }
 }

@@ -287,7 +287,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 ## Not supported yet
 
 Gradients on text, more than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
-grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation, truncation,
+grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation,
 non-Latin scripts and any backend other than CoreText.
 
 ## Where it came from
@@ -563,7 +563,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, Latin characters, solid run colors and
-explicit or automatic line heights. Small caps, custom decorations, truncation, scripts beyond the existing Latin scope and richer text paints are
+explicit or automatic line heights. Small caps, custom decorations, scripts beyond the existing Latin scope and richer text paints are
 still unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
@@ -642,3 +642,26 @@ errors. No new dependencies. `cargo run --example decorations --all-features`
 renders [generated code beside Figma](docs/decorations-compare.png); glyph and
 antialiasing differences remain. Tests cover style boundaries, measurement,
 wrapping, invalid transformed text and unchanged-canvas uploads.
+
+
+## Ending truncation and maximum lines
+
+Use `.text_truncation(text::TextTruncation::Ending)` on `Text`, optionally with
+`.max_lines(n)`. Disabled truncation is the default; a stored line limit has no
+effect until Ending is enabled. Limits must be positive integers up to 10 million.
+The plugin emits these settings for fixed-height and maximum-line text layers,
+including Figma’s legacy `TRUNCATE` auto-resize value, while retaining the source.
+
+The final visible line is refitted from its remaining paragraph with `…`. The
+ellipsis inherits the first omitted character’s font/color, without decoration.
+Wrapping, paragraph gaps/indents, case and alignment use the resulting line
+metrics. Height visibility follows line midpoints and always retains a first
+line, matching the checked Figma cases; a tiny box can therefore overflow its
+height or ellipsis width. Use an explicit clip when the host needs clipping.
+`text::layout_text` exposes the same measured lines for host sizing.
+
+[Generated Rust beside Figma](docs/truncation-compare.png) covers partial heights,
+auto-height maximum lines, mixed styles, paragraph gaps and untruncated exact fits
+(mean difference 1.31/255 at 2×; glyph edges still differ). Tests also cover UTF-8,
+invalid limits, hidden missing fonts and unchanged uploads. Missing ellipsis glyphs
+or exhausted text budgets report errors; there is no three-dot or bitmap fallback.

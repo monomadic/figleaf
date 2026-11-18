@@ -1123,6 +1123,8 @@ pub struct Text {
     pub runs: Vec<text::TextRun>,
     pub text_decoration: text::TextDecoration,
     pub text_case: text::TextCase,
+    pub text_truncation: text::TextTruncation,
+    pub max_lines: Option<usize>,
     pub paragraph_spacing: f32,
     pub paragraph_indent: f32,
     /// The line is `line_height` tall and placed in this box by the alignments.
@@ -1158,6 +1160,8 @@ impl Text {
             runs: Vec::new(),
             text_decoration: text::TextDecoration::None,
             text_case: text::TextCase::Original,
+            text_truncation: text::TextTruncation::Disabled,
+            max_lines: None,
             paragraph_spacing: 0.,
             paragraph_indent: 0.,
             rect,
@@ -1181,6 +1185,16 @@ impl Text {
         text.runs = runs;
         text
     }
+    /// Ending fits an ellipsis into the last visible line; Disabled preserves overflow.
+    pub fn text_truncation(mut self, value: text::TextTruncation) -> Self {
+        self.text_truncation = value;
+        self
+    }
+    /// Limit visible lines when text truncation is Ending. Zero is invalid.
+    pub fn max_lines(mut self, value: usize) -> Self {
+        self.max_lines = Some(value);
+        self
+    }
     pub fn text_decoration(mut self, value: text::TextDecoration) -> Self {
         self.text_decoration = value;
         self
@@ -1202,6 +1216,8 @@ impl Text {
     #[cfg(feature = "wgpu")]
     pub(crate) fn needs_layout(&self) -> bool {
         !self.runs.is_empty()
+            || self.text_truncation != text::TextTruncation::Disabled
+            || self.max_lines.is_some()
             || self.text_decoration != text::TextDecoration::None
             || self.text_case != text::TextCase::Original
             || self.line_height == 0.
@@ -1278,7 +1294,7 @@ impl Text {
     }
     /// Top-left of a line `advance` wide, in logical units.
     /// Requires a resolved explicit height and zero paragraph spacing/indentation;
-    /// use `text::layout_paragraphs` for paragraph-aware placement.
+    /// use `text::layout_text` for paragraph-aware and truncated placement.
     pub fn origin(&self, advance: f32) -> [f32; 2] {
         self.line_origin(advance, 0, 1)
     }

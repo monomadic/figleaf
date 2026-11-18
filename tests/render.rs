@@ -2582,3 +2582,114 @@ fn decorated_case_text_measures_wraps_and_caches_without_style_leaks() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0);
 }
+
+#[test]
+#[cfg(feature = "text-coretext")]
+fn truncated_text_matches_visible_literal_and_caches_limit_changes_and_errors() {
+    use figleaf::{
+        paint::Align,
+        text::{FontSource, TextRun, TextTruncation, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+            axes: &[],
+        }),
+        None,
+    ])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let make = |limit| {
+        let mut c = Canvas::new();
+        c.text(
+            Text::new(
+                "Alpha beta gamma delta epsilon zeta eta theta",
+                Rect::new(0., 0., 240., 100.),
+            )
+            .size(20., 28.)
+            .wrap()
+            .align(Align::End, Align::End)
+            .text_truncation(TextTruncation::Ending)
+            .max_lines(limit),
+        );
+        c
+    };
+    let c = make(2);
+    let image = gpu.render(&mut renderer, &c, [480, 200], 2., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &c, [480, 200], 2., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let mut literal = Canvas::new();
+    literal.text(
+        Text::rich(
+            vec![TextRun::new("Alpha beta gamma\ndelta epsilon zeta…").size(20., 28.)],
+            Rect::new(0., 0., 240., 100.),
+        )
+        .wrap()
+        .align(Align::End, Align::End),
+    );
+    let expected = gpu.render(
+        &mut renderer,
+        &literal,
+        [480, 200],
+        2.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(image.rgba, expected.rgba);
+    let changed = gpu.render(
+        &mut renderer,
+        &make(1),
+        [480, 200],
+        2.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(renderer.problems().is_empty());
+    assert_ne!(changed.rgba, image.rgba);
+    let invalid = make(0);
+    let image = gpu.render(
+        &mut renderer,
+        &invalid,
+        [480, 200],
+        2.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+    let report = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &invalid,
+            [480, 200],
+            2.,
+            &mut backend,
+        )
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    let mut hidden_missing_font = Canvas::new();
+    hidden_missing_font.text(
+        Text::rich(
+            vec![TextRun::new("a\n"), TextRun::new("hidden").font(1)],
+            Rect::new(0., 0., 240., 16.),
+        )
+        .wrap()
+        .text_truncation(TextTruncation::Ending)
+        .max_lines(1),
+    );
+    let image = gpu.render(
+        &mut renderer,
+        &hidden_missing_font,
+        [480, 200],
+        2.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(renderer.problems().len(), 1);
+    assert!(image.rgba.iter().all(|v| *v == 0));
+}

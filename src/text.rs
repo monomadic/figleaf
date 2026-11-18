@@ -5,9 +5,11 @@
 use crate::Error;
 
 mod rich;
+#[cfg(feature = "wgpu")]
+pub(crate) use rich::validate_truncation;
 pub use rich::{
-    ParagraphStyle, RunLine, RunMask, TextCase, TextDecoration, TextRun, layout_paragraphs,
-    layout_runs, resolve_runs, resolve_style, validate_runs,
+    ParagraphStyle, RunLine, RunMask, TextCase, TextDecoration, TextRun, TextTruncation,
+    layout_paragraphs, layout_runs, layout_text, resolve_runs, resolve_style, validate_runs,
 };
 
 pub const MAX_FONTS: usize = 64;

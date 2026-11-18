@@ -553,3 +553,24 @@ colors/styles and wrapping. Glyph/antialiasing differences remain. Synthetic tes
 cover measurement, no decoration leakage, transformed scope errors and unchanged
 uploads. No dependencies or plugin filesystem writes. Truncation/maximum lines
 are next; live Desktop plugin validation remains a separate task.
+
+
+## Ending truncation and maximum lines — 2026-11-18
+
+`Text::text_truncation(Ending)` and `max_lines` use the shared `text::layout_text`
+measurement path. Truncation refits the last visible line from the remaining
+paragraph, appending an undecorated ellipsis styled from the first omitted
+character. Source strings remain intact; disabled truncation ignores stored
+line limits. Paragraph gaps, first-line indentation and alignment are preserved.
+Invalid limits, missing fonts/glyphs (including hidden text) and exhausted
+rendering budgets fail closed. No dependencies or plugin filesystem writes.
+
+[Generated Rust reviewed beside Figma](truncation-compare.png), mean channel
+difference 1.31/255 at 2×, covers fixed/partial heights, a box shorter than one
+line, auto-height maximum lines, mixed colors/decorations, paragraph spacing,
+indentation and exact fits. Figma keeps a line when its midpoint fits the height,
+with at least one line; truncation does not implicitly clip overflow. Remaining
+glyph-edge differences are visible. Synthetic tests cover disabled limits, UTF-8,
+narrow boxes, source budgets, bottom/right alignment, failures and unchanged
+uploads. Script-aware shaping/fallback/line breaking is next; live Desktop
+plugin validation remains separate.

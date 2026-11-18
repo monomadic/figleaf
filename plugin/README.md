@@ -288,3 +288,12 @@ decorations use the supplied font; small caps, wavy/dotted lines, custom offsets
 thickness/colors and disabled skip-ink still suppress all Rust. Transformed text
 must also fit the Latin/512-byte limits. The [comparison](../docs/decorations-compare.png)
 uses generated Rust; this does not replace live Desktop plugin validation.
+
+
+Ending truncation exports `.text_truncation(TextTruncation::Ending)` with an
+optional `.max_lines(n)`, preserving full source text and styles. The renderer
+resolves the visible lines and ellipsis from the supplied fonts and box. Disabled
+truncation leaves any stored line limit inactive. Invalid modes or line counts
+suppress all output. [Generated reference](../docs/truncation-compare.png) covers
+fixed/partial heights, auto-height line limits, mixed styles and paragraph gaps.
+The plugin still only displays Rust; live Desktop validation remains separate.
