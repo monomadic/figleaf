@@ -36,7 +36,9 @@ full ellipses, filled vector paths, stroked straight lines, solid and linear/rad
 Nested transforms compose; the root translation is omitted but its linear matrix is retained.
 All ancestor frame clips are retained, including unequal corner radii and crossing
 transforms. The same clip stack applies to shapes and text.
-Supported Unicode text supports mixed runs with one solid fill per run, explicit or automatic line heights, and
+Supported Unicode text supports mixed runs with solid/gradient/image/pattern paint stacks,
+layer strokes (inside/center/outside, including multiple and gradient paints),
+explicit or automatic line heights, and
 caller-supplied font indices. Code comments identify each required family/style;
 the host must supply the exact font and variable-font configuration. Normal
 figleaf text limits still apply (including a maximum 2048-unit raster width).
@@ -308,3 +310,11 @@ RTL decorations/tracking suppress all Rust. Missing glyph coverage and font
 changes inside a grapheme are diagnosed by the renderer. The
 [script comparison](../docs/scripts-compare.png) covers generated output;
 whole-plugin Desktop validation remains an open task.
+
+Text paint coordinates cover the whole text box, including mixed ranges and
+wrapped lines. Empty fills support stroke-only text. Mixed-range image assets
+are read and decoded in memory. Text dashes/brushes, custom stroke joins/miter
+limits, blended fill stacks/ranges, and blended fills combined with strokes
+remain hard errors. See the [text comparison](../docs/text-paints-compare.png).
+The fixture validates exporter output; live development-plugin UI validation
+remains a separate task.

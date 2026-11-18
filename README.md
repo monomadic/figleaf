@@ -563,9 +563,9 @@ backends opt into `measure_runs`/`raster_runs`; their defaults report unsupporte
 styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
-Limits remain 512 UTF-8 bytes, 128 runs, the Unicode profile below, solid run colors and
-explicit or automatic line heights. Small caps, custom decorations, scripts outside the supported BMP profile and richer text paints are
-still unsupported. The plugin verifies contiguous Figma ranges and resolves
+Limits remain 512 UTF-8 bytes, 128 runs, the Unicode profile below and
+explicit or automatic line heights. Small caps, custom decorations and scripts
+outside the supported BMP profile remain unsupported. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
 `cargo run --example text_runs --all-features` renders generated Rust
@@ -667,6 +667,42 @@ auto-height maximum lines, mixed styles, paragraph gaps and untruncated exact fi
 invalid limits, hidden missing fonts and unchanged uploads. Missing ellipsis glyphs
 or exhausted text budgets report errors; there is no three-dot or bitmap fallback.
 
+
+## Text fills and strokes
+
+`Text::paints(vec![Paint::...])` replaces the default solid color with a paint
+stack; `TextRun::paints` does the same for a rich-text range. Paints use the
+whole text box, so gradients and images retain their coordinates across runs
+and wrapped lines. Solid, linear/radial/angular/diamond gradient, image and
+pattern paints reuse the shape renderer. An empty stack means no fill.
+
+Use `.stroke(width, color, StrokeAlign::Inside/Center/Outside)` on the text
+layer, optionally followed by `.stroke_paints(vec![...])` and
+`.stroke_blend_modes(vec![...])`. Strokes cover the combined glyph silhouette
+and follow fills. The host still supplies text and fonts, not exported outlines.
+CoreText provides shaped contours through `Backend::outline_runs`; custom
+backends must opt in or report unsupported. Call `resolve_runs` before requesting
+outlines directly. Colored `raster_runs` rejects explicit paint stacks.
+
+Basic decorations can share the paints. Existing shaping, fallback, wrapping,
+truncation, transforms, clips and text shadows still apply. Outlines are split
+only where coverage is disjoint; holes and translucent overlaps stay together.
+There are no new dependencies. Native extraction is bounded at 65,536 commands
+per line; each connected group retains the existing vector and GPU work limits.
+An excessive group reports a renderer problem rather than approximating it.
+
+The plugin emits these native text calls and reads mixed-range image assets
+into memory. Dashed/brush text strokes, custom text stroke joins/miter limits,
+blended fill stacks/ranges, and blended text fills combined with strokes remain
+hard errors. The existing single-fill blend case remains supported.
+
+`cargo run --example text_paints --all-features --locked` renders generated Rust
+[beside Figma](docs/text-paints-compare.png): 14 editable text cases covering
+holes, fill stacks, aligned/gradient/stacked strokes, underline, wrapped and
+mixed-run gradients, image fills, all gradient types and translucent overlaps.
+The 2× comparison was visually reviewed; mean channel difference is 1.05/255,
+with differences at glyph edges and image sampling. This is not pixel parity.
+Pattern paints and failure/cache behavior also use synthetic tests.
 
 ## Script-aware text and explicit fallback
 

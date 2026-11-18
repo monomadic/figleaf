@@ -7,7 +7,10 @@ async function exportWithAssets(selection,colorProfile,api,decode) {
     context={nodeId:node.id,path};
     if (++count>5000 || depth>128) throw Error('Asset hierarchy limit exceeded.');
     if(node.visible===false)return;
-    for(const p of [...(Array.isArray(node.fills)?node.fills:[]),...(Array.isArray(node.strokes)?node.strokes:[])]) {
+    const fills=node.type==='TEXT'&&node.getStyledTextSegments
+      ?node.getStyledTextSegments(['fills']).flatMap(s=>Array.isArray(s.fills)?s.fills:[])
+      :(Array.isArray(node.fills)?node.fills:[]);
+    for(const p of [...fills,...(Array.isArray(node.strokes)?node.strokes:[])]) {
       if(p.visible===false)continue;
       context={nodeId:node.id,path};
       if(p.type==='IMAGE' && !resources.images.has(p.imageHash)) {

@@ -2755,3 +2755,140 @@ fn script_fallback_render_matches_explicit_fonts_and_caches_failures() {
         .unwrap();
     assert!(!report.changed && report.uploaded_bytes == 0);
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn text_paints_strokes_holes_and_unchanged_uploads() {
+    use figleaf::{
+        Paint,
+        text::{Backend, FontSource, TextRun, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let runs = [TextRun::new("O").size(40., 50.)];
+    let resolved = figleaf::text::resolve_runs(&mut backend, &runs).unwrap();
+    let outlines = backend.outline_runs(&resolved).unwrap();
+    let measured = backend.measure_runs(&runs).unwrap();
+    assert_eq!(outlines.metrics.advance, measured.advance);
+    assert_eq!(outlines.metrics.baseline, measured.baseline);
+    assert!(
+        outlines.paths[0]
+            .commands
+            .iter()
+            .filter(|c| matches!(c, figleaf::path::Command::MoveTo(_)))
+            .count()
+            >= 2
+    );
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut canvas = Canvas::new();
+    let gradient = Paint::Linear(
+        LinearGradient::horizontal()
+            .stop(0., hex(0xff0000))
+            .stop(1., hex(0x0000ff)),
+    );
+    canvas.text(
+        Text::new("OO", Rect::new(10., 5., 70., 50.))
+            .size(40., 50.)
+            .paints(vec![gradient])
+            .stroke(1., hex(0x00ff00), StrokeAlign::Outside),
+    );
+    let image = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    let pixels = image.rgba.as_chunks::<4>().0;
+    assert!(pixels.iter().any(|p| p[0] > 80 && p[3] > 200));
+    assert!(pixels.iter().any(|p| p[2] > 80 && p[3] > 200));
+    assert!(pixels.iter().any(|p| p[1] > 200 && p[0] < 30 && p[2] < 30));
+    // The center of O must remain a hole through both paint and stroke.
+    assert_eq!(pixels[30 * 100 + 22][3], 0);
+    let report = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &canvas,
+            [100, 60],
+            1.,
+            &mut backend,
+        )
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    // Paint changes must invalidate the cached outlined text.
+    let figleaf::paint::Item::Text(original) = &canvas.items()[0] else {
+        unreachable!()
+    };
+    let mut changed = Canvas::new();
+    changed.text(original.clone().paints(vec![Paint::Solid(hex(0xffff00))]));
+    let changed_image = gpu.render(
+        &mut renderer,
+        &changed,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_ne!(image.rgba, changed_image.rgba);
+    let mut invalid = Canvas::new();
+    invalid.text(Text::new(" ", Rect::new(0., 0., 90., 50.)).stroke(
+        f32::NAN,
+        hex(0xff0000),
+        StrokeAlign::Center,
+    ));
+    gpu.render(
+        &mut renderer,
+        &invalid,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(!renderer.problems().is_empty());
+    // Use a fresh renderer: cached output intentionally does not re-call a backend.
+    let mut fresh = Renderer::new(&gpu.device, gpu.format);
+    gpu.render(&mut fresh, &canvas, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(!fresh.problems().is_empty());
+}
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn text_image_and_pattern_paints_follow_glyph_coverage() {
+    use figleaf::{
+        ImagePaint, Paint, Pattern,
+        text::{FontSource, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let mut tile = Canvas::new();
+    tile.shape(Shape::rect(Rect::new(0., 0., 8., 8.)).fill(hex(0x0000ff)));
+    let paints = [
+        Paint::Solid(hex(0x0000ff)),
+        Paint::Image(ImagePaint::new(figleaf::Image::new(
+            [1, 1],
+            vec![0, 0, 255, 255],
+        ))),
+        Paint::Pattern(Pattern::new(tile, [8., 8.])),
+    ];
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let mut reference = None;
+    for paint in paints {
+        let mut canvas = Canvas::new();
+        canvas.text(
+            Text::new("B8O", Rect::new(4., 4., 90., 50.))
+                .size(30., 44.)
+                .paints(vec![paint]),
+        );
+        let image = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut backend);
+        assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+        if let Some(expected) = &reference {
+            assert_eq!(&image.rgba, expected);
+        } else {
+            reference = Some(image.rgba);
+        }
+    }
+}

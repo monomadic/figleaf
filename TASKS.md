@@ -21,9 +21,11 @@ Completed implementation notes and comparisons are in the
    Script-aware shaping, explicit fallback and Unicode line breaking are done
    for the [documented BMP profile](README.md#script-aware-text-and-explicit-fallback)
    (2026-11-18), with [representative script comparisons](docs/scripts-compare.png).
-   **Next: richer text fills/strokes**, then remaining list/OpenType styling,
+   Richer text fills and aligned/stacked strokes are done (2026-11-19),
+   with [mixed paints and silhouette comparisons](docs/text-paints-compare.png).
+   **Next: remaining list/OpenType styling**,
    including small caps, custom decorations, RTL decoration/tracking and broader
-   Unicode coverage. Preserve hard errors for each unsupported case until implemented.
+   Unicode coverage, then text paint blends and advanced stroke styles. Preserve hard errors for each unsupported case until implemented.
    **Done when:** generated Rust retains supported run styles and paragraph
    behavior; measured and rendered text agree; representative labels, paragraphs,
    mixed runs and non-Latin samples are reviewed beside Figma. Test wrapping,

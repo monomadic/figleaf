@@ -1136,6 +1136,11 @@ pub struct Text {
     /// Figma's letter spacing in pixels.
     pub letter_spacing: f32,
     pub color: Color,
+    /// Paint coordinates cover the whole text box, including wrapped lines.
+    pub paints: Option<Vec<Paint>>,
+    pub stroke: Option<Stroke>,
+    pub stroke_paints: Vec<Paint>,
+    pub stroke_blend_modes: Vec<crate::BlendMode>,
     pub align: Align,
     pub vertical_align: Align,
     /// Figma's inner shadow effect on a text layer: colour, X and Y, blur.
@@ -1170,6 +1175,10 @@ impl Text {
             line_height: 16.,
             letter_spacing: 0.,
             color: [0., 0., 0., 1.],
+            paints: None,
+            stroke: None,
+            stroke_paints: Vec::new(),
+            stroke_blend_modes: Vec::new(),
             align: Align::Start,
             vertical_align: Align::Start,
             inner_shadow: None,
@@ -1215,7 +1224,11 @@ impl Text {
     }
     #[cfg(feature = "wgpu")]
     pub(crate) fn needs_layout(&self) -> bool {
-        !self.runs.is_empty()
+        self.paints.is_some()
+            || self.stroke.is_some()
+            || !self.stroke_paints.is_empty()
+            || !self.stroke_blend_modes.is_empty()
+            || !self.runs.is_empty()
             || !self.string.is_ascii()
             || self.text_truncation != text::TextTruncation::Disabled
             || self.max_lines.is_some()
@@ -1224,6 +1237,31 @@ impl Text {
             || self.line_height == 0.
             || self.paragraph_spacing != 0.
             || self.paragraph_indent != 0.
+    }
+    /// Explicit fills; an empty stack supports stroke-only text.
+    /// For rich text, set paints on each run instead.
+    pub fn paints(mut self, paints: Vec<Paint>) -> Self {
+        self.paints = Some(paints);
+        self
+    }
+    pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {
+        self.stroke = Some(Stroke {
+            width,
+            color,
+            align,
+        });
+        self.stroke_paints.clear();
+        self.stroke_blend_modes.clear();
+        self
+    }
+    pub fn stroke_paints(mut self, paints: Vec<Paint>) -> Self {
+        self.stroke_paints = paints;
+        self.stroke_blend_modes.clear();
+        self
+    }
+    pub fn stroke_blend_modes(mut self, modes: Vec<crate::BlendMode>) -> Self {
+        self.stroke_blend_modes = modes;
+        self
     }
     pub fn font(mut self, font: usize) -> Self {
         self.font = font;

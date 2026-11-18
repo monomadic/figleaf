@@ -115,7 +115,19 @@ pub struct Mask {
     pub alpha: Vec<u8>,
     pub metrics: Metrics,
 }
+/// Shaped, line-local glyph contours grouped by input run, including decorations.
+/// Coordinates are logical units, x right and y down from the line top.
+pub struct RunOutlines {
+    pub paths: Vec<crate::VectorPath>,
+    pub metrics: Metrics,
+}
 pub trait Backend {
+    /// One nonzero path per input run, preserving its holes. Call `resolve_runs`
+    /// first for case, direction, font fallback and natural heights.
+    fn outline_runs(&mut self, _runs: &[TextRun]) -> Result<RunOutlines, Error> {
+        Err(Error("backend does not support text outlines"))
+    }
+
     /// Return grapheme boundaries and legal Unicode line-break opportunities.
     fn text_boundaries(&mut self, text: &str) -> Result<TextBoundaries, Error> {
         TextBoundaries::latin(text)
@@ -185,6 +197,13 @@ pub mod coretext {
         decoration: u32,
         direction: i32,
     }
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct OutlineCommand {
+        run: u32,
+        kind: u32,
+        points: [f64; 6],
+    }
     unsafe extern "C" {
         fn figleaf_ct_boundaries(
             text: *const u8,
@@ -204,6 +223,8 @@ pub mod coretext {
             width: u32,
             rows: u32,
             metrics: *mut Metrics,
+            commands: *mut OutlineCommand,
+            command_count: *mut usize,
         ) -> i32;
         fn figleaf_ct_font(bytes: *const u8, len: usize) -> *mut c_void;
         fn figleaf_ct_drop(font: *mut c_void);
@@ -360,6 +381,7 @@ pub mod coretext {
             runs: &[TextRun],
             scale: f32,
             pixels: Option<(&mut [u8], u32, u32)>,
+            mut outlines: Option<&mut Vec<OutlineCommand>>,
         ) -> Result<Metrics, Error> {
             let mut input = Vec::new();
             for run in runs {
@@ -378,9 +400,14 @@ pub mod coretext {
             let (ptr, w, h) = pixels.map_or((std::ptr::null_mut(), 0, 0), |(p, w, h)| {
                 (p.as_mut_ptr(), w, h)
             });
+            let mut command_count = 0;
+            let commands = outlines
+                .as_mut()
+                .map_or(std::ptr::null_mut(), |v| v.as_mut_ptr());
             let mut metrics = Metrics::default();
             // Input strings and retained instances live across this synchronous call;
-            // the output buffer is exactly width*rows*4 bytes and both structs are repr(C).
+            // Pixel output is width*rows*4 bytes; optional outline output has 65,536
+            // initialized commands, matching the native cap. All FFI structs are repr(C).
             let status = unsafe {
                 figleaf_ct_runs(
                     input.as_ptr(),
@@ -390,8 +417,13 @@ pub mod coretext {
                     w,
                     h,
                     &mut metrics,
+                    commands,
+                    &mut command_count,
                 )
             };
+            if let Some(outlines) = outlines {
+                outlines.truncate(command_count);
+            }
             match status {
                 0 => Ok(metrics),
                 3 => Err(Error("font has no glyph for a character")),
@@ -435,6 +467,37 @@ pub mod coretext {
         }
     }
     impl Backend for CoreText {
+        fn outline_runs(&mut self, runs: &[TextRun]) -> Result<RunOutlines, Error> {
+            validate_runs(runs, MAX_WIDTH, 1., false)?;
+            if runs.iter().any(|r| {
+                r.text_case != TextCase::Original
+                    || r.direction == TextDirection::Auto
+                    || r.style.line_height == 0.
+            }) {
+                return Err(Error("text outlines require resolved runs"));
+            }
+            // Layout has already resolved case, fallback and natural heights.
+            let mut commands = vec![OutlineCommand::default(); 65536];
+            let metrics = self.styled(runs, 1., None, Some(&mut commands))?;
+            let mut paths = vec![crate::VectorPath::new(crate::WindingRule::NonZero); runs.len()];
+            for c in commands {
+                let path = paths
+                    .get_mut(c.run as usize)
+                    .ok_or(Error("invalid outline run"))?;
+                let p = |i: usize| [c.points[i] as f32, c.points[i + 1] as f32];
+                use crate::path::Command::*;
+                path.commands.push(match c.kind {
+                    0 => MoveTo(p(0)),
+                    1 => LineTo(p(0)),
+                    2 => QuadraticTo(p(0), p(2)),
+                    3 => CubicTo(p(0), p(2), p(4)),
+                    4 => Close,
+                    _ => return Err(Error("invalid glyph outline")),
+                });
+            }
+            Ok(RunOutlines { paths, metrics })
+        }
+
         fn text_boundaries(&mut self, text: &str) -> Result<TextBoundaries, Error> {
             if text.len() > MAX_TEXT_BYTES || text.is_empty() {
                 return Err(Error("invalid segmentation input"));
@@ -598,7 +661,7 @@ pub mod coretext {
         fn measure_runs(&mut self, runs: &[TextRun]) -> Result<Metrics, Error> {
             validate_runs(runs, 1., 1., false)?;
             let resolved = resolve_runs(self, runs)?;
-            self.styled(&resolved, 1., None)
+            self.styled(&resolved, 1., None, None)
         }
         fn raster_runs(
             &mut self,
@@ -607,6 +670,9 @@ pub mod coretext {
             scale: f32,
         ) -> Result<RunMask, Error> {
             validate_runs(runs, width, scale, false)?;
+            if runs.iter().any(|r| r.paints.is_some()) {
+                return Err(Error("painted text requires outline rendering"));
+            }
             let resolved = resolve_runs(self, runs)?;
             let runs = resolved.as_slice();
             let height = runs
@@ -617,7 +683,7 @@ pub mod coretext {
             let w = (width * scale).ceil() as u32;
             let h = (height * scale).ceil() as u32;
             let mut rgba = vec![0; w as usize * h as usize * 4];
-            let metrics = self.styled(runs, scale, Some((&mut rgba, w, h)))?;
+            let metrics = self.styled(runs, scale, Some((&mut rgba, w, h)), None)?;
             for pixel in rgba.as_chunks_mut::<4>().0 {
                 let a = u32::from(pixel[3]);
                 for value in &mut pixel[..3] {

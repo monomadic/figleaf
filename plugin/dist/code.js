@@ -349,7 +349,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       let expression = null;
       if (n.type === 'TEXT') {
-        if (strokes.length) reject('Text strokes are unsupported.');
+        if(strokes.length && n.strokeMiterLimit!==undefined && n.strokeMiterLimit!==4)reject('Custom text stroke miter limits are unsupported.');
+        if(strokes.length && (n.dashPattern?.length || n.strokeCap && n.strokeCap!=='NONE')) reject('Dashed text strokes and endpoint decorations are unsupported.');
+        if(strokes.length && (!Number.isFinite(n.strokeWeight)||n.strokeWeight<0||!['INSIDE','CENTER','OUTSIDE'].includes(n.strokeAlign))) reject('Invalid text stroke width or alignment.');
+        if(strokes.length&&fills.some(blended))reject('Blended text fills combined with strokes are unsupported.');
         if (n.hangingPunctuation || n.hangingList) reject('Hanging punctuation and hanging lists are unsupported.');
         const truncation=n.textTruncation??(n.textAutoResize==='TRUNCATE'?'ENDING':'DISABLED');
         if(!['DISABLED','ENDING'].includes(truncation))reject('Unsupported text truncation.');
@@ -377,7 +380,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         let paragraphSettings=null, inWord=false, transformedText='';
         for(const s of styles) {
           const paints=visible(s.fills||[]);
-          if(paints.length!==1||paints[0]?.type!=='SOLID')reject('Text requires exactly one solid fill per run.');
+          if(paints.length>32)reject('Text fill stack exceeds 32 paints.');
+          if(paints.length>1&&paints.some(blended))reject('Blended text fill stacks are unsupported.');
           if(mixedRuns&&paints.some(blended))reject('Blended paints inside styled text runs are unsupported.');
           for(const p of paints) if(p.type==='SOLID' && (!p.color || [p.color.r,p.color.g,p.color.b,p.color.a??1,p.opacity??1].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)))reject('Invalid text run color or opacity.');
           if(!s.fontName||typeof s.fontName!=='object'||typeof s.fontName.family!=='string'||typeof s.fontName.style!=='string'||typeof s.fontSize!=='number'||typeof s.letterSpacing!=='object'||typeof s.lineHeight!=='object')reject('Missing or invalid run text style.');
@@ -415,7 +419,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)}).color(${color(paints[0].color,paints[0].opacity)})${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
         if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');
@@ -427,6 +431,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const align = { LEFT:'Start', TOP:'Start', CENTER:'Center', RIGHT:'End', BOTTOM:'End' };
           expression=mixedRuns?`Text::rich(vec![${generated.join(', ')}], ${rect(box)})`:generated[0];
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
+          if(strokes.length) expression+=`.stroke(${number(n.strokeWeight)}, ${strokeColor(strokes[0])}, StrokeAlign::${{INSIDE:'Inside',CENTER:'Center',OUTSIDE:'Outside'}[n.strokeAlign]})`;
           if(truncation==='ENDING')expression+='.text_truncation(figleaf::text::TextTruncation::Ending)';
           if(n.maxLines!=null)expression+=`.max_lines(${n.maxLines})`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
@@ -637,7 +642,10 @@ async function exportWithAssets(selection,colorProfile,api,decode) {
     context={nodeId:node.id,path};
     if (++count>5000 || depth>128) throw Error('Asset hierarchy limit exceeded.');
     if(node.visible===false)return;
-    for(const p of [...(Array.isArray(node.fills)?node.fills:[]),...(Array.isArray(node.strokes)?node.strokes:[])]) {
+    const fills=node.type==='TEXT'&&node.getStyledTextSegments
+      ?node.getStyledTextSegments(['fills']).flatMap(s=>Array.isArray(s.fills)?s.fills:[])
+      :(Array.isArray(node.fills)?node.fills:[]);
+    for(const p of [...fills,...(Array.isArray(node.strokes)?node.strokes:[])]) {
       if(p.visible===false)continue;
       context={nodeId:node.id,path};
       if(p.type==='IMAGE' && !resources.images.has(p.imageHash)) {

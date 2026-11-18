@@ -40,6 +40,12 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     {
         return Err(Error("rich text requires case and decoration on each run"));
     }
+    if !t.runs.is_empty() && t.paints.is_some() {
+        return Err(Error("rich text requires paints on each run"));
+    }
+    if t.stroke.is_none() && (!t.stroke_paints.is_empty() || !t.stroke_blend_modes.is_empty()) {
+        return Err(Error("text stroke paints require a stroke"));
+    }
     t.rect.validate()?;
     t.transform.inverse()?;
     t.transform.bounds(t.rect).validate()?;
@@ -49,6 +55,7 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             text: t.string.clone(),
             style: t.style(),
             color: t.color,
+            paints: t.paints.clone(),
             text_decoration: t.text_decoration,
             text_case: t.text_case,
             direction: text::TextDirection::Auto,
@@ -58,6 +65,20 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     } else {
         t.runs.clone()
     };
+    // Validate even invisible/whitespace-only styles before looking for outlines.
+    for run in &runs {
+        let mut check = Shape::rect(t.rect);
+        check.fills = run
+            .paints
+            .clone()
+            .unwrap_or_else(|| vec![Paint::Solid(run.color)]);
+        check.stroke = t.stroke;
+        check.stroke_paints = t.stroke_paints.clone();
+        check.stroke_blend_modes = t.stroke_blend_modes.clone();
+        if let Some(reason) = check.problem() {
+            return Err(Error(reason));
+        }
+    }
     let paragraph = text::ParagraphStyle {
         spacing: t.paragraph_spacing,
         indent: t.paragraph_indent,
@@ -88,11 +109,65 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     };
     let mut y = t.rect.y + place(t.vertical_align, t.rect.h - height);
     let mut pixels = 0u64;
+    let outlined = t.stroke.is_some() || runs.iter().any(|r| r.paints.is_some());
+    let mut stroke_paths = Vec::new();
     let mut content = Canvas::new();
     for line in lines {
         if !line.runs.is_empty() {
             if line.metrics.advance > f64::from(text::MAX_WIDTH) {
                 return Err(Error("styled line exceeds bitmap width limit"));
+            }
+            if outlined {
+                let outlines = backend.outline_runs(&line.runs)?;
+                if outlines.paths.len() != line.runs.len()
+                    || outlines.metrics.lines != 1
+                    || !outlines.metrics.advance.is_finite()
+                    || !outlines.metrics.baseline.is_finite()
+                    || (outlines.metrics.advance - line.metrics.advance).abs() > 0.01
+                    || (outlines.metrics.baseline - line.metrics.baseline).abs() > 0.01
+                {
+                    return Err(Error("text backend violated outline metrics"));
+                }
+                let rtl = line.runs[0].direction == text::TextDirection::RightToLeft;
+                let x = if rtl { 0. } else { line.indent }
+                    + place(t.align, line.available_width - line.metrics.advance as f32);
+                let offset = [x, y - t.rect.y];
+                for (mut path, run) in outlines.paths.into_iter().zip(&line.runs) {
+                    if path.commands.is_empty() {
+                        continue;
+                    }
+                    for command in &mut path.commands {
+                        use crate::path::Command::*;
+                        let add = |p: &mut [f32; 2]| {
+                            p[0] += offset[0];
+                            p[1] += offset[1];
+                        };
+                        match command {
+                            MoveTo(p) | LineTo(p) => add(p),
+                            QuadraticTo(a, b) => {
+                                add(a);
+                                add(b);
+                            }
+                            CubicTo(a, b, c) => {
+                                add(a);
+                                add(b);
+                                add(c);
+                            }
+                            Close => {}
+                        }
+                    }
+                    if t.stroke.is_some() {
+                        stroke_paths.push(path.clone());
+                    }
+                    let mut shape = Shape::vector(t.rect, vec![path]).transform(t.transform);
+                    shape.fills = run
+                        .paints
+                        .clone()
+                        .unwrap_or_else(|| vec![Paint::Solid(run.color)]);
+                    add_outline_shapes(&mut content, shape, raster_scale)?;
+                }
+                y += line.height + line.spacing_after;
+                continue;
             }
             let width = (line.metrics.advance.ceil() as f32 + 1.).clamp(1., text::MAX_WIDTH);
             let w = (width * raster_scale).ceil() as u32;
@@ -138,6 +213,15 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
         }
         y += line.height + line.spacing_after;
     }
+    if let Some(stroke) = t.stroke
+        && !stroke_paths.is_empty()
+    {
+        let mut shape = Shape::vector(t.rect, stroke_paths).transform(t.transform);
+        shape.stroke = Some(stroke);
+        shape.stroke_paints = t.stroke_paints.clone();
+        shape.stroke_blend_modes = t.stroke_blend_modes.clone();
+        add_outline_shapes(&mut content, shape, raster_scale)?;
+    }
     let mut scope = Composite::new(content).effect_transform(t.transform);
     for (inner, effect) in [(false, t.drop_shadow), (true, t.inner_shadow)] {
         if let Some((color, offset, blur)) = effect {
@@ -158,4 +242,88 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             .push(crate::Clip::rect(clip).transform(t.clip_transform));
     }
     Ok(scope)
+}
+
+// Split spatially disjoint contours before GPU coverage work. Holes and touching
+// glyphs stay together, so translucent paints are applied once to their union.
+// Every piece keeps the original text box as its paint coordinate system.
+fn add_outline_shapes(content: &mut Canvas, mut shape: Shape, scale: f32) -> Result<(), Error> {
+    let paths = shape.vector_paths.take().unwrap_or_default();
+    let mut groups: Vec<(Rect, Vec<(usize, crate::VectorPath)>)> = Vec::new();
+    for (source, path) in paths.into_iter().enumerate() {
+        let mut contours = Vec::new();
+        for command in path.commands {
+            if matches!(command, crate::path::Command::MoveTo(_)) {
+                contours.push(crate::VectorPath::new(path.winding_rule));
+            }
+            contours
+                .last_mut()
+                .ok_or(Error("invalid text contour"))?
+                .commands
+                .push(command);
+        }
+        for contour in contours {
+            let mut bounds = crate::path::bounds(std::slice::from_ref(&contour))?;
+            if let Some(stroke) = shape.stroke {
+                let [closed, open, _] = crate::path::stroke_outlines(
+                    std::slice::from_ref(&contour),
+                    stroke.width,
+                    shape.path_stroke,
+                    stroke.align,
+                    scale,
+                    &[],
+                )?;
+                for path in closed.iter().chain(&open) {
+                    bounds = union(bounds, crate::path::bounds(std::slice::from_ref(path))?);
+                }
+            }
+            // Include antialias fringe so separate draws cannot overlap coverage.
+            bounds = bounds.inflate(1. / scale);
+            let mut parts = vec![(source, contour)];
+            let mut i = 0;
+            while i < groups.len() {
+                let other = groups[i].0;
+                if bounds.x <= other.x + other.w
+                    && other.x <= bounds.x + bounds.w
+                    && bounds.y <= other.y + other.h
+                    && other.y <= bounds.y + bounds.h
+                {
+                    let (r, mut p) = groups.swap_remove(i);
+                    bounds = union(bounds, r);
+                    parts.append(&mut p);
+                    i = 0;
+                } else {
+                    i += 1;
+                }
+            }
+            groups.push((bounds, parts));
+        }
+    }
+    for (_, parts) in groups {
+        let mut regions: std::collections::BTreeMap<usize, crate::VectorPath> = Default::default();
+        for (source, path) in parts {
+            regions
+                .entry(source)
+                .or_insert_with(|| crate::VectorPath::new(path.winding_rule))
+                .commands
+                .extend(path.commands);
+        }
+        let mut piece = shape.clone();
+        piece.vector_paths = Some(regions.into_values().collect());
+        if let Some(reason) = piece.problem() {
+            return Err(Error(reason));
+        }
+        content.shape(piece);
+    }
+    Ok(())
+}
+fn union(a: Rect, b: Rect) -> Rect {
+    let x = a.x.min(b.x);
+    let y = a.y.min(b.y);
+    Rect::new(
+        x,
+        y,
+        (a.x + a.w).max(b.x + b.w) - x,
+        (a.y + a.h).max(b.y + b.h) - y,
+    )
 }

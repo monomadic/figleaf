@@ -145,8 +145,21 @@ typedef struct {
     uint32_t decoration;
     int32_t direction;
 } StyledRun;
+typedef struct { uint32_t run, kind; double points[6]; } OutlineCommand;
+typedef struct { OutlineCommand *commands; size_t *count; uint32_t run; int overflow; } OutlineSink;
+static void outline_element(void *info, const CGPathElement *element) {
+    OutlineSink *sink=info;
+    if(*sink->count>=65536){sink->overflow=1;return;}
+    OutlineCommand *c=&sink->commands[(*sink->count)++];
+    c->run=sink->run;c->kind=(uint32_t)element->type;
+    int n=element->type==kCGPathElementAddCurveToPoint?3:
+        element->type==kCGPathElementAddQuadCurveToPoint?2:
+        element->type==kCGPathElementCloseSubpath?0:1;
+    for(int i=0;i<n;i++){c->points[2*i]=element->points[i].x;c->points[2*i+1]=element->points[i].y;}
+}
 int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
-                   uint8_t *pixels, uint32_t width, uint32_t rows, Metrics *metrics) {
+                   uint8_t *pixels, uint32_t width, uint32_t rows, Metrics *metrics,
+                   OutlineCommand *commands, size_t *command_count) {
     CFMutableAttributedStringRef attributed=CFAttributedStringCreateMutable(NULL,0);
     CGColorSpaceRef space=CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     double ascent=0,descent=0,height=0;
@@ -163,6 +176,10 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
         CFAttributedStringSetAttribute(attributed,range,kCTFontAttributeName,font);
         CFAttributedStringSetAttribute(attributed,range,kCTKernAttributeName,kern);
         CFAttributedStringSetAttribute(attributed,range,kCTForegroundColorAttributeName,color);
+        int run_index=(int)i;
+        CFNumberRef run_id=CFNumberCreate(NULL,kCFNumberIntType,&run_index);
+        CFAttributedStringSetAttribute(attributed,range,CFSTR("figleafRun"),run_id);
+        CFRelease(run_id);
         CFRelease(kern);CGColorRelease(color);
         double a=CTFontGetAscent(font),d=CTFontGetDescent(font);
         if(a>ascent)ascent=a;if(d>descent)descent=d;if(r->height>height)height=r->height;
@@ -189,16 +206,35 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
         CFIndex n=CTRunGetGlyphCount(run);CGGlyph glyphs[512];
         if(n>512){status=4;break;}CTRunGetGlyphs(run,CFRangeMake(0,n),glyphs);
         for(CFIndex j=0;j<n;j++)if(!glyphs[j])status=3;
+        if(!status && commands) {
+            int run_index=0;
+            CFNumberGetValue(CFDictionaryGetValue(CTRunGetAttributes(run),CFSTR("figleafRun")),kCFNumberIntType,&run_index);
+            OutlineSink sink={commands,command_count,(uint32_t)run_index,0};
+            CGPoint positions[512];CTRunGetPositions(run,CFRangeMake(0,n),positions);
+            for(CFIndex j=0;j<n;j++) {
+                CGAffineTransform transform=CGAffineTransformMake(1,0,0,-1,positions[j].x,metrics->baseline-positions[j].y);
+                CGPathRef path=CTFontCreatePathForGlyph(actual,glyphs[j],&transform);
+                if(path){CGPathApply(path,&sink,outline_element);CGPathRelease(path);}
+                else {
+                    CGRect bounds;CTFontGetBoundingRectsForGlyphs(actual,kCTFontOrientationDefault,&glyphs[j],&bounds,1);
+                    if(!CGRectIsEmpty(bounds))status=7;
+                }
+            }
+            if(sink.overflow)status=4;
+        }
     }
-    if(!status && pixels) {
-        memset(pixels,0,(size_t)width*rows*4);
-        CGContextRef ctx=CGBitmapContextCreate(pixels,width,rows,8,width*4,space,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
-        if(!ctx)status=5;else {
-            CGContextSetAllowsFontSmoothing(ctx,false);CGContextSetShouldSmoothFonts(ctx,false);
-            CGContextSetShouldAntialias(ctx,true);CGContextSetShouldSubpixelPositionFonts(ctx,true);
-            CGContextSetShouldSubpixelQuantizeFonts(ctx,false);CGContextScaleCTM(ctx,scale,scale);
-            double baseline=(double)rows/scale-metrics->baseline;
-            CGContextSetTextPosition(ctx,0,baseline);CTLineDraw(line,ctx);
+    if(!status && (pixels || commands)) {
+        if(pixels)memset(pixels,0,(size_t)width*rows*4);
+        CGContextRef ctx=pixels?CGBitmapContextCreate(pixels,width,rows,8,width*4,space,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big):NULL;
+        if(pixels && !ctx)status=5;else {
+            if(ctx) {
+                CGContextSetAllowsFontSmoothing(ctx,false);CGContextSetShouldSmoothFonts(ctx,false);
+                CGContextSetShouldAntialias(ctx,true);CGContextSetShouldSubpixelPositionFonts(ctx,true);
+                CGContextSetShouldSubpixelQuantizeFonts(ctx,false);CGContextScaleCTM(ctx,scale,scale);
+            }
+            double box_height=pixels?(double)rows/scale:height;
+            double baseline=box_height-metrics->baseline;
+            if(ctx){CGContextSetTextPosition(ctx,0,baseline);CTLineDraw(line,ctx);}
             CFIndex start=0;
             for(size_t i=0;i<count;i++) {
                 const StyledRun *r=&input[i];
@@ -219,22 +255,28 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                     double x=CTLineGetOffsetForStringIndex(line,start,NULL);
                     double end_x=CTLineGetOffsetForStringIndex(line,end,NULL);
                     if(i+1==count)end_x-=r->tracking;
-                    CGContextSetRGBFillColor(ctx,r->color[0],r->color[1],r->color[2],r->color[3]);
+                    if(ctx)CGContextSetRGBFillColor(ctx,r->color[0],r->color[1],r->color[2],r->color[3]);
                     // Figma places the strike at the font's strikeout position,
                     // and the underline below the font's underline position.
                     double bottom=r->decoration==1
                         ? baseline+CTFontGetUnderlinePosition(font)-thickness*1.5
                         : baseline+position-thickness;
-                    if(bottom<0 || bottom+thickness>(double)rows/scale || thickness<=0) {
+                    if(bottom<0 || bottom+thickness>box_height || thickness<=0) {
                         status=6;break;
                     }
                     // Automatic decorations are continuous in the Figma export;
                     // custom placement/style/skip-ink controls are not supported.
-                    CGContextFillRect(ctx,CGRectMake(x,bottom,end_x-x,thickness));
+                    if(ctx)CGContextFillRect(ctx,CGRectMake(x,bottom,end_x-x,thickness));
+                    if(commands) {
+                        OutlineSink sink={commands,command_count,(uint32_t)i,0};
+                        CGPathRef path=CGPathCreateWithRect(CGRectMake(x,box_height-bottom-thickness,end_x-x,thickness),NULL);
+                        CGPathApply(path,&sink,outline_element);CGPathRelease(path);
+                        if(sink.overflow)status=4;
+                    }
                 }
                 start=end;
             }
-            CGContextRelease(ctx);
+            if(ctx)CGContextRelease(ctx);
         }
     }
     CFRelease(line);CFRelease(attributed);CGColorSpaceRelease(space);return status;

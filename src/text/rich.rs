@@ -35,6 +35,8 @@ pub struct TextRun {
     pub text: String,
     pub style: Style,
     pub color: Color,
+    /// Explicit paint stack; None uses color, Some(empty) leaves glyphs unfilled.
+    pub paints: Option<Vec<crate::Paint>>,
     pub text_decoration: TextDecoration,
     pub text_case: TextCase,
     /// Auto resolves once per paragraph and is retained across wrapped lines.
@@ -54,6 +56,7 @@ impl TextRun {
                 letter_spacing: 0.,
             },
             color: [0., 0., 0., 1.],
+            paints: None,
             text_decoration: TextDecoration::None,
             text_case: TextCase::Original,
             direction: TextDirection::Auto,
@@ -93,6 +96,10 @@ impl TextRun {
     }
     pub fn letter_spacing(mut self, value: f32) -> Self {
         self.style.letter_spacing = value;
+        self
+    }
+    pub fn paints(mut self, paints: Vec<crate::Paint>) -> Self {
+        self.paints = Some(paints);
         self
     }
     pub fn color(mut self, color: Color) -> Self {

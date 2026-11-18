@@ -599,3 +599,23 @@ rasterization differs. Tests verify fallback against explicit-font pixels, CJK
 punctuation/Thai dictionary boundaries, nonbreaking spaces, joins, invalid inputs,
 failed chains and unchanged uploads. Those boundary tests are not CJK/Thai visual
 parity or live Desktop-plugin evidence. Richer text fills/strokes are next.
+
+## 2026-11-19 — richer text fills and strokes
+
+- Added explicit text/run paint stacks and layer stroke paints/alignment. CoreText
+  extracts the same shaped glyph contours used for measurement, including basic
+  decorations; the existing vector renderer draws them with text-box paint
+  coordinates. Disjoint contours are partitioned to bound GPU work while keeping
+  holes and overlapping glyphs together. No new dependencies.
+- Exporter retains native text, emits paint/stroke stacks, and resolves mixed-range
+  image assets in memory. Unsupported advanced stroke styles and fill-blend
+  combinations remain hard errors, with no partial output or filesystem writes.
+- Ran generated `text_paints` beside a live Figma export: 14 editable text nodes,
+  JetBrains Mono Regular (wght 400), 2×. [Comparison](text-paints-compare.png)
+  covers all gradient types, stacked fills/strokes, all stroke alignments, holes,
+  underline, wrapping, mixed ranges, an image fill and translucent overlap. Mean
+  channel difference 1.05/255; edge/image-sampling differences remain. Source
+  snapshot and generated Rust are checked in; temporary Figma nodes were removed.
+- Synthetic tests exercise outline metrics, holes, paint changes, asset failures,
+  unsupported combinations and unchanged-canvas zero uploads. This is exporter
+  fixture validation, not completion of the live-plugin UI milestone.

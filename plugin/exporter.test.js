@@ -56,7 +56,7 @@ test('unsupported features never produce partial Rust', () => {
     text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNKNOWN'}),text({characters:'🐈'}),
     text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:-4}),text({textTruncation:'UNKNOWN'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
-    text({fills:[solid,solid]}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
+    text({fills:Array(33).fill(solid)}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
   ];
   for (const n of cases) { const r = exportHierarchy([n]); assert.equal(r.code,null,JSON.stringify(n)); assert.ok(r.errors.length); }
 });
@@ -723,4 +723,43 @@ test('unsupported script controls, emoji, casing and RTL styles stay hard errors
   }
   for(const characters of ['हिन्दी','العربية','日本語、中文。','ภาษาไทย','e\u0301'])
     assert.deepEqual(exportHierarchy([text({characters})]).errors,[]);
+});
+
+test('richer text fill and stroke stacks preserve native text and reject unsupported combinations',()=>{
+  const gradient={type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:[{position:0,color:{r:0,g:0,b:1,a:1}},{position:1,color:{r:1,g:0,b:0,a:1}}]};
+  for(const fills of [[],[gradient],[solid,gradient]])for(const strokeAlign of ['INSIDE','CENTER','OUTSIDE']) {
+    const r=exportHierarchy([text({fills,strokes:[solid,gradient],strokeWeight:2,strokeAlign})]);
+    assert.deepEqual(r.errors,[]);assert.match(r.code,/Text::new/);assert.match(r.code,/\.paints\(vec!\[/);assert.match(r.code,/\.stroke_paints\(vec!\[/);
+  }
+  for(const patch of [{strokeWeight:-1},{strokeWeight:NaN},{strokeAlign:'UNKNOWN'},{strokeMiterLimit:8},{dashPattern:[2,2]},
+    {strokeCap:'ROUND'},{fills:[{...solid,blendMode:'MULTIPLY'}]},
+    {fills:[solid,{...solid,blendMode:'MULTIPLY'}]}]) {
+    const r=exportHierarchy([text({strokes:[solid],strokeWeight:2,strokeAlign:'CENTER',...patch})]);
+    assert.equal(r.code,null);assert.ok(r.errors.length);
+  }
+});
+test('mixed text image assets are loaded even when layer fills are mixed',async()=>{
+  const image={type:'IMAGE',imageHash:'mixed-image',scaleMode:'FILL'};
+  const n=text({characters:'AB',fills:Symbol('mixed')});
+  const segments=[{...n,characters:'A',start:0,end:1,fills:[solid]},{...n,characters:'B',start:1,end:2,fills:[image]}];
+  n.getStyledTextSegments=()=>segments;
+  let reads=0;
+  const api={getImageByHash:()=>({getSizeAsync:async()=>({width:40,height:20}),getBytesAsync:async()=>{reads++;return new Uint8Array([137,80,78,71,13,10,26,10]);}})};
+  const result=await exportWithAssets([n],'SRGB',api,async()=>require('./image-pixels.json'));
+  assert.equal(result.errors.length,0);assert.equal(reads,1);assert.match(result.code,/Text::rich/);assert.match(result.code,/Paint::Image/);
+  assert.equal((await exportWithAssets([n],'SRGB',{getImageByHash:()=>null},async()=>null)).code,null);
+});
+
+test('live text paint fixture generates exact Rust and compiles',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'text-paints-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const resources={images:new Map([['c0c88b8b7db347060b7753ee43cd994605713e57',require('./image-pixels.json')]]),patterns:new Map()};
+  const result=exportHierarchy([root],'SRGB',new Map(),resources);assert.deepEqual(result.errors,[]);
+  assert.equal(result.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/text_paints.rs'),'utf8'));
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-text-paints-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),result.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0]);assert_eq!(c.items().len(),15);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
