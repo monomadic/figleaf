@@ -388,7 +388,7 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                     } else {
                         if(ctx)CGContextFillRect(ctx,CGRectMake(x,bottom,end_x-x,thickness));
                         if(commands) {
-                            OutlineSink sink={commands,command_count,(uint32_t)i,0};
+                            OutlineSink sink={commands,command_count,(uint32_t)(count+i),0};
                             CGPathRef path=CGPathCreateWithRect(CGRectMake(x,box_height-bottom-thickness,end_x-x,thickness),NULL);
                             CGPathApply(path,&sink,outline_element);CGPathRelease(path);
                             if(sink.overflow)status=4;
@@ -443,15 +443,24 @@ int figleaf_ct_boundaries(const uint8_t *text,size_t len,uint32_t *graphemes,uin
 }
 bool figleaf_ct_covers(void *base,const uint8_t *text,size_t len) {
     CTFontRef font=(CTFontRef)base;
-    if(CTFontGetSymbolicTraits(font)&kCTFontColorGlyphsTrait)return false;
     CFStringRef string=CFStringCreateWithBytes(NULL,text,len,kCFStringEncodingUTF8,false);
     if(!string)return false;
-    CFIndex count=CFStringGetLength(string);UniChar chars[512];CGGlyph glyphs[512];
-    if(count>512){CFRelease(string);return false;}
-    CFStringGetCharacters(string,CFRangeMake(0,count),chars);CFRelease(string);
-    CTFontGetGlyphsForCharacters(font,chars,glyphs,count);
-    for(CFIndex i=0;i<count;i++)if(!glyphs[i] && chars[i]!=0x200b && chars[i]!=0x200c && chars[i]!=0x200d && chars[i]!=0x2060)return false;
-    return true;
+    CFMutableAttributedStringRef attr=CFAttributedStringCreateMutable(NULL,0);
+    CFAttributedStringReplaceString(attr,CFRangeMake(0,0),string);
+    CFAttributedStringSetAttribute(attr,CFRangeMake(0,CFStringGetLength(string)),kCTFontAttributeName,font);
+    CTLineRef line=CTLineCreateWithAttributedString(attr);
+    CFStringRef expected=CTFontCopyPostScriptName(font);
+    bool covered=true;CFArrayRef runs=CTLineGetGlyphRuns(line);
+    for(CFIndex i=0;i<CFArrayGetCount(runs);i++) {
+        CTRunRef run=(CTRunRef)CFArrayGetValueAtIndex(runs,i);
+        CTFontRef actual=(CTFontRef)CFDictionaryGetValue(CTRunGetAttributes(run),kCTFontAttributeName);
+        CFStringRef name=CTFontCopyPostScriptName(actual);
+        if(!CFEqual(name,expected))covered=false;CFRelease(name);
+        CFIndex count=CTRunGetGlyphCount(run);if(count>512){covered=false;break;}
+        CGGlyph glyphs[512];CTRunGetGlyphs(run,CFRangeMake(0,count),glyphs);
+        for(CFIndex j=0;j<count;j++)if(!glyphs[j])covered=false;
+    }
+    CFRelease(expected);CFRelease(line);CFRelease(attr);CFRelease(string);return covered;
 }
 int figleaf_ct_direction(const uint8_t *text,size_t len) {
     CFStringRef string=CFStringCreateWithBytes(NULL,text,len,kCFStringEncodingUTF8,false);
@@ -459,12 +468,14 @@ int figleaf_ct_direction(const uint8_t *text,size_t len) {
     CFCharacterSetRef letters=CFCharacterSetGetPredefined(kCFCharacterSetLetter);
     CFCharacterSetRef marks=CFCharacterSetGetPredefined(kCFCharacterSetNonBase);
     int direction=0;
-    // First strong letter for the supported BMP scripts. Explicit bidi controls
-    // and script blocks outside this bounded profile are rejected by Rust.
+    // First strong scalar, including supplementary historic and RTL scripts.
     for(CFIndex i=0;i<CFStringGetLength(string);i++) {
-        UniChar c=CFStringGetCharacterAtIndex(string,i);
-        if(CFCharacterSetIsCharacterMember(letters,c) && !CFCharacterSetIsCharacterMember(marks,c)) {
-            direction=(c>=0x0590 && c<=0x08ff) || (c>=0xfb1d && c<=0xfdff) || (c>=0xfe70 && c<=0xfefc);break;
+        UTF32Char c=CFStringGetCharacterAtIndex(string,i);
+        if(CFStringIsSurrogateHighCharacter((UniChar)c) && i+1<CFStringGetLength(string)) {
+            UniChar low=CFStringGetCharacterAtIndex(string,++i);c=CFStringGetLongCharacterForSurrogatePair((UniChar)c,low);
+        }
+        if(CFCharacterSetIsLongCharacterMember(letters,c) && !CFCharacterSetIsLongCharacterMember(marks,c)) {
+            direction=(c>=0x0590 && c<=0x08ff) || (c>=0xfb1d && c<=0xfdff) || (c>=0xfe70 && c<=0xfefc) || (c>=0x10800 && c<=0x10fff) || (c>=0x1e800 && c<=0x1eeff);break;
         }
     }
     CFRelease(string);return direction;

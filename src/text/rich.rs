@@ -126,6 +126,10 @@ pub struct TextRun {
     pub color: Color,
     /// Explicit paint stack; None uses color, Some(empty) leaves glyphs unfilled.
     pub paints: Option<Vec<crate::Paint>>,
+    pub fill_blend_modes: Vec<crate::BlendMode>,
+    /// Resolved automatic decoration paint, retained across wrapping/fallback.
+    pub decoration_paints: Option<Vec<crate::Paint>>,
+    pub decoration_blend_modes: Vec<crate::BlendMode>,
     pub text_decoration: TextDecoration,
     pub decoration_options: DecorationOptions,
     pub text_case: TextCase,
@@ -153,6 +157,9 @@ impl TextRun {
             },
             color: [0., 0., 0., 1.],
             paints: None,
+            fill_blend_modes: Vec::new(),
+            decoration_paints: None,
+            decoration_blend_modes: Vec::new(),
             text_decoration: TextDecoration::None,
             decoration_options: DecorationOptions::default(),
             text_case: TextCase::Original,
@@ -207,6 +214,10 @@ impl TextRun {
     }
     pub fn text_decoration_skip_ink(mut self, value: bool) -> Self {
         self.decoration_options.skip_ink = value;
+        self
+    }
+    pub fn fill_blend_modes(mut self, modes: Vec<crate::BlendMode>) -> Self {
+        self.fill_blend_modes = modes;
         self
     }
     pub fn text_decoration(mut self, value: TextDecoration) -> Self {
@@ -384,6 +395,8 @@ fn list_paragraphs(
             marker.direction = first.direction;
             marker.text_decoration = TextDecoration::None;
             marker.decoration_options = DecorationOptions::default();
+            marker.decoration_paints = None;
+            marker.decoration_blend_modes.clear();
             marker.list_options = ListOptions::None;
             marker.indentation = 0;
             marker.list_spacing = 0.;
@@ -559,7 +572,51 @@ pub fn resolve_style(backend: &mut dyn Backend, mut style: Style) -> Result<Styl
     Ok(style)
 }
 pub fn resolve_runs(backend: &mut dyn Backend, runs: &[TextRun]) -> Result<Vec<TextRun>, Error> {
-    let mut resolved = runs.to_vec();
+    let mut resolved: Vec<TextRun> = runs
+        .iter()
+        .flat_map(|run| {
+            run.text.split_inclusive('\n').map(|text| {
+                let mut part = run.clone();
+                part.text = text.to_owned();
+                part
+            })
+        })
+        .collect();
+    let mut decoration_source: Option<(
+        TextDecoration,
+        DecorationOptions,
+        Vec<crate::Paint>,
+        Vec<crate::BlendMode>,
+    )> = None;
+    for run in resolved.iter_mut().rev() {
+        if run.text.ends_with('\n') {
+            decoration_source = None;
+        }
+        if run.text_decoration == TextDecoration::None {
+            decoration_source = None;
+        } else {
+            let reuse = decoration_source
+                .as_ref()
+                .is_some_and(|(kind, options, _, _)| {
+                    *kind == run.text_decoration && *options == run.decoration_options
+                });
+            if !reuse {
+                decoration_source = Some((
+                    run.text_decoration,
+                    run.decoration_options,
+                    run.paints
+                        .clone()
+                        .unwrap_or_else(|| vec![crate::Paint::Solid(run.color)]),
+                    run.fill_blend_modes.clone(),
+                ));
+            }
+            if run.decoration_paints.is_none() {
+                let (_, _, paints, modes) = decoration_source.as_ref().unwrap();
+                run.decoration_paints = Some(paints.clone());
+                run.decoration_blend_modes = modes.clone();
+            }
+        }
+    }
     let mut in_word = false;
     for run in &mut resolved {
         run.decoration_options
@@ -976,6 +1033,8 @@ fn ellipsize(
         // underlined or struck through along with the source text.
         ellipsis.text_decoration = TextDecoration::None;
         ellipsis.decoration_options = DecorationOptions::default();
+        ellipsis.decoration_paints = None;
+        ellipsis.decoration_blend_modes.clear();
         let mut candidate = slice(runs, line.source_start, end);
         let merged = candidate.last_mut().is_some_and(|last| {
             let mut comparable = last.clone();

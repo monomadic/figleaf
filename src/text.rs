@@ -1,6 +1,6 @@
 //! Explicit-font monochrome text with script-aware shaping and bounded Unicode
 //! segmentation. Styled runs retain fonts, colors and paragraph direction. CoreText
-//! fallback uses only host-supplied slots; no system font discovery or emoji.
+//! fallback uses only host-supplied slots; no system font discovery.
 //! Fonts and their variable axes are caller-supplied; nothing here names a font.
 use crate::Error;
 
@@ -45,20 +45,19 @@ pub(crate) fn latin_char(c: char) -> bool {
     )
 }
 
-/// Monochrome BMP text: Latin, Greek/Cyrillic, Hebrew/Arabic, Indic, Southeast
-/// Asian and CJK scripts. Emoji, variation selectors and bidi controls fail closed.
+/// Unicode scalar text. Layout controls without an explicit API remain errors;
+/// actual glyph/sequence coverage is validated against host-supplied fonts.
 pub fn supported_char(c: char) -> bool {
-    latin_char(c)
-        || matches!(c as u32,
-        0x0300..=0x1fff | 0x2000..=0x200d | 0x202f | 0x2060 |
-        0x2c00..=0xd7ff | 0xf900..=0xfdcf | 0xfdf0..=0xffef)
-            && !matches!(c as u32, 0x061c | 0x180e | 0xfe00..=0xfe0f | 0xfeff)
-            && !c.is_control()
+    let p = c as u32;
+    !c.is_control()
+        && !matches!(p, 0xad | 0x61c | 0x180e | 0x20e3 | 0x200e..=0x200f |
+        0x2028..=0x202e | 0x2066..=0x2069 | 0xfeff | 0xfff9..=0xfffb | 0xfdd0..=0xfdef)
+        && p & 0xffff < 0xfffe
 }
 
 #[cfg(any(feature = "text-coretext", feature = "wgpu"))]
 pub(crate) fn is_rtl_char(c: char) -> bool {
-    matches!(c as u32,0x0590..=0x08ff|0xfb1d..=0xfdff|0xfe70..=0xfefc)
+    matches!(c as u32,0x0590..=0x08ff|0xfb1d..=0xfdff|0xfe70..=0xfefc|0x10800..=0x10fff|0x1e800..=0x1eeff)
 }
 
 pub fn validate_characters(text: &str) -> Result<(), Error> {
@@ -766,6 +765,19 @@ pub mod coretext {
                 return Err(Error("painted text requires outline rendering"));
             }
             let resolved = resolve_runs(self, runs)?;
+            if resolved.iter().any(|r| {
+                r.fill_blend_modes
+                    .iter()
+                    .any(|m| *m != crate::BlendMode::Normal)
+                    || r.text_decoration != TextDecoration::None
+                        && r.decoration_paints
+                            .as_ref()
+                            .is_some_and(|p| *p != vec![crate::Paint::Solid(r.color)])
+            }) {
+                return Err(Error(
+                    "inherited decoration paints and blend modes require outlines",
+                ));
+            }
             let runs = resolved.as_slice();
             let height = runs
                 .iter()
@@ -1050,7 +1062,7 @@ mod tests {
             letter_spacing: 0.,
         };
         assert!(validate("abc", s, 100., 2.).is_ok());
-        for t in ["", "a\nb", "🙂", "a\u{202e}b"] {
+        for t in ["", "a\nb", "\u{fdd0}", "a\u{202e}b"] {
             assert!(validate(t, s, 100., 1.).is_err());
         }
         assert!(validate("abc", s, f32::NAN, 1.).is_err());
@@ -1285,7 +1297,7 @@ mod script_tests {
         let displayed: String = lines[0].runs.iter().map(|r| r.text.as_str()).collect();
         assert!(displayed.ends_with("\u{301}…"));
         assert!(layout_runs(&mut NoText, &[TextRun::new("हिन्दी")], 100., true).is_err());
-        for text in ["🙂", "a\u{202e}b", "a\u{fe0f}"] {
+        for text in ["\u{ffff}", "a\u{202e}b", "a\u{2066}"] {
             assert!(validate_characters(text).is_err());
         }
         assert!(
@@ -1295,6 +1307,123 @@ mod script_tests {
         assert!(
             b.measure_runs(&[TextRun::new("ΕΛΛΗΝΙΚΑ").text_case(TextCase::Lower)])
                 .is_err()
+        );
+    }
+}
+
+#[cfg(all(test, feature = "text-coretext"))]
+mod unicode_completion_tests {
+    use super::*;
+    fn backend() -> coretext::CoreText {
+        coretext::CoreText::new(&[
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+                axes: &[],
+            }),
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/NotoEmoji.ttf"),
+                axes: &[],
+            }),
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/NotoSansMath.ttf"),
+                axes: &[],
+            }),
+            Some(FontSource {
+                bytes: include_bytes!("../fonts/NotoMusic.ttf"),
+                axes: &[],
+            }),
+        ])
+        .unwrap()
+    }
+    #[test]
+    fn supplementary_clusters_fallback_and_truncation() {
+        let mut b = backend();
+        for cluster in ["🙂", "👩‍💻", "👍🏽", "🇯🇵", "❤️"] {
+            assert_eq!(
+                b.text_boundaries(cluster).unwrap().graphemes,
+                [cluster.len()]
+            );
+            assert!(
+                b.measure_runs(&[TextRun::new(cluster).font(1)])
+                    .unwrap()
+                    .advance
+                    > 0.
+            );
+        }
+        for (string, slot) in [("𝐀𝑥𝔸", 2), ("𝄞𝄢𝅘𝅥𝅮", 3)] {
+            assert!(
+                b.measure_runs(&[TextRun::new(string).font(slot)])
+                    .unwrap()
+                    .glyphs
+                    > 0
+            );
+        }
+        let run = TextRun::new("👩‍💻").size(24., 32.);
+        assert!(b.measure_runs(std::slice::from_ref(&run)).is_err());
+        b = b.with_fallback_fonts(&[1]).unwrap();
+        let resolved = resolve_runs(&mut b, std::slice::from_ref(&run)).unwrap();
+        assert_eq!(resolved[0].text, run.text);
+        assert_eq!(resolved[0].style.font, 1);
+        assert_eq!(
+            b.measure_runs(std::slice::from_ref(&run)).unwrap().advance,
+            b.measure_runs(&[run.font(1)]).unwrap().advance
+        );
+        let mut b = backend().with_fallback_fonts(&[0]).unwrap();
+        let lines = layout_text(
+            &mut b,
+            &[TextRun::new("👩‍💻 👩‍💻 👩‍💻").font(1).size(24., 32.)],
+            [65., 32.],
+            true,
+            ParagraphStyle::default(),
+            TextTruncation::Ending,
+            Some(1),
+        )
+        .unwrap();
+        let visible: String = lines[0].runs.iter().map(|r| r.text.as_str()).collect();
+        assert_eq!(visible, "👩‍💻…");
+        for text in ["1️⃣", "\u{202e}", "\u{10ffff}", "\u{ad}"] {
+            assert!(validate_characters(text).is_err());
+        }
+    }
+    #[test]
+    fn decorations_inherit_final_paint_and_keep_it_when_wrapped() {
+        let mut b = backend();
+        let red = crate::hex(0xff0000);
+        let blue = crate::hex(0x0000ff);
+        let runs = [
+            TextRun::new("AA ")
+                .color(red)
+                .text_decoration(TextDecoration::Underline),
+            TextRun::new("BBBB")
+                .color(blue)
+                .text_decoration(TextDecoration::Underline),
+        ];
+        let resolved = resolve_runs(&mut b, &runs).unwrap();
+        for run in &resolved {
+            assert_eq!(run.decoration_paints, Some(vec![crate::Paint::Solid(blue)]));
+        }
+        assert_eq!(resolve_runs(&mut b, &resolved).unwrap(), resolved);
+        let lines = layout_runs(&mut b, &runs, 30., true).unwrap();
+        assert!(lines.len() > 1);
+        for run in lines.iter().flat_map(|l| &l.runs) {
+            assert_eq!(run.decoration_paints, Some(vec![crate::Paint::Solid(blue)]));
+        }
+        let runs = [
+            TextRun::new("A\nB")
+                .color(red)
+                .text_decoration(TextDecoration::Underline),
+            TextRun::new("C")
+                .color(blue)
+                .text_decoration(TextDecoration::Underline),
+        ];
+        let resolved = resolve_runs(&mut b, &runs).unwrap();
+        assert_eq!(
+            resolved[0].decoration_paints,
+            Some(vec![crate::Paint::Solid(red)])
+        );
+        assert_eq!(
+            resolved.last().unwrap().decoration_paints,
+            Some(vec![crate::Paint::Solid(blue)])
         );
     }
 }

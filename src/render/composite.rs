@@ -273,6 +273,17 @@ impl Engine<'_> {
             let composite = match item {
                 Item::Composite(c) => Some(c.clone()),
                 Item::Shape(s) if needs_scope(s) => Some(shape_scope(s)?),
+                // Blended glyph paints need this scope's backdrop. Other text
+                // keeps the ordinary cached preparation path.
+                Item::Text(t)
+                    if t.stroke_blend_modes
+                        .iter()
+                        .chain(&t.fill_blend_modes)
+                        .chain(t.runs.iter().flat_map(|r| &r.fill_blend_modes))
+                        .any(|mode| *mode != BlendMode::Normal) =>
+                {
+                    Some(super::rich::build(t, self.scale, self.text)?)
+                }
                 _ => None,
             };
             if let Some(c) = composite {

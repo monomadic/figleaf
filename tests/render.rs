@@ -3367,3 +3367,146 @@ fn bidi_decorations_use_visual_spans_and_lists_preserve_leading_insets() {
         measured.advance
     );
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn unicode_text_blends_strokes_and_decoration_inheritance() {
+    use figleaf::{
+        BlendMode, Composite, Paint, StrokeCap, StrokeJoin,
+        text::{FontSource, TextDecoration, TextRun, coretext::CoreText},
+    };
+    let mut backend = CoreText::new(&[
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+            axes: &[],
+        }),
+        Some(FontSource {
+            bytes: include_bytes!("../fonts/NotoEmoji.ttf"),
+            axes: &[],
+        }),
+    ])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let label = Text::new("O", Rect::new(8., 2., 75., 55.)).size(40., 50.);
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(0., 0., 100., 60.)).fill(hex(0xff0000)));
+    content.text(
+        label
+            .clone()
+            .paints(vec![Paint::Solid(hex(0x0000ff))])
+            .fill_blend_modes(vec![BlendMode::Multiply]),
+    );
+    let mut canvas = Canvas::new();
+    canvas.composite(Composite::new(content));
+    let image = gpu.render(&mut renderer, &canvas, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    assert!(
+        image.rgba.as_chunks::<4>().0.contains(&[0, 0, 0, 255]),
+        "multiply must see the red backdrop"
+    );
+    let report = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &canvas,
+            [100, 60],
+            1.,
+            &mut backend,
+        )
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    let stroke = label
+        .clone()
+        .paints(vec![])
+        .stroke(3., hex(0x0000ff), StrokeAlign::Center)
+        .stroke_join(StrokeJoin::Round)
+        .stroke_cap(StrokeCap::Round);
+    let mut solid = Canvas::new();
+    solid.text(stroke.clone());
+    let solid_image = gpu.render(&mut renderer, &solid, [100, 60], 1., [0.; 4], &mut backend);
+    let mut dashed = Canvas::new();
+    dashed.text(stroke.clone().dash_pattern(vec![4., 4.]));
+    let dashed_image = gpu.render(&mut renderer, &dashed, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    assert_ne!(solid_image.rgba, dashed_image.rgba);
+    let alpha = |image: &support::Image| {
+        image
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| u64::from(p[3]))
+            .sum::<u64>()
+    };
+    assert!(alpha(&dashed_image) < alpha(&solid_image));
+    let mut invalid = Canvas::new();
+    invalid.text(stroke.dash_pattern(vec![-1., 2.]));
+    gpu.render(
+        &mut renderer,
+        &invalid,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(!renderer.problems().is_empty());
+    let run = |s, c| {
+        TextRun::new(s)
+            .size(24., 32.)
+            .color(c)
+            .text_decoration(TextDecoration::Underline)
+    };
+    let runs = vec![run("A", hex(0xff0000)), run("B", hex(0x0000ff))];
+    let mut inherited = Canvas::new();
+    inherited.text(Text::rich(runs.clone(), Rect::new(5., 5., 80., 40.)));
+    let image = gpu.render(
+        &mut renderer,
+        &inherited,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    let mut explicit = Canvas::new();
+    explicit.text(Text::rich(
+        runs.into_iter()
+            .map(|r| r.text_decoration_color(hex(0x0000ff)))
+            .collect(),
+        Rect::new(5., 5., 80., 40.),
+    ));
+    let expected = gpu.render(
+        &mut renderer,
+        &explicit,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert_eq!(image.rgba, expected.rgba);
+    let mut emoji = Canvas::new();
+    emoji.text(
+        Text::new("👩‍💻", Rect::new(0., 0., 100., 60.))
+            .font(1)
+            .size(32., 50.)
+            .wrap(),
+    );
+    let image = gpu.render(&mut renderer, &emoji, [100, 60], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty());
+    assert!(alpha(&image) > 0);
+    let report = renderer
+        .prepare(&gpu.device, &gpu.queue, &emoji, [100, 60], 1., &mut backend)
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0);
+    let mut unsupported = Canvas::new();
+    unsupported.text(Text::new("1️⃣", Rect::new(0., 0., 100., 60.)).font(1));
+    gpu.render(
+        &mut renderer,
+        &unsupported,
+        [100, 60],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(!renderer.problems().is_empty());
+}

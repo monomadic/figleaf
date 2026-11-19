@@ -303,21 +303,22 @@ fixed/partial heights, auto-height line limits, mixed styles and paragraph gaps.
 The plugin still only displays Rust; live Desktop validation remains separate.
 
 
-Script-aware output preserves supported BMP text, combining marks and explicit
+Script-aware output preserves Unicode scalar text, combining marks and explicit
 font/style ranges. The host uses CoreText with exact font bytes and optionally
 explicit fallback slots; generated comments explain this requirement. The plugin
 cannot recover Figma’s implicit glyph fallback chain and does not guess it.
-Emoji, variation selectors, explicit bidi controls and non-Latin case conversion
-suppress all Rust. Missing glyph coverage and font
+Supplementary symbols, monochrome emoji, variation selectors and ZWJ sequences
+retain their source text. Keycap emoji, noncharacters, unsupported controls and
+non-Latin case conversion suppress all Rust. Color fonts remain renderer errors. Missing glyph coverage and font
 changes inside a grapheme are diagnosed by the renderer. The
 [script comparison](../docs/scripts-compare.png) covers generated output;
 whole-plugin Desktop validation remains an open task.
 
 Text paint coordinates cover the whole text box, including mixed ranges and
 wrapped lines. Empty fills support stroke-only text. Mixed-range image assets
-are read and decoded in memory. Text dashes/brushes, custom stroke joins/miter
-limits, blended fill stacks/ranges, and blended fills combined with strokes
-remain hard errors. See the [text comparison](../docs/text-paints-compare.png).
+are read and decoded in memory. Text dashes, cap/join/miter settings and paint blends
+export native settings. Supported variable-width, dynamic and brush strokes export
+resolved stroke geometry; regenerate this geometry when text/font/layout changes. See the [text comparison](../docs/text-paints-compare.png).
 The fixture validates exporter output; live development-plugin UI validation
 remains a separate task.
 
@@ -339,7 +340,8 @@ still only displays Rust and performs no filesystem writes.
 
 RTL lists, decoration and tracking now export through the same native text API;
 [Arabic/Hebrew comparison](../docs/rtl-text-compare.png) includes mixed-direction
-styles, nesting, hanging markers and wrapping. Unsupported automatic decoration
-color inheritance across mixed fills still suppresses all Rust; set explicit
-underline colors in Figma. Source snapshots and generated-code compilation are
-fixture evidence, not live development-plugin UI validation.
+styles, nesting, hanging markers and wrapping. Automatic decoration paints across
+mixed fills are retained and resolved by the renderer; explicit colors still override
+them. The [text completeness comparison](../docs/text-completeness-compare.png) covers
+Unicode, inherited decorations, blends and advanced strokes. Source snapshots and
+generated-code compilation are fixture evidence, not live development-plugin UI validation.

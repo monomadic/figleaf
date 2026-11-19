@@ -6,7 +6,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const errors = [], lines = [], fonts = [];
   let maskIndex = 0, compositeIndex=0, unicodeText=false;
   const latinChar=c=>{const p=c.codePointAt(0);return p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff;};
-  const supportedChar=c=>{const p=c.codePointAt(0);return latinChar(c)|| (p>=0x300&&p<=0x1fff||p>=0x2000&&p<=0x200d||p===0x202f||p===0x2060||p>=0x2c00&&p<=0xd7ff||p>=0xf900&&p<=0xfdcf||p>=0xfdf0&&p<=0xffef)&&![0x61c,0x180e,0xfeff].includes(p)&&!(p>=0xfe00&&p<=0xfe0f);};
+  const supportedChar=c=>{const p=c.codePointAt(0);return p>=0x20&&!(p>=0x7f&&p<=0x9f)&&!(p>=0xd800&&p<=0xdfff)&&![0xad,0x61c,0x180e,0x20e3,0xfeff].includes(p)&&!(p>=0x200e&&p<=0x200f)&&!(p>=0x2028&&p<=0x202e)&&!(p>=0x2066&&p<=0x2069)&&!(p>=0xfff9&&p<=0xfffb)&&!(p>=0xfdd0&&p<=0xfdef)&&(p&0xffff)<0xfffe;};
   const imageNames=new Map(), patternNames=new Map(), patternStack=new Set();
   if (!['SRGB', 'LEGACY'].includes(colorProfile)) return { code: null, errors: [{ path: 'Document', message: `Unsupported color profile: ${colorProfile}. figleaf uses sRGB.` }] };
   const fail = (node, path, message) => errors.push({ nodeId: node.id, path, message });
@@ -35,7 +35,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
   const blendModes={NORMAL:'Normal',PASS_THROUGH:'PassThrough',MULTIPLY:'Multiply',SCREEN:'Screen',OVERLAY:'Overlay',DARKEN:'Darken',LIGHTEN:'Lighten',COLOR_DODGE:'ColorDodge',COLOR_BURN:'ColorBurn',HARD_LIGHT:'HardLight',SOFT_LIGHT:'SoftLight',DIFFERENCE:'Difference',EXCLUSION:'Exclusion',HUE:'Hue',SATURATION:'Saturation',COLOR:'Color',LUMINOSITY:'Luminosity',LINEAR_BURN:'LinearBurn',LINEAR_DODGE:'LinearDodge'};
   const blended = p=>p.visible!==false && p.blendMode && p.blendMode!=='NORMAL';
-  const needsComposite=n=>n.visible!==false && ((!n.isMask&&n.opacity!==undefined&&n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||[...(Array.isArray(n.fills)?n.fills:[]),...(Array.isArray(n.strokes)?n.strokes:[])].some(blended)||(Array.isArray(n.effects)&&n.effects.some(e=>e.visible!==false&&(blended(e)||n.children?.length||['LAYER_BLUR','BACKGROUND_BLUR'].includes(e.type))))||(n.children||[]).some(needsComposite));
+  const needsComposite=n=>n.visible!==false && ((!n.isMask&&n.opacity!==undefined&&n.opacity!==1)||(!['NORMAL','PASS_THROUGH',undefined].includes(n.blendMode))||[...(Array.isArray(n.fills)?n.fills:[]),...(Array.isArray(n.strokes)?n.strokes:[])].some(blended)||(Array.isArray(n.effects)&&n.effects.some(e=>e.visible!==false&&(blended(e)||n.children?.length||['LAYER_BLUR','BACKGROUND_BLUR'].includes(e.type))))||(n.type==='TEXT'&&n.getStyledTextSegments&&n.getStyledTextSegments(['fills']).some(s=>visible(s.fills||[]).some(blended)))||(n.children||[]).some(needsComposite));
   const shadowCode=e=>`Shadow::${e.type==='INNER_SHADOW'?'inner':'drop'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)}).spread(${number(e.spread ?? 0)})${e.showShadowBehindNode?'.show_behind()':''}`;
   const gradientCode = p => (p.type==='GRADIENT_LINEAR' ? `LinearGradient::transform(${array(p.gradientTransform[0])})` : `Gradient::${p.type.slice(9).toLowerCase()}([${p.gradientTransform.map(array).join(', ')}])`) + p.gradientStops.map(s=>`.stop(${number(s.position)}, ${color(s.color)})`).join('') + `.opacity(${number(p.opacity ?? 1)})`;
   function imageCode(p) {
@@ -93,7 +93,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   // network topology from bounding boxes or silently turn strokes into fills.
   function vectorCode(n, resolvedStroke = false) {
     if (resolvedStroke && (!Array.isArray(n.strokeGeometry) || n.strokeGeometry.some(p=>p.windingRule==='NONE'))) throw Error('Resolved stroke geometry is unavailable or unfilled.');
-    if (!Array.isArray(n.fillGeometry)) throw Error('Vector fill geometry is unavailable.');
+    if (!resolvedStroke && !Array.isArray(n.fillGeometry)) throw Error('Vector fill geometry is unavailable.');
     const geometry = resolvedStroke ? n.strokeGeometry : [...n.fillGeometry.filter(p => p.windingRule !== 'NONE'), ...(n.vectorPaths || n.fillGeometry).filter(p => p.windingRule === 'NONE')];
     if (geometry.length > 256) throw Error('Vector exceeds 256 regions.');
     const paints = JSON.stringify(n.fills);
@@ -252,7 +252,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         compositeDepth++;
         const name=`composite_${compositeIndex++}`;
         scope={name,clips:clip||[],effects:scopeEffects?allEffects.filter(e=>!effects.includes(e)):[],mode:blendModes[n.blendMode ?? (n.children?.length?'PASS_THROUGH':'NORMAL')]};
-        if(n.type!=='TEXT'&&!n.children?.length&&['NORMAL',undefined].includes(n.blendMode)&&[...fills,...strokes].some(blended))scope.mode='PassThrough';
+        if(!n.children?.length&&['NORMAL',undefined].includes(n.blendMode)&&[...fills,...strokes].some(blended))scope.mode='PassThrough';
         lines.push(`    let mut ${name} = Canvas::new();`);target=name;
         if(allEffects.some(e=>e.type==='LAYER_BLUR')) {clip=null;childClip=null;}
       }
@@ -303,9 +303,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         styledStroke=!!nonuniform || !!(complex && complex.type!=='BASIC');
         if (styledStroke) {
           resolved=true;
-          if (!['VECTOR','LINE','RECTANGLE','ELLIPSE','POLYGON','STAR','BOOLEAN_OPERATION'].includes(n.type)) reject('Styled strokes require shape geometry.');
+          if (!['VECTOR','LINE','RECTANGLE','ELLIPSE','POLYGON','STAR','BOOLEAN_OPERATION','TEXT'].includes(n.type)) reject('Styled strokes require shape geometry.');
           if (!Number.isFinite(n.strokeWeight)||n.strokeWeight<0) reject('Invalid styled stroke width.');
-          if (n.strokeWeight>0 && n.strokeAlign!=='CENTER' && (n.type==='LINE' || !n.fillGeometry?.length || n.vectorPaths?.some(p=>p.windingRule==='NONE'))) reject('Aligned styled strokes require a closed fill domain; open/mixed networks are unsupported.');
+          if (n.strokeWeight>0 && n.strokeAlign!=='CENTER' && (n.type==='LINE' || n.type!=='TEXT'&&!n.fillGeometry?.length || n.vectorPaths?.some(p=>p.windingRule==='NONE'))) reject('Aligned styled strokes require a closed fill domain; open/mixed networks are unsupported.');
           if (n.strokeWeight>0 && (!Array.isArray(n.strokeGeometry)||!n.strokeGeometry.some(p=>typeof p.data==='string' && /[LQC]/.test(p.data)))) reject('Styled stroke outlines are unavailable; no constant-width fallback.');
         }
       }
@@ -313,12 +313,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (boolean && strokes.length && (typeof n.strokeWeight !== 'number' || !Number.isFinite(n.strokeWeight) || n.strokeWeight < 0)) reject('Invalid boolean stroke width.');
       if(strokes.length && n.dashPattern?.length) {
         if(!Array.isArray(n.dashPattern) || n.dashPattern.length>32 || n.dashPattern.some(v=>typeof v!=='number' || !Number.isFinite(v) || v<0 || v>1e7)) reject('Invalid dash pattern.');
-        if(effects.length && !resolved) reject('Dashed stroke effects are unsupported.');
+        if(effects.length && !resolved && n.type!=='TEXT') reject('Dashed stroke effects are unsupported.');
         if(!resolved && 'strokeTopWeight' in n && [n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v!==n.strokeTopWeight)) reject('Dashed individual borders require uniform widths.');
       }
       const arc = n.type === 'ELLIPSE' && n.arcData && (n.arcData.startingAngle !== 0 || Math.abs(n.arcData.endingAngle - Math.PI*2) > 1e-6 || n.arcData.innerRadius !== 0);
       const primitive = !resolved && (arc || ['POLYGON','STAR'].includes(n.type));
-      if (strokes.length && !resolved && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
+      if (strokes.length && !resolved && !primitive && n.type !== 'VECTOR' && n.type !== 'LINE' && n.type !== 'TEXT' && !n.dashPattern?.length && n.strokeJoin && n.strokeJoin !== 'MITER') reject(`Unsupported stroke join: ${String(n.strokeJoin)}.`);
       for (const e of effects) {
         if (Object.keys(e.boundVariables || {}).length && !verifiedBindings.has(n)) reject('Effect variable bindings must be resolved before export.');
         if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(e.type)) reject(`Unsupported effect: ${e.type}.`);
@@ -349,10 +349,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       let expression = null;
       if (n.type === 'TEXT') {
-        if(strokes.length && n.strokeMiterLimit!==undefined && n.strokeMiterLimit!==4)reject('Custom text stroke miter limits are unsupported.');
-        if(strokes.length && (n.dashPattern?.length || n.strokeCap && n.strokeCap!=='NONE')) reject('Dashed text strokes and endpoint decorations are unsupported.');
         if(strokes.length && (!Number.isFinite(n.strokeWeight)||n.strokeWeight<0||!['INSIDE','CENTER','OUTSIDE'].includes(n.strokeAlign))) reject('Invalid text stroke width or alignment.');
-        if(strokes.length&&fills.some(blended))reject('Blended text fills combined with strokes are unsupported.');
         if (n.hangingPunctuation) reject('Hanging punctuation is unsupported.');
         const truncation=n.textTruncation??(n.textAutoResize==='TRUNCATE'?'ENDING':'DISABLED');
         if(!['DISABLED','ENDING'].includes(truncation))reject('Unsupported text truncation.');
@@ -363,7 +360,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if (typeof text !== 'string') reject('Missing text content.');
         else {
           if (unescape(encodeURIComponent(text)).length > 512) reject('Text exceeds the 512-byte limit.');
-          if ([...text].some(c=>c!=='\n'&&!supportedChar(c)))reject('Text contains unsupported controls, emoji, variation selectors or script blocks.');
+          if ([...text].some(c=>c!=='\n'&&!supportedChar(c)))reject('Text contains unsupported layout controls, keycap emoji or Unicode noncharacters.');
           if ([...text].some(c=>c!=='\n'&&!latinChar(c)))unicodeText=true;
         }
         if(segments) {
@@ -376,22 +373,11 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(end!==text?.length)reject('Styled text ranges do not cover the text.');
         }
         const styles=segments?.length?segments:[n];
-        // Figma can retain one automatic decoration color across mixed fills.
-        // Until that inheritance is represented, require explicit colors rather
-        // than exporting per-run colors that change the design.
-        for(let i=1;i<styles.length;i++) {
-          const a=styles[i-1],b=styles[i];
-          const auto=s=>s.textDecorationColor==null||s.textDecorationColor.value==='AUTO';
-          const paints=s=>JSON.stringify(visible(s.fills||[]),(k,v)=>k==='boundVariables'?undefined:v);
-          if(a.textDecoration!=='NONE'&&a.textDecoration===b.textDecoration&&auto(a)&&auto(b)&&!a.characters?.endsWith('\n')&&paints(a)!==paints(b))reject('Mixed-fill text decorations require explicit decoration colors.');
-        }
         const generated=[];
         let paragraphSettings=null, inWord=false, transformedText='';
         for(const s of styles) {
           const paints=visible(s.fills||[]);
           if(paints.length>32)reject('Text fill stack exceeds 32 paints.');
-          if(paints.length>1&&paints.some(blended))reject('Blended text fill stacks are unsupported.');
-          if(mixedRuns&&paints.some(blended))reject('Blended paints inside styled text runs are unsupported.');
           for(const p of paints) if(p.type==='SOLID' && (!p.color || [p.color.r,p.color.g,p.color.b,p.color.a??1,p.opacity??1].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)))reject('Invalid text run color or opacity.');
           if(!s.fontName||typeof s.fontName!=='object'||typeof s.fontName.family!=='string'||typeof s.fontName.style!=='string'||typeof s.fontSize!=='number'||typeof s.letterSpacing!=='object'||typeof s.lineHeight!=='object')reject('Missing or invalid run text style.');
           const cases={ORIGINAL:'Original',UPPER:'Upper',LOWER:'Lower',TITLE:'Title',SMALL_CAPS:'SmallCaps',SMALL_CAPS_FORCED:'SmallCapsForced'}, decorations={NONE:'None',UNDERLINE:'Underline',STRIKETHROUGH:'Strikethrough'};
@@ -454,7 +440,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(errors.length===before) {
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
-            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${decorationCode}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
+            generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${paints.some(blended)?`.fill_blend_modes(vec![${paints.map(p=>`BlendMode::${blendModes[p.blendMode ?? 'NORMAL']}`).join(', ')}])`:''}${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${decorationCode}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
           }
         }
         if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');
@@ -467,6 +453,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           expression=mixedRuns?`Text::rich(vec![${generated.join(', ')}], ${rect(box)})`:generated[0];
           expression += `.align(figleaf::paint::Align::${align[n.textAlignHorizontal]}, figleaf::paint::Align::${align[n.textAlignVertical]}).wrap()`;
           if(strokes.length) expression+=`.stroke(${number(n.strokeWeight)}, ${strokeColor(strokes[0])}, StrokeAlign::${{INSIDE:'Inside',CENTER:'Center',OUTSIDE:'Outside'}[n.strokeAlign]})`;
+          if(styledStroke && n.strokeWeight>0) expression+=`.stroke_geometry(${vectorCode(n,true)})`;
           if(truncation==='ENDING')expression+='.text_truncation(figleaf::text::TextTruncation::Ending)';
           if(n.maxLines!=null)expression+=`.max_lines(${n.maxLines})`;
           for (const e of effects) expression += `.${e.type === 'DROP_SHADOW' ? 'drop_shadow' : 'inner_shadow'}(${color(e.color)}, ${array([e.offset.x,e.offset.y])}, ${number(e.radius)})`;
@@ -509,7 +496,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       }
       if (expression && strokes.length && (strokes.length>1 || strokes[0].type!=='SOLID')) expression += `.stroke_paints(vec![${strokes.map(paintCode).join(', ')}])`;
       if(expression && strokes.some(blended))expression+=`.stroke_blend_modes(vec![${strokes.map(p=>`BlendMode::${blendModes[p.blendMode ?? 'NORMAL']}`).join(', ')}])`;
-      if (strokes.length && !resolved && (primitive || ['VECTOR','LINE'].includes(n.type) || n.dashPattern?.length)) {
+      if (strokes.length && !resolved && (primitive || ['VECTOR','LINE','TEXT'].includes(n.type) || n.dashPattern?.length)) {
         const strokeWidth='strokeTopWeight' in n && n.type!=='VECTOR' && !primitive ? n.strokeTopWeight : n.strokeWeight;
         if(typeof strokeWidth!=='number' || strokeWidth<0 || !Number.isFinite(strokeWidth)) reject('Invalid stroke width.');
         const cap=caps[n.strokeCap] || (n.type==='VECTOR' && (typeof n.strokeCap==='symbol' || n.strokeCap===undefined) ? 'Butt' : undefined) || (!['VECTOR','LINE'].includes(n.type) && n.strokeCap===undefined ? 'Butt' : undefined);
@@ -517,7 +504,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(!cap || !join) reject('Unsupported or mixed stroke caps/joins.');
         const miter=n.strokeMiterLimit ?? (!['VECTOR','LINE'].includes(n.type) ? 4 : undefined);
         if(typeof miter!=='number' || !Number.isFinite(miter) || miter<1) reject('Invalid stroke miter limit.');
-        if(expression && cap && join && miter>=1) expression+=`.stroke_cap(StrokeCap::${cap}).stroke_join(StrokeJoin::${join}).stroke_miter_limit(${number(miter)})`;
+        if(expression && cap && join && miter>=1 && (n.type!=='TEXT'||cap!=='Butt'||join!=='Miter'||miter!==4||n.dashPattern?.length)) expression+=`.stroke_cap(StrokeCap::${cap}).stroke_join(StrokeJoin::${join}).stroke_miter_limit(${number(miter)})`;
         if(n.type==='VECTOR') expression+=`.stroke_paths(${strokeCode(n)})`;
         if(n.dashPattern?.length) expression+=`.dash_pattern(vec!${array(n.dashPattern)})`;
       }
@@ -527,8 +514,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         for (const note of verifiedBindings.get(n) || []) lines.push(`    // Resolved binding: ${comment(note)}`);
         if (strokeNote) lines.push(`    // ${comment(strokeNote)} (resolved Figma outlines).`);
         if (smoothed) lines.push(`    // Corner smoothing: ${number(smoothing)} (resolved Figma contours).`);
-        if(n.type==='TEXT' && fills.some(blended)) {const name=`composite_${compositeIndex++}`;lines.push(`    let mut ${name} = Canvas::new();`,`    ${name}.text(${expression});`,`    ${target}.composite(Composite::new(${name}).blend_mode(BlendMode::${blendModes[fills[0].blendMode]}));`);}
-        else lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
+
+        lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
         if (radii.some(r=>r<0)) reject('Invalid clip corner radius.');

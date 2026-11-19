@@ -679,3 +679,53 @@ parity or live Desktop-plugin evidence. Richer text fills/strokes are next.
   direction, continuation insets, wrapping/truncation and unchanged uploads.
   The plugin remains read-only and all-or-nothing. This is not live validation
   of the development-plugin UI.
+
+## Text completeness — 2026-11-20
+
+Completed the horizontal-text milestone: mixed runs, automatic line height,
+paragraph spacing/indentation, case/decorations, truncation, script-aware shaping,
+explicit fallback, lists/OpenType, richer paints, custom underlines and RTL handling.
+Earlier comparison links are retained below.
+
+**Earlier completed work.** Mixed-style runs with explicit fonts,
+   colors, sizes and tracking are done (2026-11-17); generated output was
+   [reviewed beside Figma](text-runs-compare.png). Automatic line height is
+   done (2026-11-18), with [font-derived rendering and plugin output](auto-height-compare.png).
+   Paragraph spacing and first-line indentation are done (2026-11-18),
+   [including per-paragraph settings](paragraphs-compare.png).
+   Basic underline/strikethrough and upper/lower/title case are done (2026-11-18),
+   [including mixed styles](decorations-compare.png).
+   Ending truncation and maximum line counts are done (2026-11-18),
+   [including partial heights and mixed styles](truncation-compare.png).
+   Script-aware shaping, explicit fallback and Unicode line breaking are done
+   for the [documented BMP profile](../README.md#script-aware-text-and-explicit-fallback)
+   (2026-11-18), with [representative script comparisons](scripts-compare.png).
+   Richer text fills and aligned/stacked strokes are done (2026-11-19),
+   with [mixed paints and silhouette comparisons](text-paints-compare.png).
+   Lists, OpenType overrides and real small caps are done (2026-11-19), with
+   [list and small-caps comparisons](lists-opentype-compare.png).
+   Custom underlines are done (2026-11-19), with
+   [styles, dimensions, colors and skip-ink comparisons](custom-decorations-compare.png).
+   RTL lists, decorations and tracking are done (2026-11-20), with
+   [Arabic/Hebrew and mixed-direction comparisons](rtl-text-compare.png).
+
+The final increment adds Unicode scalars beyond the BMP, complete-grapheme font
+coverage, automatic decoration paint inheritance, mixed text paint blends and
+advanced strokes (dashes, cap/join/miter, resolved variable-width/dynamic/brush
+geometry). The exporter remains read-only and all-or-nothing.
+
+The [18-case comparison](text-completeness-compare.png) was reviewed against a live
+Figma export at 2×. Mean channel difference: 0.32/255; glyph-edge differences remain.
+Independent opaque cells are rendered separately within existing compositing budgets.
+Math/music, monochrome emoji clusters, decorations, blends and variable/dynamic text
+strokes have visual evidence; brush geometry and fallback/truncation/cache cases also
+have synthetic tests. Copied/generated Rust compiles; whole-plugin UI validation has
+not been claimed.
+
+Boundaries: 512 UTF-8 bytes/128 runs and existing geometry/GPU budgets; host-owned
+exact fonts/fallback. Color fonts, keycap emoji (CoreText separates digit/enclosure),
+soft hyphens, explicit bidi/layout controls, noncharacters, non-Latin casing,
+vertical/random features and enabled kerning with tracking remain hard errors.
+Resolved styled stroke geometry is fixed to its exported text/font/layout. These
+are explicit scope limits, not approximations or universal Unicode-parity claims.
+Responsive layout is now the first unmet task.

@@ -164,3 +164,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "rtl_text"
 required-features = ["wgpu", "text-coretext"]
+
+[[example]]
+name = "text_completeness"
+required-features = ["wgpu", "text-coretext"]

@@ -288,7 +288,7 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 More than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation,
-emoji, explicit bidi controls, script-specific case conversion,
+color fonts, keycap emoji, explicit bidi controls, script-specific case conversion,
 and any backend other than CoreText.
 
 ## Where it came from
@@ -564,8 +564,7 @@ styled text. Cached colored glyph bitmaps use the existing image/composite
 renderer, with no new dependencies or runtime asset loading.
 
 Limits remain 512 UTF-8 bytes, 128 runs, the Unicode profile below and
-explicit or automatic line heights. Scripts
-outside the supported BMP profile remain unsupported. The plugin verifies contiguous Figma ranges and resolves
+explicit or automatic line heights. The plugin verifies contiguous Figma ranges and resolves
 bindings inside runs; it emits native text calls, never exported text images.
 
 `cargo run --example text_runs --all-features` renders generated Rust
@@ -711,9 +710,12 @@ per line; each connected group retains the existing vector and GPU work limits.
 An excessive group reports a renderer problem rather than approximating it.
 
 The plugin emits these native text calls and reads mixed-range image assets
-into memory. Dashed/brush text strokes, custom text stroke joins/miter limits,
-blended fill stacks/ranges, and blended text fills combined with strokes remain
-hard errors. The existing single-fill blend case remains supported.
+into memory. Text also supports dashes, cap/join/miter settings and per-fill/per-stroke
+blend modes; mixed fills set modes per run. Blended text belongs inside an enclosing
+`Composite` that owns its backdrop. Resolved variable-width/dynamic/brush strokes
+use `.stroke_geometry(..)` in fixed text-box coordinates. These exported silhouettes
+must be regenerated if the host changes the text, font or layout; ordinary strokes
+continue to use native glyph outlines.
 
 `cargo run --example text_paints --all-features --locked` renders generated Rust
 [beside Figma](docs/text-paints-compare.png): 14 editable text cases covering
@@ -725,7 +727,7 @@ Pattern paints and failure/cache behavior also use synthetic tests.
 
 ## Script-aware text and explicit fallback
 
-CoreText shapes supported BMP scripts, including Greek/Cyrillic, Hebrew/Arabic,
+CoreText shapes host-supplied Unicode text, including Greek/Cyrillic, Hebrew/Arabic,
 Indic, Southeast Asian and CJK text. CoreFoundation supplies grapheme boundaries
 and Unicode line-break opportunities, including dictionary breaks; emergency
 wrapping and truncation keep clusters intact. Paragraph direction survives soft
@@ -742,9 +744,11 @@ remain available. `layout_text` exposes the same shaped lines used by rendering.
 
 The exporter retains Unicode and explicit font/style slots. Figma does not expose
 its implicit glyph fallback chain, so generated comments require host provisioning
-rather than inventing fallback faces. Emoji/color glyphs, variation selectors,
-explicit bidi controls, non-Latin case conversion, and
-font changes inside a grapheme remain hard errors. Scalar `caret_offsets` stays
+rather than inventing fallback faces. Supplementary-plane symbols, monochrome emoji,
+variation selectors and ZWJ sequences are accepted when the supplied font covers
+complete graphemes. Color fonts, keycap emoji (a confirmed CoreText mismatch),
+explicit bidi controls, soft hyphens, non-Latin case conversion, Unicode
+noncharacters and font changes inside a grapheme remain hard errors. Scalar `caret_offsets` stays
 Latin-only; this adds no input runtime. Existing byte/run/bitmap budgets still apply.
 
 [Generated comparison](docs/scripts-compare.png) was reviewed beside Figma: Greek,
@@ -817,3 +821,21 @@ the plugin rejects that combination and requires explicit decoration colors.
 Synthetic tests cover disjoint spans, retained insets, truncation and zero-upload
 caching. The pinned OFL Hebrew font adds 112,640 test/example bytes; no dependency
 or default-build size increase. Explicit bidi controls remain unsupported.
+
+## Text completeness checkpoint
+
+Automatic decorations inherit the last styled paint in a continuous decoration;
+explicit decoration colors override it. Inherited paints survive wrapping and fallback.
+Text paint blends use the enclosing backdrop, including mixed fill stacks and strokes.
+`cargo run --example text_completeness --all-features --locked` renders
+[18 cases beside Figma](docs/text-completeness-compare.png): supplementary math/music,
+monochrome emoji clusters, mixed/gradient decorations, blended paints, dashed and
+aligned strokes, miter limits and resolved variable-width/dynamic strokes. The 2×
+images were visually reviewed (mean channel difference 0.32/255); this is not pixel
+parity. Independent opaque cells are rendered separately to respect the existing
+64-million intermediate-pixel limit. The fixture adds 3,122,328 bytes of pinned OFL
+Noto Emoji/Music/Math font assets, used only by tests/examples; library dependencies
+and default builds are unchanged. Brush-text geometry has synthetic exporter coverage;
+the live fixture covers variable-width and dynamic strokes. Full plugin UI validation
+and responsive layout remain separate roadmap tasks. Vertical/random OpenType features
+and explicitly enabled kerning with nonzero tracking still report unsupported.

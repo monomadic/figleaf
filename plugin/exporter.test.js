@@ -53,7 +53,7 @@ test('unsupported features never produce partial Rust', () => {
     node({fills:[{type:'GRADIENT_UNKNOWN'}]}),
     node({fills:[{type:'GRADIENT_LINEAR',gradientTransform:[[1,0,0],[0,1,0]],gradientStops:Array(65).fill({position:0,color:{r:0,g:0,b:0,a:1}})}]}),
     node({type:'ELLIPSE',arcData:{startingAngle:0,endingAngle:1,innerRadius:2}}),
-    text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNKNOWN'}),text({characters:'🐈'}),
+    text({lineHeight:{unit:'UNKNOWN'}}),text({textDecoration:'UNKNOWN'}),text({characters:'\ud800'}),
     text({getStyledTextSegments:() => [{},{ }]}),text({paragraphSpacing:-4}),text({textTruncation:'UNKNOWN'}),
     text({getStyledTextSegments:() => [{openTypeFeatures:{liga:0}}]}),
     text({fills:Array(33).fill(solid)}),text({characters:'a'.repeat(513)}), text({fontSize:129}),
@@ -592,7 +592,7 @@ test('invalid or unsupported run styles suppress the whole hierarchy',()=>{
   for(const patch of [
     {fontName:undefined},{start:1},{end:1000},{characters:'wrong'},
     {lineHeight:{unit:'UNKNOWN'}},{textDecoration:'UNKNOWN'},{listOptions:{type:'ORDERED'}},
-    {paragraphSpacing:4},{fontSize:200},{fills:[{...solid,blendMode:'MULTIPLY'}]},
+    {paragraphSpacing:4},{fontSize:200},{fills:[{...solid,blendMode:'UNKNOWN'}]},
     {fills:[{type:'GRADIENT_LINEAR'}]},{fills:[{...solid,opacity:2}]},{boundVariables:{fontSize:alias}},
   ]) {
     const root=mixedTextFixture();Object.assign(root.children[0].styledSegments[1],patch);
@@ -715,12 +715,12 @@ test('script-aware text exports intact Unicode and explicit font manifests',()=>
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
-test('unsupported script controls, emoji and casing stay hard errors',()=>{
-  for(const patch of [{characters:'🙂'},{characters:'a\u202eb'},{characters:'a\ufe0f'},
+test('unsupported script controls and casing stay hard errors',()=>{
+  for(const patch of [{characters:'\ud800'},{characters:'a\u202eb'},{characters:'\uffff'},{characters:'1️⃣'},
     {characters:'ΕΛΛΗΝΙΚΑ',textCase:'LOWER'}]) {
     const r=exportHierarchy([text(patch)]);assert.equal(r.code,null);assert.ok(r.errors.length);
   }
-  for(const characters of ['हिन्दी','العربية','日本語、中文。','ภาษาไทย','e\u0301'])
+  for(const characters of ['🙂 👩‍💻 👍🏽 🇯🇵 ❤️','𝐀𝔸𝄞','हिन्दी','العربية','日本語、中文。','ภาษาไทย','e\u0301'])
     assert.deepEqual(exportHierarchy([text({characters})]).errors,[]);
 });
 
@@ -730,9 +730,8 @@ test('richer text fill and stroke stacks preserve native text and reject unsuppo
     const r=exportHierarchy([text({fills,strokes:[solid,gradient],strokeWeight:2,strokeAlign})]);
     assert.deepEqual(r.errors,[]);assert.match(r.code,/Text::new/);assert.match(r.code,/\.paints\(vec!\[/);assert.match(r.code,/\.stroke_paints\(vec!\[/);
   }
-  for(const patch of [{strokeWeight:-1},{strokeWeight:NaN},{strokeAlign:'UNKNOWN'},{strokeMiterLimit:8},{dashPattern:[2,2]},
-    {strokeCap:'ROUND'},{fills:[{...solid,blendMode:'MULTIPLY'}]},
-    {fills:[solid,{...solid,blendMode:'MULTIPLY'}]}]) {
+  for(const patch of [{strokeWeight:-1},{strokeWeight:NaN},{strokeAlign:'UNKNOWN'},{strokeMiterLimit:0},{dashPattern:[-2,2]},
+    {strokeCap:'UNKNOWN'},{fills:[{...solid,blendMode:'UNKNOWN'}]}]) {
     const r=exportHierarchy([text({strokes:[solid],strokeWeight:2,strokeAlign:'CENTER',...patch})]);
     assert.equal(r.code,null);assert.ok(r.errors.length);
   }
@@ -842,10 +841,32 @@ test('RTL lists, decoration and tracking export intact and compile',()=>{
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
 
-test('automatic decoration colors across mixed fills fail without partial Rust',()=>{
+test('automatic decoration colors across mixed fills retain styled runs',()=>{
   const root=JSON.parse(fs.readFileSync(path.join(__dirname,'rtl-text-reference.json'),'utf8'));
   const n=root.children.find(n=>n.id==='509:563');
   for(const s of n.styledSegments)s.textDecorationColor={value:'AUTO'};
   n.getStyledTextSegments=()=>n.styledSegments;
-  const r=exportHierarchy([n]);assert.equal(r.code,null);assert.match(JSON.stringify(r.errors),/explicit decoration colors/);
+  const r=exportHierarchy([n]);assert.deepEqual(r.errors,[]);assert.match(r.code,/Text::rich/);
+});
+
+test('live Unicode, inherited paint, blends and advanced text strokes compile',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'text-completeness-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/text_completeness.rs'),'utf8'));
+  for(const part of ['👩‍💻','𝐀','𝄞','.fill_blend_modes(','.stroke_blend_modes(','.dash_pattern(','.stroke_join(','.stroke_miter_limit(','.stroke_geometry('])assert.ok(r.code.includes(part),part);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-unicode-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0,1,2,3]);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+  for(const brushName of ['HEIST','BLOCKBUSTER']) {
+    const brush={...root.children[15],variableWidthStrokeProperties:{widthProfile:'UNIFORM'},complexStrokeProperties:{type:'BRUSH',brushType:'STRETCH',brushName,direction:'FORWARD'}};
+    const output=exportHierarchy([brush]);assert.deepEqual(output.errors,[]);assert.match(output.code,/\.stroke_geometry\(/);
+    assert.equal(exportHierarchy([{...brush,complexStrokeProperties:{...brush.complexStrokeProperties,brushName:'CUSTOM'}}]).code,null);
+  }
+  for(const patch of [{strokeGeometry:undefined},{strokeGeometry:[{windingRule:'NONE',data:'M0 0 L1 1'}]}]) {
+    assert.equal(exportHierarchy([{...root.children[15],...patch}]).code,null);
+  }
 });

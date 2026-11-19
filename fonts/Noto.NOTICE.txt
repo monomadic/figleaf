@@ -12,3 +12,14 @@ Hebrew reference added from the same revision:
 NotoSansHebrew.ttf 112640 bytes SHA256 7ef36a2c3593758cdb622e1bdef4f84523e92fbc3ccc667438dd80ff54c2de88
 OFL-NotoSansHebrew.txt 4382 bytes SHA256 9b9fe028b5ba74d231659a1bbaf0ed09b11e759d1ca6a070999e16d151616b47
 https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosanshebrew/NotoSansHebrew%5Bwdth%2Cwght%5D.ttf
+
+Additional Unicode references from the same revision:
+NotoEmoji.ttf 1982596 bytes SHA256 de6c18832938afc99caf132b39d6a30a19bac7f2e812e28db2535b4608d27551
+OFL-NotoEmoji.txt 4330 bytes SHA256 500bb1ccf43df7bbb522112f9133a52b16e1c35e809632f5d8609b179152de5b
+https://raw.githubusercontent.com/google/fonts/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf
+NotoMusic.ttf 124336 bytes SHA256 aeb2998c380f5807cda77e1d94e4ac596429cb74d4fffb8da279d4f3144c0eae
+OFL-NotoMusic.txt 4381 bytes SHA256 1679cb60544990b4c2445320c6d5298e4bb0c08ff00dbb5a526f3793fdaa1e6f
+https://raw.githubusercontent.com/google/fonts/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notomusic/NotoMusic-Regular.ttf
+NotoSansMath.ttf 1015396 bytes SHA256 3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d
+OFL-NotoSansMath.txt 4380 bytes SHA256 403a95275b469061b7d4371c328e0ada3bc7d63328abe2e88aad5cd243b2fe21
+https://raw.githubusercontent.com/google/fonts/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosansmath/NotoSansMath-Regular.ttf

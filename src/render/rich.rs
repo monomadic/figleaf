@@ -30,7 +30,7 @@ pub(super) fn prepare(
     );
     result
 }
-fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, Error> {
+pub(super) fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, Error> {
     if !t.runs.is_empty() && !t.string.is_empty() {
         return Err(Error("styled text cannot also contain a plain string"));
     }
@@ -52,10 +52,16 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             "rich text requires OpenType and list settings on each run",
         ));
     }
-    if !t.runs.is_empty() && t.paints.is_some() {
+    if !t.runs.is_empty() && (t.paints.is_some() || !t.fill_blend_modes.is_empty()) {
         return Err(Error("rich text requires paints on each run"));
     }
-    if t.stroke.is_none() && (!t.stroke_paints.is_empty() || !t.stroke_blend_modes.is_empty()) {
+    if t.stroke.is_none()
+        && (!t.stroke_paints.is_empty()
+            || !t.stroke_blend_modes.is_empty()
+            || t.stroke_geometry.is_some()
+            || !t.dash_pattern.is_empty()
+            || t.path_stroke != crate::path::PathStroke::default())
+    {
         return Err(Error("text stroke paints require a stroke"));
     }
     t.rect.validate()?;
@@ -68,6 +74,9 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
             style: t.style(),
             color: t.color,
             paints: t.paints.clone(),
+            fill_blend_modes: t.fill_blend_modes.clone(),
+            decoration_paints: None,
+            decoration_blend_modes: Vec::new(),
             text_decoration: t.text_decoration,
             decoration_options: t.decoration_options,
             text_case: t.text_case,
@@ -85,7 +94,20 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     };
     // Validate even invisible/whitespace-only styles before looking for outlines.
     for run in &runs {
-        let mut check = Shape::rect(t.rect);
+        let mut check = Shape::vector(
+            t.rect,
+            vec![
+                crate::VectorPath::new(crate::WindingRule::NonZero)
+                    .move_to([0., 0.])
+                    .line_to([1., 0.])
+                    .line_to([1., 1.])
+                    .close(),
+            ],
+        );
+        check.fill_blend_modes = run.fill_blend_modes.clone();
+        check.path_stroke = t.path_stroke;
+        check.dash_pattern = t.dash_pattern.clone();
+        check.stroke_geometry = t.stroke_geometry.clone();
         check.fills = run
             .paints
             .clone()
@@ -95,6 +117,17 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
         check.stroke_blend_modes = t.stroke_blend_modes.clone();
         if let Some(reason) = check.problem() {
             return Err(Error(reason));
+        }
+        if let Some(paints) = &run.decoration_paints {
+            check.fills = paints.clone();
+            check.fill_blend_modes = run.decoration_blend_modes.clone();
+            if let Some(reason) = check.problem() {
+                return Err(Error(reason));
+            }
+        } else if !run.decoration_blend_modes.is_empty() {
+            return Err(Error(
+                "decoration blend modes require resolved decoration paints",
+            ));
         }
     }
     let paragraph = text::ParagraphStyle {
@@ -130,9 +163,9 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     let outlined = t.stroke.is_some()
         || runs.iter().any(|r| {
             r.paints.is_some()
+                || !r.fill_blend_modes.is_empty()
+                || r.text_decoration != text::TextDecoration::None
                 || r.decoration_options != text::DecorationOptions::default()
-                || r.text_decoration == text::TextDecoration::Underline
-                    && r.text.chars().any(text::is_rtl_char)
         });
     let mut stroke_paths = Vec::new();
     let mut content = Canvas::new();
@@ -235,10 +268,22 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                         if let (true, Some(color)) = (decoration, run.decoration_options.color) {
                             vec![Paint::Solid(color)]
                         } else {
-                            run.paints
-                                .clone()
-                                .unwrap_or_else(|| vec![Paint::Solid(run.color)])
+                            if decoration {
+                                run.decoration_paints.clone()
+                            } else {
+                                run.paints.clone()
+                            }
+                            .unwrap_or_else(|| vec![Paint::Solid(run.color)])
                         };
+                    shape.fill_blend_modes = if decoration {
+                        if run.decoration_options.color.is_some() {
+                            Vec::new()
+                        } else {
+                            run.decoration_blend_modes.clone()
+                        }
+                    } else {
+                        run.fill_blend_modes.clone()
+                    };
                     add_outline_shapes(&mut content, shape, raster_scale)?;
                 }
                 y += advance_y - dy;
@@ -292,11 +337,26 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     {
         let mut shape = Shape::vector(t.rect, stroke_paths).transform(t.transform);
         shape.stroke = Some(stroke);
+        shape.path_stroke = t.path_stroke;
+        shape.dash_pattern = t.dash_pattern.clone();
+        shape.stroke_geometry = t.stroke_geometry.clone();
         shape.stroke_paints = t.stroke_paints.clone();
         shape.stroke_blend_modes = t.stroke_blend_modes.clone();
-        add_outline_shapes(&mut content, shape, raster_scale)?;
+        if shape.stroke_geometry.is_some() {
+            content.shape(shape);
+        } else {
+            add_outline_shapes(&mut content, shape, raster_scale)?;
+        }
     }
+    let blended = t
+        .stroke_blend_modes
+        .iter()
+        .chain(runs.iter().flat_map(|r| &r.fill_blend_modes))
+        .any(|m| *m != crate::BlendMode::Normal);
     let mut scope = Composite::new(content).effect_transform(t.transform);
+    if blended {
+        scope.blend_mode = crate::BlendMode::PassThrough;
+    }
     for (inner, effect) in [(false, t.drop_shadow), (true, t.inner_shadow)] {
         if let Some((color, offset, blur)) = effect {
             if color.iter().chain(&offset).any(|v| !v.is_finite()) || !(0. ..=64.).contains(&blur) {
@@ -345,7 +405,7 @@ fn add_outline_shapes(content: &mut Canvas, mut shape: Shape, scale: f32) -> Res
                     shape.path_stroke,
                     stroke.align,
                     scale,
-                    &[],
+                    &shape.dash_pattern,
                 )?;
                 for path in closed.iter().chain(&open) {
                     bounds = union(bounds, crate::path::bounds(std::slice::from_ref(path))?);

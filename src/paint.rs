@@ -1144,6 +1144,11 @@ pub struct Text {
     pub color: Color,
     /// Paint coordinates cover the whole text box, including wrapped lines.
     pub paints: Option<Vec<Paint>>,
+    pub fill_blend_modes: Vec<crate::BlendMode>,
+    pub path_stroke: path::PathStroke,
+    pub dash_pattern: Vec<f32>,
+    /// Figma-resolved nonuniform/brush stroke silhouette in text-box coordinates.
+    pub stroke_geometry: Option<Vec<VectorPath>>,
     pub stroke: Option<Stroke>,
     pub stroke_paints: Vec<Paint>,
     pub stroke_blend_modes: Vec<crate::BlendMode>,
@@ -1188,6 +1193,10 @@ impl Text {
             letter_spacing: 0.,
             color: [0., 0., 0., 1.],
             paints: None,
+            fill_blend_modes: Vec::new(),
+            path_stroke: path::PathStroke::default(),
+            dash_pattern: Vec::new(),
+            stroke_geometry: None,
             stroke: None,
             stroke_paints: Vec::new(),
             stroke_blend_modes: Vec::new(),
@@ -1285,6 +1294,10 @@ impl Text {
             || self.list_spacing != 0.
             || self.hanging_list
             || self.paints.is_some()
+            || !self.fill_blend_modes.is_empty()
+            || self.path_stroke != path::PathStroke::default()
+            || !self.dash_pattern.is_empty()
+            || self.stroke_geometry.is_some()
             || self.stroke.is_some()
             || !self.stroke_paints.is_empty()
             || !self.stroke_blend_modes.is_empty()
@@ -1303,6 +1316,30 @@ impl Text {
     /// For rich text, set paints on each run instead.
     pub fn paints(mut self, paints: Vec<Paint>) -> Self {
         self.paints = Some(paints);
+        self
+    }
+    pub fn fill_blend_modes(mut self, modes: Vec<crate::BlendMode>) -> Self {
+        self.fill_blend_modes = modes;
+        self
+    }
+    pub fn stroke_cap(mut self, cap: path::StrokeCap) -> Self {
+        self.path_stroke.cap = cap;
+        self
+    }
+    pub fn stroke_join(mut self, join: path::StrokeJoin) -> Self {
+        self.path_stroke.join = join;
+        self
+    }
+    pub fn stroke_miter_limit(mut self, limit: f32) -> Self {
+        self.path_stroke.miter_limit = limit;
+        self
+    }
+    pub fn dash_pattern(mut self, pattern: Vec<f32>) -> Self {
+        self.dash_pattern = pattern;
+        self
+    }
+    pub fn stroke_geometry(mut self, paths: Vec<VectorPath>) -> Self {
+        self.stroke_geometry = Some(paths);
         self
     }
     pub fn stroke(mut self, width: f32, color: Color, align: StrokeAlign) -> Self {

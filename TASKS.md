@@ -6,37 +6,13 @@ changes priorities. Extend the library/renderer and plugin together where applic
 Completed implementation notes and comparisons are in the
 [progress archive](docs/progress-archive.md); dated claims there are historical.
 
-## Ordered queue — 2026-11-17
+## Ordered queue — 2026-11-20
 
-1. **Text completeness — in progress.** Mixed-style runs with explicit fonts,
-   colors, sizes and tracking are done (2026-11-17); generated output was
-   [reviewed beside Figma](docs/text-runs-compare.png). Automatic line height is
-   done (2026-11-18), with [font-derived rendering and plugin output](docs/auto-height-compare.png).
-   Paragraph spacing and first-line indentation are done (2026-11-18),
-   [including per-paragraph settings](docs/paragraphs-compare.png).
-   Basic underline/strikethrough and upper/lower/title case are done (2026-11-18),
-   [including mixed styles](docs/decorations-compare.png).
-   Ending truncation and maximum line counts are done (2026-11-18),
-   [including partial heights and mixed styles](docs/truncation-compare.png).
-   Script-aware shaping, explicit fallback and Unicode line breaking are done
-   for the [documented BMP profile](README.md#script-aware-text-and-explicit-fallback)
-   (2026-11-18), with [representative script comparisons](docs/scripts-compare.png).
-   Richer text fills and aligned/stacked strokes are done (2026-11-19),
-   with [mixed paints and silhouette comparisons](docs/text-paints-compare.png).
-   Lists, OpenType overrides and real small caps are done (2026-11-19), with
-   [list and small-caps comparisons](docs/lists-opentype-compare.png).
-   Custom underlines are done (2026-11-19), with
-   [styles, dimensions, colors and skip-ink comparisons](docs/custom-decorations-compare.png).
-   RTL lists, decorations and tracking are done (2026-11-20), with
-   [Arabic/Hebrew and mixed-direction comparisons](docs/rtl-text-compare.png).
-   **Next: broader Unicode coverage**, then automatic decoration-color inheritance
-   across mixed fills, text paint blends and advanced stroke styles. Vertical/random
-   font features and explicit kerning with tracking remain unsupported.
-   Preserve hard errors until each case is implemented.
-   **Done when:** generated Rust retains supported run styles and paragraph
-   behavior; measured and rendered text agree; representative labels, paragraphs,
-   mixed runs and non-Latin samples are reviewed beside Figma. Test wrapping,
-   truncation, missing fonts, invalid runs, and unchanged-canvas uploads.
+1. **Text completeness — completed 2026-11-20 within the documented scope.**
+   Unicode, mixed text, paragraphs, lists/OpenType, decorations, paints and strokes
+   now have renderer and plugin output. See the [completion evidence and boundaries](docs/progress-archive.md#text-completeness--2026-11-20)
+   and [final comparison](docs/text-completeness-compare.png). Unsupported color fonts,
+   keycap sequences, layout controls and advanced font options still hard-error.
 
 2. **Responsive layout export and solver gaps.** Export Figma auto layout as
    calls to the existing solver instead of only fixed drawing coordinates.
