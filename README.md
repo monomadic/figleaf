@@ -52,7 +52,8 @@ been checked is in [TASKS.md](TASKS.md).
 [figleaf → Rust](plugin/README.md) displays copyable Rust for a selected hierarchy.
 Import [plugin/manifest.json](plugin/manifest.json) in Figma Desktop's Development
 menu. Unsupported features block all output. The plugin has no filesystem or
-network access; it exports the current geometry, not responsive layout behavior.
+network access. Supported auto-layout hierarchies export responsive solver and drawing
+calls; other hierarchies retain their current geometry.
 
 ## Paint
 
@@ -250,7 +251,8 @@ let where_the_switch_goes = solved[switch];
 
 Covers horizontal and vertical auto layout, wrapping (`.wrap(gap_between_lines)`),
 padding, gap, alignment including space-between, fixed / hug / fill sizing, min
-and max sizes, and absolutely positioned children. `solve_natural` sizes a hugging root to its content. Text
+and max sizes, and absolutely positioned children. Supplied root sizes are clamped
+to the root min/max. `solve_natural` sizes a hugging root to its content. Text
 does not measure itself: ask the text backend for the advance and set the node.
 
 ## Drawing
@@ -837,5 +839,34 @@ parity. Independent opaque cells are rendered separately to respect the existing
 Noto Emoji/Music/Math font assets, used only by tests/examples; library dependencies
 and default builds are unchanged. Brush-text geometry has synthetic exporter coverage;
 the live fixture covers variable-width and dynamic strokes. Full plugin UI validation
-and responsive layout remain separate roadmap tasks. Vertical/random OpenType features
+and width-dependent text layout remain separate roadmap tasks. Vertical/random OpenType features
 and explicitly enabled kerning with nonzero tracking still report unsupported.
+
+## Responsive plugin output
+
+Selections containing auto layout now generate `selection_layout(size)` and
+`draw_selection(canvas, size, ..) -> Result<(), figleaf::Error>`. Pass
+`Some([width, height])` to resize the root or `None` for authored/hug root sizing.
+Layout is solved before drawing, so invalid sizes leave the caller's canvas intact.
+The host still owns resize events, state and render passes; no scene runtime or
+new dependencies are introduced.
+
+This first export stage covers nested horizontal/vertical stacks, fixed/hug/fill,
+min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
+hidden-child exclusion and absolute/plain children pinned left/top. Solved bounds
+also drive paints and clips. Fixed-height text can wrap inside a solved width;
+text-based hug/automatic-height measurement is next. Unsupported wrapping, grid,
+baseline, negative gaps, other constraints, transformed nodes, groups,
+stroke-inclusive layout, patterns sourced inside the selection and resizing of
+resolved path/stroke geometry give hard
+export errors. Static exports retain their previous transform/geometry support.
+
+`cargo run --example responsive_layout --all-features --locked` renders one
+export at [280](docs/responsive-layout-280-compare.png),
+[480](docs/responsive-layout-480-compare.png) and
+[720](docs/responsive-layout-720-compare.png) pixels wide. All 17 rectangles at
+all three sizes match live Figma captures; the simple solid-color comparisons
+were visually reviewed. This is fixture evidence, not universal layout parity
+or live development-plugin UI validation. The example also checks zero uploads
+on an unchanged canvas. The solver now redistributes competing fill min/max
+bounds correctly and includes fill-child minima in counter-axis hug sizing.

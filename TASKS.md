@@ -16,9 +16,11 @@ Completed implementation notes and comparisons are in the
 
 2. **Responsive layout export and solver gaps.** Export Figma auto layout as
    calls to the existing solver instead of only fixed drawing coordinates.
-   Start with nested horizontal/vertical fixed, hug and fill sizing, min/max,
-   padding, gaps, and absolute children. Connect text measurement to width-dependent
-   layout, then cover wrapping, constraints, baseline alignment, wrapped-line
+   **First stage done (2026-11-20):** nested horizontal/vertical fixed, hug and fill,
+   min/max, padding, nonnegative gaps, alignment and left/top absolute children;
+   [one export reviewed at three sizes](docs/responsive-layout-480-compare.png).
+   **Next:** connect text measurement to width-dependent layout, then cover
+   wrapping, constraints, baseline alignment, wrapped-line
    distribution, rotated children and grid layout. Keep state and resize events
    in the host; add no scene runtime.
    **Done when:** the same generated panel lays out at several supplied sizes

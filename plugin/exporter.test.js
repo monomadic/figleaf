@@ -870,3 +870,50 @@ test('live Unicode, inherited paint, blends and advanced text strokes compile',(
     assert.equal(exportHierarchy([{...root.children[15],...patch}]).code,null);
   }
 });
+
+test('responsive auto layout compiles and matches Figma at three root sizes',()=>{
+  const root=require('./responsive-layout-reference.json');
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_layout.rs'),'utf8'));
+  assert.match(r.code,/selection_layout\(size\)/);assert.ok(!r.code.includes('Hidden excluded'));
+  const cases=require('./responsive-layout-sizes.json');
+  const checks=cases.map(({size,boxes})=>`let actual=selection_layout(Some([${size.map(x=>x+'.0')}])).unwrap();${boxes.map((b,i)=>`assert_eq!(actual[${i}],Rect::new(${b.rect.map(x=>x+'.0')}),${JSON.stringify(b.name)});`).join('')}`).join('\n');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-layout-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'let mut canvas=Canvas::new();draw_selection(&mut canvas,Some([480.,360.])).unwrap();assert_eq!(canvas.items().len(),17);let before=canvas.clone();assert!(draw_selection(&mut canvas,Some([-1.,360.])).is_err());assert_eq!(canvas,before);assert_eq!(selection_layout(None).unwrap(),selection_layout(Some([480.,360.])).unwrap());}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('unsupported responsive behavior gives layer-specific errors and no Rust',()=>{
+  for(const patch of [
+    {layoutMode:'GRID'},{layoutWrap:'WRAP'},{counterAxisAlignItems:'BASELINE'},
+    {paddingLeft:-1},{itemSpacing:-2},{minWidth:-1},{maxWidth:100},{width:NaN},
+    {relativeTransform:[[0,-1,0],[1,0,0]]},
+    {strokesIncludedInLayout:true,strokes:[solid],strokeWeight:2},
+  ]) {
+    const root=structuredClone(require('./responsive-layout-reference.json'));Object.assign(root,patch);
+    const r=exportHierarchy([root]);assert.equal(r.code,null,JSON.stringify(patch));assert.ok(r.errors.some(e=>e.nodeId===root.id));
+  }
+  for(const patch of [
+    {layoutSizingHorizontal:'HUG'}, {layoutSizingHorizontal:'FILL',layoutPositioning:'ABSOLUTE'},
+    {layoutPositioning:'ABSOLUTE',constraints:{horizontal:'MAX',vertical:'MIN'}},
+    {layoutSizingHorizontal:'BOGUS'},{type:'GROUP'},
+    {type:'TEXT',textAutoResize:'HEIGHT'},
+    {type:'VECTOR',layoutSizingHorizontal:'FILL'},
+  ]) {
+    const root=structuredClone(require('./responsive-layout-reference.json'));const child=root.children[0].children[0];Object.assign(child,patch);
+    const r=exportHierarchy([root]);assert.equal(r.code,null,JSON.stringify(patch));assert.ok(r.errors.some(e=>e.nodeId===child.id));
+  }
+});
+
+test('responsive roots can be selected fill children and reject dependent pattern sources',()=>{
+  const root=structuredClone(require('./responsive-layout-reference.json'));
+  root.layoutSizingHorizontal='FILL';assert.deepEqual(exportHierarchy([root]).errors,[]);
+  const source=root.children[0];
+  root.fills=[{type:'PATTERN',sourceNodeId:source.id,tileType:'RECTANGULAR',scalingFactor:1,spacing:{x:0,y:0},horizontalAlignment:'START'}];
+  const result=exportHierarchy([root],'SRGB',new Map(),{patterns:new Map([[source.id,source]])});
+  assert.equal(result.code,null);assert.ok(result.errors.some(e=>e.message.includes('pattern sources inside')));
+  root.fills=[];root.children=[];
+  const empty=exportHierarchy([root]);assert.deepEqual(empty.errors,[]);assert.match(empty.code,/let tree = Tree::new/);
+});

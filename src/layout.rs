@@ -172,7 +172,12 @@ impl<'a> Solver<'a> {
             .filter(|&c| self.nodes[c].sizing[self.axis] != Sizing::Fill)
             .collect();
         let from = if fixed.is_empty() { line } else { &fixed };
-        from.iter().map(|&c| self.measure(c)).fold(0., f32::max)
+        let measured = from.iter().map(|&c| self.measure(c)).fold(0., f32::max);
+        // A fill child does not contribute its authored size beside fixed/hug
+        // siblings, but its minimum still constrains the hugging parent.
+        line.iter()
+            .map(|&c| self.nodes[c].min[self.axis])
+            .fold(measured, f32::max)
     }
 
     /// Breaks a wrapping stack's children into lines that fit `inner`. A
@@ -297,34 +302,52 @@ impl<'a> Solver<'a> {
     /// Sizes of flow children on the primary axis. Fill children share what is
     /// left equally; one that hits a limit keeps it and the rest share again.
     fn distribute(&mut self, flow: &[usize], inner: f32, l: AutoLayout) -> Vec<f32> {
-        let fill = |s: &Self, c: usize| s.nodes[c].sizing[s.axis] == Sizing::Fill;
-        let mut sizes: Vec<Option<f32>> = flow
+        let mut sizes: Vec<f32> = flow
             .iter()
-            .map(|&c| (!fill(self, c)).then(|| self.measure(c)))
+            .map(|&c| {
+                if self.nodes[c].sizing[self.axis] == Sizing::Fill {
+                    0.
+                } else {
+                    self.measure(c)
+                }
+            })
+            .collect();
+        let open: Vec<usize> = (0..flow.len())
+            .filter(|&k| self.nodes[flow[k]].sizing[self.axis] == Sizing::Fill)
             .collect();
         let gaps = l.spacing * flow.len().saturating_sub(1) as f32;
-        loop {
-            let open: Vec<usize> = (0..flow.len()).filter(|&k| sizes[k].is_none()).collect();
-            if open.is_empty() {
-                break;
-            }
-            let used: f32 = sizes.iter().flatten().sum();
-            let share = ((inner - gaps - used) / open.len() as f32).max(0.);
-            let mut frozen = false;
-            for &k in &open {
-                let v = self.clamp(flow[k], share);
-                if v != share {
-                    sizes[k] = Some(v);
-                    frozen = true;
+        let available = f64::from(inner - gaps) - sizes.iter().map(|&v| f64::from(v)).sum::<f64>();
+        // Solve sum(clamp(share, min, max)) = available. Freezing both lower
+        // and upper violations at once can over-allocate (min 80 / max 40
+        // in 100 pixels must yield 80 / 20, not 80 / 40).
+        let total = |share: f64| {
+            open.iter()
+                .map(|&k| {
+                    let n = &self.nodes[flow[k]];
+                    share
+                        .max(f64::from(n.min[self.axis]))
+                        .min(f64::from(n.max[self.axis]))
+                })
+                .sum::<f64>()
+        };
+        let mut lo = 0.;
+        let mut hi = available.max(0.);
+        if total(0.) < available {
+            for _ in 0..64 {
+                let mid = (lo + hi) / 2.;
+                if total(mid) < available {
+                    lo = mid;
+                } else {
+                    hi = mid;
                 }
             }
-            if !frozen {
-                for &k in &open {
-                    sizes[k] = Some(share);
-                }
-            }
+        } else {
+            hi = 0.;
         }
-        sizes.into_iter().map(Option::unwrap).collect()
+        for k in open {
+            sizes[k] = self.clamp(flow[k], hi as f32);
+        }
+        sizes
     }
 }
 
@@ -354,12 +377,17 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
             .chain(&n.offset)
             .chain(&n.min)
             .all(|v| v.is_finite());
-        if !finite || n.max.iter().any(|v| v.is_nan()) {
+        if !finite
+            || n.size.iter().chain(&n.min).any(|&v| v < 0.)
+            || (0..2).any(|axis| n.max[axis].is_nan() || n.max[axis] < n.min[axis])
+        {
             return Err(Error("invalid layout input"));
         }
         if let Some(l) = n.layout {
             let gaps = [l.spacing, l.counter_spacing];
-            if !l.padding.iter().chain(&gaps).all(|v| v.is_finite()) {
+            if !l.padding.iter().chain(&gaps).all(|v| v.is_finite())
+                || l.padding.iter().any(|&v| v < 0.)
+            {
                 return Err(Error("invalid layout input"));
             }
             if l.wrap && l.direction == Direction::Vertical {
@@ -384,13 +412,15 @@ pub fn measure(nodes: &[Node]) -> Result<[f32; 2], Error> {
     // Heights depend on where wrapping stacks break at that width.
     s.arrange(0, width, &mut vec![[0.; 2]; nodes.len()]);
     let height = Solver::new(nodes, &children, 1, s.lines).measure(0);
+    Rect::new(0., 0., width, height).validate()?;
     Ok([width, height])
 }
 
-/// The rectangle of every node relative to its parent, with the root at `root_size`.
+/// The rectangle of every node relative to its parent. The supplied root size
+/// overrides authored/hug sizing and is clamped to the root's min/max limits.
 pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
     let children = children_of(nodes)?;
-    if !root_size.iter().all(|v| v.is_finite()) {
+    if !root_size.iter().all(|v| v.is_finite() && *v >= 0.) {
         return Err(Error("invalid layout input"));
     }
     let mut out = vec![Rect::default(); nodes.len()];
@@ -398,6 +428,7 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
     for (axis, &root) in root_size.iter().enumerate() {
         let mut s = Solver::new(nodes, &children, axis, lines);
         let mut axis_out = vec![[0f32; 2]; nodes.len()];
+        let root = s.clamp(0, root);
         axis_out[0] = [0., root];
         s.arrange(0, root, &mut axis_out);
         for (b, [pos, size]) in out.iter_mut().zip(axis_out) {
@@ -408,6 +439,9 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
             }
         }
         lines = s.lines;
+    }
+    for rect in &out {
+        rect.validate()?;
     }
     Ok(out)
 }
@@ -555,6 +589,7 @@ impl Tree {
         for i in 1..rects.len() {
             let p = rects[self.nodes[i].parent.unwrap()];
             rects[i] = rects[i].translate([p.x, p.y]);
+            rects[i].validate()?;
         }
         Ok(Solved { rects })
     }
@@ -799,5 +834,58 @@ mod tree_tests {
         assert_eq!(t.solve([200., 100.]).unwrap()[body].h, 66.);
         // A fixed root keeps its size when solved naturally.
         assert_eq!(t.solve_natural().unwrap().size(), [200., 100.]);
+    }
+}
+
+#[cfg(test)]
+mod responsive_tests {
+    use super::*;
+    #[test]
+    fn competing_fill_bounds_redistribute_without_freezing_the_wrong_limit() {
+        let mut tree = Tree::new(Node::row());
+        let a = tree.add(tree.root(), Node::fill().min([80., 0.]));
+        let b = tree.add(tree.root(), Node::fill().max([40., f32::INFINITY]));
+        for (width, expected) in [(100., [80., 20.]), (160., [120., 40.]), (40., [80., 0.])] {
+            let out = tree.solve([width, 20.]).unwrap();
+            assert_eq!([out[a].w, out[b].w], expected);
+        }
+        // Lower/upper limits must not depend on child order or axis.
+        let mut tree = Tree::new(Node::column());
+        let a = tree.add(tree.root(), Node::fill().max([f32::INFINITY, 40.]));
+        let b = tree.add(tree.root(), Node::fill().min([0., 80.]));
+        let out = tree.solve([20., 100.]).unwrap();
+        assert_eq!([out[a].h, out[b].h], [20., 80.]);
+    }
+    #[test]
+    fn hug_counter_axis_includes_fill_minimum_and_excludes_absolute_children() {
+        // Confirmed by a live Figma probe: fixed width 30 beside fill min 100
+        // makes a vertical hugging frame 100 wide, not 30.
+        let mut tree = Tree::new(Node::column());
+        tree.add(tree.root(), Node::fixed([30., 20.]));
+        let fill = tree.add(
+            tree.root(),
+            Node::fixed([200., 20.]).width(Sizing::Fill).min([100., 0.]),
+        );
+        tree.add(tree.root(), Node::fixed([900., 900.]).absolute([4., 7.]));
+        let out = tree.solve_natural().unwrap();
+        assert_eq!(out.size(), [100., 40.]);
+        assert_eq!(out[fill].w, 100.);
+    }
+    #[test]
+    fn invalid_dimensions_bounds_padding_and_root_sizes_fail() {
+        for node in [
+            Node::fixed([-1., 20.]),
+            Node::fill().min([-1., 0.]),
+            Node::fill().min([20., 0.]).max([10., 30.]),
+            Node::row().padding(-1.),
+            Node::row().max([f32::NEG_INFINITY, 20.]),
+        ] {
+            assert!(Tree::new(node).solve([100., 100.]).is_err());
+        }
+        let tree = Tree::new(Node::row().min([50., 20.]).max([100., 60.]));
+        assert_eq!(tree.solve([10., 90.]).unwrap().size(), [50., 60.]);
+        for size in [[-1., 20.], [f32::INFINITY, 20.], [f32::NAN, 20.]] {
+            assert!(tree.solve(size).is_err());
+        }
     }
 }

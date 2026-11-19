@@ -729,3 +729,23 @@ vertical/random features and enabled kerning with tracking remain hard errors.
 Resolved styled stroke geometry is fixed to its exported text/font/layout. These
 are explicit scope limits, not approximations or universal Unicode-parity claims.
 Responsive layout is now the first unmet task.
+
+## Responsive layout export, first stage — 2026-11-20
+
+Auto-layout selections generate a `layout::Tree` calculation and draw calls driven
+by solved bounds. Nested horizontal/vertical fixed/hug/fill sizing, min/max, padding,
+nonnegative gaps, alignment, hidden children and left/top absolute offsets are
+supported. Hosts supply root sizes; root min/max apply. No importer or scene runtime.
+Text measurement and the remaining responsive semantics stay on the active queue.
+
+Fixed fill allocation when lower and upper constraints compete, and counter-axis
+hug sizing with a fill child's minimum. Invalid dimensions, bounds, padding and
+root sizes fail instead of producing invalid rectangles. A live Figma probe
+confirmed the hug/minimum dependency. The same 17-node generated hierarchy matches
+all Figma rectangles at 280×300, 480×360 and 720×440. Solid-color comparisons were
+visually reviewed at 2× ([narrow](responsive-layout-280-compare.png),
+[medium](responsive-layout-480-compare.png), [wide](responsive-layout-720-compare.png));
+this does not claim general pixel parity. The renderer reports no problems and
+uploads nothing on unchanged output. Generated code compiles without dependencies;
+unsupported responsive descendants suppress all Rust. Development-plugin UI use
+has not been claimed. Temporary Figma fixtures were removed after validation.

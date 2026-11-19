@@ -2,6 +2,8 @@
  * Kept independent of the UI so the same validator is exercised by tests. */
 function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = new Map(), resources = {}) {
   const errors = [], lines = [], fonts = [];
+  const layoutNodes = new Map(), layoutLines = [], layoutRects = new WeakMap(), layoutTransforms = new WeakMap();
+  let responsive = false;
   let maskIndex = 0, compositeIndex=0, unicodeText=false;
   const latinChar=c=>{const p=c.codePointAt(0);return p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff;};
   const supportedChar=c=>{const p=c.codePointAt(0);return p>=0x20&&!(p>=0x7f&&p<=0x9f)&&!(p>=0xd800&&p<=0xdfff)&&![0xad,0x61c,0x180e,0x20e3,0xfeff].includes(p)&&!(p>=0x200e&&p<=0x200f)&&!(p>=0x2028&&p<=0x202e)&&!(p>=0x2066&&p<=0x2069)&&!(p>=0xfff9&&p<=0xfffb)&&!(p>=0xfdd0&&p<=0xfdef)&&(p&0xffff)<0xfffe;};
@@ -29,7 +31,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     return cp < 32 || cp === 127 || cp === 0x2028 || cp === 0x2029 ? '\\u{' + cp.toString(16) + '}' : c;
   }).join('') + '"';
   const comment = value => String(value).replace(/[\r\n\u2028\u2029]/g, ' ');
-  const rect = r => `Rect::new(${r.map(number).join(', ')})`;
+  const rect = r => layoutRects.get(r) || `Rect::new(${r.map(number).join(', ')})`;
   const color = (c, opacity = 1) => array([c.r, c.g, c.b, (c.a ?? 1) * opacity]);
   const blendModes={NORMAL:'Normal',PASS_THROUGH:'PassThrough',MULTIPLY:'Multiply',SCREEN:'Screen',OVERLAY:'Overlay',DARKEN:'Darken',LIGHTEN:'Lighten',COLOR_DODGE:'ColorDodge',COLOR_BURN:'ColorBurn',HARD_LIGHT:'HardLight',SOFT_LIGHT:'SoftLight',DIFFERENCE:'Difference',EXCLUSION:'Exclusion',HUE:'Hue',SATURATION:'Saturation',COLOR:'Color',LUMINOSITY:'Luminosity',LINEAR_BURN:'LinearBurn',LINEAR_DODGE:'LinearDodge'};
   const blended = p=>p.visible!==false && p.blendMode && p.blendMode!=='NORMAL';
@@ -46,6 +48,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   function patternCode(p) {
     const source=resources.patterns?.get(p.sourceNodeId);
     if (!source) throw Error('Pattern source is unavailable.');
+    if(responsive && [...layoutNodes.keys()].some(n=>n.id===source.id))throw Error('Responsive pattern sources inside the selection are unsupported.');
     if(source.visible===false || !(source.width>0 && source.height>0))throw Error('Pattern source must be visible and have nonzero dimensions.');
     if (patternStack.has(p.sourceNodeId) || patternStack.size>=8) throw Error('Cyclic or deeply nested pattern source.');
     if (!patternNames.has(p.sourceNodeId)) {
@@ -71,7 +74,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     return list.filter(p => p.visible !== false);
   };
   const identity = [[1,0,0],[0,1,0]];
-  const matrix = m => `Transform::new([${m.map(array).join(', ')}])`;
+  const matrix = m => layoutTransforms.get(m) || `Transform::new([${m.map(array).join(', ')}])`;
   function inverse(m) {
     if (!Array.isArray(m) || m.length !== 2 || m.some(r => !Array.isArray(r) || r.length !== 3)) throw Error('Invalid affine transform.');
     const [[a,c,x],[b,d,y]] = m.map(r => r.map(v => { number(v); return Math.fround(v); }));
@@ -226,6 +229,11 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       inverse(world);
       const box = [0, 0, n.width, n.height];
       box.forEach(number);
+      if (layoutNodes.has(n)) {
+        const i = layoutNodes.get(n);
+        layoutRects.set(box, `Rect::new(0.0, 0.0, boxes[${i}].w, boxes[${i}].h)`);
+        layoutTransforms.set(world, `Transform::translation(boxes[${i}].x, boxes[${i}].y)`);
+      }
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
       const segments=n.type==='TEXT'&&n.getStyledTextSegments?n.getStyledTextSegments(['fontName','fontSize','fills','textCase','textDecoration','textDecorationStyle','textDecorationOffset','textDecorationThickness','textDecorationColor','textDecorationSkipInk','letterSpacing','lineHeight','listOptions','listSpacing','indentation','paragraphSpacing','paragraphIndent','openTypeFeatures','boundVariables']):null;
       const mixedRuns=segments&&segments.length>1?segments:null;
@@ -559,6 +567,59 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       lines.push(`    ${outerTarget}.composite(${expression});`);
     }catch(e){reject(e.message);}}
   }
+  // Emit a small layout calculation, not an imported scene or widget runtime.
+  // Numeric authored geometry still goes through the ordinary paint validator;
+  // only emitted bounds and translations use the solved rectangles.
+  function hasLayout(n, depth=0) {
+    if(n.visible===false)return false;
+    if(depth>128)throw Error('Hierarchy exceeds 128 levels.');
+    return (n.layoutMode && n.layoutMode!=='NONE') || (n.children||[]).some(c=>hasLayout(c,depth+1));
+  }
+  function layoutNode(n, parent, path, depth=0) {
+    if(n.visible===false)return;
+    try {
+      if(depth>128 || layoutNodes.size>=5000)throw Error('Responsive layout exceeds hierarchy limits.');
+      const i=layoutNodes.size;layoutNodes.set(n,i);
+      const mode=n.layoutMode??'NONE', stack=['HORIZONTAL','VERTICAL'].includes(mode);
+      if(!['NONE','HORIZONTAL','VERTICAL'].includes(mode))throw Error('Responsive grid/unknown layout is unsupported.');
+      if(n.layoutWrap && n.layoutWrap!=='NO_WRAP')throw Error('Responsive wrapping is not implemented yet.');
+      if(n.strokesIncludedInLayout && (n.strokes||[]).some(p=>p.visible!==false) && [n.strokeWeight,n.strokeTopWeight,n.strokeRightWeight,n.strokeBottomWeight,n.strokeLeftWeight].some(v=>v>0))throw Error('Responsive stroke-inclusive layout is unsupported.');
+      if(n.layoutPositioning && !['AUTO','ABSOLUTE'].includes(n.layoutPositioning))throw Error('Unknown layout positioning.');
+      const t=n.relativeTransform;inverse(t);
+      if(t[0][0]!==1||t[0][1]!==0||t[1][0]!==0||t[1][1]!==1)throw Error('Responsive rotated, scaled or skewed nodes are unsupported.');
+      const inFlow=parent!==null&&['HORIZONTAL','VERTICAL'].includes(parent.layoutMode)&&n.layoutPositioning!=='ABSOLUTE';
+      const sizing=[n.layoutSizingHorizontal??'FIXED',n.layoutSizingVertical??'FIXED'];
+      if(sizing.some(v=>!['FIXED','HUG','FILL'].includes(v)))throw Error('Unknown responsive sizing mode.');
+      if(sizing.includes('HUG')&&!stack)throw Error('Responsive hug sizing requires an auto-layout frame; text measurement is a later task.');
+      if(parent!==null&&sizing.includes('FILL')&&!inFlow)throw Error('Responsive fill sizing requires an in-flow auto-layout child.');
+      if(n.type==='GROUP')throw Error('Responsive groups require group-bound recomputation and are unsupported.');
+      if(!inFlow&&parent&&n.constraints&&(n.constraints.horizontal!=='MIN'||n.constraints.vertical!=='MIN'))throw Error('Responsive absolute/plain children currently require left/top constraints.');
+      if(n.type==='TEXT'&&n.textAutoResize&&n.textAutoResize!=='NONE')throw Error('Responsive auto-sized text requires width-dependent measurement, not an authored-size approximation.');
+      const min=[n.minWidth??0,n.minHeight??0], max=[n.maxWidth??Infinity,n.maxHeight??Infinity];
+      [n.width,n.height,...min].forEach(v=>{number(v);if(v<0)throw Error('Negative layout size or minimum.');});
+      max.forEach((v,a)=>{if(v!==Infinity)number(v);if(v<min[a])throw Error('Layout maximum is smaller than minimum.');});
+      const resizes=!parent||sizing.some(v=>v!=='FIXED')||min.some((v,a)=>v>[n.width,n.height][a])||max.some((v,a)=>v<[n.width,n.height][a]);
+      if(resizes&&(['VECTOR','BOOLEAN_OPERATION','LINE'].includes(n.type)||(n.cornerSmoothing??0)>0||n.variableWidthStrokeProperties?.widthProfile&&n.variableWidthStrokeProperties.widthProfile!=='UNIFORM'||n.complexStrokeProperties?.type&&n.complexStrokeProperties.type!=='BASIC'))throw Error('Responsive resizing of resolved path/stroke geometry is unsupported.');
+      let expr=stack?`Node::${mode==='HORIZONTAL'?'row':'column'}().size(${array([n.width,n.height])})`:`Node::fixed(${array([n.width,n.height])})`;
+      expr+=`.width(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[0]]}).height(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[1]]})`;
+      expr+=`.min(${array(min)}).max([${max.map(v=>v===Infinity?'f32::INFINITY':number(v)).join(', ')}])`;
+      if(parent&&!inFlow)expr+=`.absolute(${array([t[0][2],t[1][2]])})`;
+      if(stack){
+        const padding=[n.paddingLeft??0,n.paddingTop??0,n.paddingRight??0,n.paddingBottom??0],gap=n.itemSpacing??0;
+        [...padding,gap].forEach(v=>{number(v);if(v<0)throw Error('Responsive negative padding/gaps are unsupported.');});
+        const primary={MIN:'Min',CENTER:'Center',MAX:'Max',SPACE_BETWEEN:'SpaceBetween'}[n.primaryAxisAlignItems??'MIN'];
+        const counter={MIN:'Min',CENTER:'Center',MAX:'Max'}[n.counterAxisAlignItems??'MIN'];
+        if(!primary||!counter)throw Error('Responsive baseline/unknown alignment is unsupported.');
+        expr+=`.paddings(${array(padding)}).gap(${number(gap)}).align(LayoutAlign::${primary}, LayoutAlign::${counter})`;
+      }
+      layoutLines.push(`    // ${comment(path)} [${comment(n.id)}]`);
+      if(parent===null)layoutLines.push(`    let mut tree = Tree::new(${expr});`, '    let node_0 = tree.root();');
+      else layoutLines.push(`    let node_${i} = tree.add(node_${layoutNodes.get(parent)}, ${expr});`);
+      if(n.type!=='BOOLEAN_OPERATION')for(const child of n.children||[])layoutNode(child,n,path+' / '+child.name,depth+1);
+    } catch(e){fail(n,path,e.message);}
+  }
+  try {responsive=!!hasLayout(selection[0]);if(responsive)layoutNode(selection[0],null,selection[0].name);}catch(e){fail(selection[0],selection[0].name,e.message);}
+  if(responsive)lines.push('    let boxes = selection_layout(size)?;');
   const compositeRoot=needsComposite(selection[0]);
   if(compositeRoot)lines.push('    let mut selection_content = Canvas::new();');
   try { visit(selection[0], selection[0].name, identity, null, true,0,compositeRoot?'selection_content':'canvas');
@@ -569,16 +630,24 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   if (maskIndex > 32) fail(selection[0],selection[0].name,'Hierarchy exceeds 32 mask scopes.');
   if (errors.length) return { code: null, errors };
   const preamble = [
-    '// Generated by figleaf. Current dimensions and resolved values; no responsive layout or interactions.',
-    '// Root placement is omitted; its rotation/scale and all descendant transforms are preserved.',
+    responsive ? '// Generated by figleaf. Responsive auto layout; host owns state and resizing.' : '// Generated by figleaf. Current dimensions and resolved values; no responsive layout or interactions.',
+    responsive ? '// Root placement is omitted; solved bounds and clips are root-relative.' : '// Root placement is omitted; its rotation/scale and all descendant transforms are preserved.',
     ...(compositeRoot?['// The selection is isolated: backdrop-dependent blends use only its included content.']:[]),
     '// Supply matching fonts/styles through your text backend. Render at scale 0.5–4.',
     ...(unicodeText?['// Unicode text requires a script-aware backend (CoreText).', '// Supply exact font bytes; optional fallback is host-owned via CoreText::with_fallback_fonts.', '// Figma does not expose its implicit glyph fallback chain; no system fonts are guessed.']:[]),
     ...fonts.map((f,i) => `// fonts[${i}]: ${comment(f.family)} / ${comment(f.style)}`),
     '#[allow(unused_imports)]',
     'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment, Composite, BlendMode};',
-    '', `pub fn draw_selection(canvas: &mut Canvas${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}) {`,
+    ...(responsive ? [
+      'use figleaf::layout::{Node, Sizing, Tree, Align as LayoutAlign};',
+      '// None uses authored/hug root sizing. Some(size) supplies a root size, clamped to min/max.',
+      `pub fn selection_layout(size: Option<[f32; 2]>) -> Result<[Rect; ${layoutNodes.size}], figleaf::Error> {`,
+      ...layoutLines.map(line=>layoutNodes.size===1?line.replace('let mut tree =', 'let tree ='):line),
+      '    let solved = match size { Some(size) => tree.solve(size)?, None => tree.solve_natural()? };',
+      `    Ok([${[...layoutNodes.values()].map(i=>`solved[node_${i}]`).join(', ')}])`, '}',
+    ] : []),
+    '', `pub fn draw_selection(canvas: &mut Canvas${responsive?', size: Option<[f32; 2]>':''}${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''})${responsive?' -> Result<(), figleaf::Error>':''} {`,
   ];
-  return { code: [...preamble, ...lines, '}',''].join('\n'), errors: [], fonts, nodeCount: count };
+  return { code: [...preamble, ...lines, ...(responsive?['    Ok(())']:[]), '}',''].join('\n'), errors: [], fonts, nodeCount: count };
 }
 if (typeof module !== 'undefined') module.exports = { exportHierarchy };

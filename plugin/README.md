@@ -17,9 +17,11 @@ build writes the bundle; the running Figma plugin does not write files.
 ## Contract
 
 Output is a `draw_selection` Rust function appending shapes/text to a caller's
-`Canvas`. It captures the current dimensions and resolved values, with the
-selected root at `(0, 0)`. Auto layout and constraints are already resolved by
-Figma: this is a static paint export, not a responsive layout generator. Ancestor
+`Canvas`, with the selected root at `(0, 0)`. Hierarchies containing auto layout
+also emit `selection_layout(size)` and take `size: Option<[f32; 2]>` in
+`draw_selection`, returning a `Result`. `Some(size)` resizes the root within its
+min/max bounds; `None` uses authored/hug sizing. Other hierarchies retain static
+paint output. Values/variable modes remain resolved at export time. Ancestor
 clipping/effects outside the selected root, interactions, component state, and
 live variable bindings are not exported. Hidden layers,
 paints, and effects are intentionally excluded.
@@ -345,3 +347,23 @@ mixed fills are retained and resolved by the renderer; explicit colors still ove
 them. The [text completeness comparison](../docs/text-completeness-compare.png) covers
 Unicode, inherited decorations, blends and advanced strokes. Source snapshots and
 generated-code compilation are fixture evidence, not live development-plugin UI validation.
+
+## Responsive layout — first stage
+
+Nested horizontal/vertical stacks export ordinary `layout::Tree` calls: fixed,
+hug and fill axes, min/max, padding, nonnegative gaps, alignment and left/top-pinned
+absolute children. Plain frames preserve child offsets. Hidden layers do not
+participate. Draw calls use solved bounds and translations, including clips;
+layout errors return before appending paint. The plugin still only displays code.
+
+Text-based hug/automatic height, wrapped/grid layout, baseline alignment, negative
+gaps, non-left/top constraints, rotated/scaled/skewed nodes, groups,
+stroke-inclusive layout, pattern sources inside the responsive selection and
+responsive resizing of resolved geometry hard-error.
+Fixed-height text can wrap in its solved width without resizing surrounding rows.
+Selecting a fill-sized root uses its authored size for `None`, since its parent is
+outside the export. The host supplies subsequent root sizes.
+
+The same generated Rust was checked against all node rectangles and renders in
+three live Figma sizes; see the [comparison](../docs/responsive-layout-480-compare.png).
+Whole-plugin UI validation remains a separate task.
