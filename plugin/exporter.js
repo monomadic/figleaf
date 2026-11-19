@@ -374,6 +374,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(end!==text?.length)reject('Styled text ranges do not cover the text.');
         }
         const styles=segments?.length?segments:[n];
+        // Figma can retain one automatic decoration color across mixed fills.
+        // Until that inheritance is represented, require explicit colors rather
+        // than exporting per-run colors that change the design.
+        for(let i=1;i<styles.length;i++) {
+          const a=styles[i-1],b=styles[i];
+          const auto=s=>s.textDecorationColor==null||s.textDecorationColor.value==='AUTO';
+          const paints=s=>JSON.stringify(visible(s.fills||[]),(k,v)=>k==='boundVariables'?undefined:v);
+          if(a.textDecoration!=='NONE'&&a.textDecoration===b.textDecoration&&auto(a)&&auto(b)&&!a.characters?.endsWith('\n')&&paints(a)!==paints(b))reject('Mixed-fill text decorations require explicit decoration colors.');
+        }
         const generated=[];
         let paragraphSettings=null, inWord=false, transformedText='';
         for(const s of styles) {
@@ -409,7 +418,6 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const indentation=s.indentation??(listType==='NONE'?0:1),listSpacing=s.listSpacing??n.listSpacing??0;
           if(!listTypes[listType]||!Number.isInteger(indentation)||indentation<0||indentation>5||listType!=='NONE'&&indentation===0)reject('Unsupported list type or indentation.');
           if(!Number.isFinite(listSpacing)||listSpacing<0||listSpacing>1e7)reject('Invalid list spacing.');
-          if(listType!=='NONE'&&/[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/u.test(text||''))reject('RTL lists are unsupported.');
           const features=Object.entries(s.openTypeFeatures||{}).sort(([a],[b])=>a.localeCompare(b));
           if(features.length>64||features.some(([tag,value])=>!(/^[A-Z0-9]{4}$/).test(tag)||typeof value!=='boolean'||['VERT','VRT2','VKRN','VPAL','VHAL','VALT','VKNA','VCHW','VRTR','RAND'].includes(tag)))reject('Unsupported OpenType feature or value.');
           if(['SMALL_CAPS','SMALL_CAPS_FORCED'].includes(s.textCase)&&features.some(([tag,value])=>!value&&(tag==='SMCP'||tag==='C2SC'&&s.textCase==='SMALL_CAPS_FORCED')))reject('Small caps conflicts with OpenType override.');
@@ -419,7 +427,6 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const height=s.lineHeight?.unit==='AUTO'?s.fontSize:s.lineHeight?.unit==='PERCENT'?s.fontSize*s.lineHeight.value/100:s.lineHeight?.value;
           const tracking=s.letterSpacing?.unit==='PERCENT'?s.fontSize*s.letterSpacing.value/100:s.letterSpacing?.value;
           if(tracking!==0&&features.some(([tag,value])=>tag==='KERN'&&value))reject('Enabled kerning with nonzero tracking is unsupported.');
-          if(/[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/u.test(text||'') && (s.textDecoration!=='NONE'||tracking!==0))reject('RTL decoration and tracking are unsupported.');
           if(s.textCase!=='ORIGINAL'&&[...(mixedRuns?s.characters:text)||''].some(c=>c!=='\n'&&!latinChar(c)))reject('Script-specific case transformations are unsupported.');
           if(!(s.fontSize>0&&s.fontSize<=128&&height>=s.fontSize&&height<=256&&Math.abs(tracking)<=s.fontSize&&n.width>0&&n.width<=2048))reject('Text exceeds figleaf’s size, line-height, tracking, or width limits.');
           const spacing=s.paragraphSpacing??n.paragraphSpacing??0, indent=s.paragraphIndent??n.paragraphIndent??0;

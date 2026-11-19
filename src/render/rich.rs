@@ -129,7 +129,10 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
     let mut pixels = 0u64;
     let outlined = t.stroke.is_some()
         || runs.iter().any(|r| {
-            r.paints.is_some() || r.decoration_options != text::DecorationOptions::default()
+            r.paints.is_some()
+                || r.decoration_options != text::DecorationOptions::default()
+                || r.text_decoration == text::TextDecoration::Underline
+                    && r.text.chars().any(text::is_rtl_char)
         });
     let mut stroke_paths = Vec::new();
     let mut content = Canvas::new();
@@ -145,18 +148,28 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                 .map(|r| r.style.line_height)
                 .reduce(f32::max)
                 .unwrap();
-            label.indent =
-                marker.x + place(t.align, line.available_width - line.metrics.advance as f32);
+            let align = place(t.align, line.available_width - line.metrics.advance as f32);
+            let rtl = label
+                .runs
+                .first()
+                .is_some_and(|r| r.direction == text::TextDirection::RightToLeft);
+            let marker_x = if rtl {
+                align + line.metrics.advance as f32 + line.indent
+                    - marker.x
+                    - marker.metrics.advance as f32
+            } else {
+                marker.x + align
+            };
             label.available_width = marker.metrics.advance as f32;
             let dy = line.metrics.baseline as f32 - marker.metrics.baseline as f32
                 + line.baseline_offset;
-            positioned.push((label, dy, 0.));
+            positioned.push((label, dy, 0., Some(marker_x)));
         }
         let advance = line.height + line.spacing_after;
         let dy = line.baseline_offset;
-        positioned.push((line, dy, advance));
+        positioned.push((line, dy, advance, None));
     }
-    for (line, dy, advance_y) in positioned {
+    for (line, dy, advance_y, marker_x) in positioned {
         y += dy;
         if !line.runs.is_empty() {
             if line.metrics.advance > f64::from(text::MAX_WIDTH) {
@@ -175,8 +188,8 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                     return Err(Error("text backend violated outline metrics"));
                 }
                 let rtl = line.runs[0].direction == text::TextDirection::RightToLeft;
-                let x = if rtl { 0. } else { line.indent }
-                    + place(t.align, line.available_width - line.metrics.advance as f32);
+                let x = marker_x.unwrap_or_else(|| if rtl { 0. } else { line.indent }
+                    + place(t.align, line.available_width - line.metrics.advance as f32));
                 let offset = [x, y - t.rect.y];
                 for (mut path, run, decoration) in outlines
                     .decoration_paths
@@ -256,9 +269,8 @@ fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, E
                 .runs
                 .first()
                 .is_some_and(|r| r.direction == text::TextDirection::RightToLeft);
-            let x = t.rect.x
-                + if rtl { 0. } else { line.indent }
-                + place(t.align, line.available_width - line.metrics.advance as f32);
+            let x = t.rect.x + marker_x.unwrap_or_else(|| if rtl { 0. } else { line.indent }
+                + place(t.align, line.available_width - line.metrics.advance as f32));
             let baseline = y + line.metrics.baseline as f32;
             let origin = [x, y + baseline.round() - baseline]
                 .map(|v| (v * raster_scale).round() / raster_scale);

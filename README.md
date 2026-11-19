@@ -286,9 +286,9 @@ CoreText from font bytes you supply; `text::NoText` is for hosts with none.
 
 ## Not supported yet
 
-Gradients on text, more than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
+More than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
 grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation,
-emoji, explicit bidi controls, RTL decorations/tracking, script-specific case conversion,
+emoji, explicit bidi controls, script-specific case conversion,
 and any backend other than CoreText.
 
 ## Where it came from
@@ -743,7 +743,7 @@ remain available. `layout_text` exposes the same shaped lines used by rendering.
 The exporter retains Unicode and explicit font/style slots. Figma does not expose
 its implicit glyph fallback chain, so generated comments require host provisioning
 rather than inventing fallback faces. Emoji/color glyphs, variation selectors,
-explicit bidi controls, RTL decoration/tracking, non-Latin case conversion, and
+explicit bidi controls, non-Latin case conversion, and
 font changes inside a grapheme remain hard errors. Scalar `caret_offsets` stays
 Latin-only; this adds no input runtime. Existing byte/run/bitmap budgets still apply.
 
@@ -753,7 +753,7 @@ RTL truncation and explicit mixed fonts. Mean difference is 1.53/255 at 2×; fon
 rasterization differs. CJK punctuation and Thai dictionary boundaries have tests,
 not visual-parity evidence. Fallback matches explicitly assigned font pixels in
 tests, including unchanged uploads and failed-chain caching. Pinned OFL Noto
-reference fonts add 1.49 MB to tests/examples only (see `fonts/Noto.NOTICE.txt`);
+reference fonts add 1.60 MB to tests/examples only (see `fonts/Noto.NOTICE.txt`);
 default builds remain dependency-free and do not embed these fonts.
 
 
@@ -779,7 +779,7 @@ tables; missing features report errors instead of substituting scaled capitals.
 Custom backends must opt into `validate_open_type_features`.
 
 Limits are 64 unique overrides and the existing 64 cached font-instance budget,
-now including feature combinations. RTL lists, vertical/random features, and
+now including feature combinations. Vertical/random features and
 explicitly enabled kerning with nonzero tracking remain hard errors. Default
 kerning is retained at zero tracking; the previous zero-valued kern attribute
 incorrectly disabled it. Other text/resource limits still apply.
@@ -793,3 +793,27 @@ coverage is synthetic (ligatures, metrics, outlines, cache invalidation and
 unsupported fonts); Figma's plugin feature map is read-only. No new dependencies.
 The bundled Source Serif 4 font adds 1,209,508 bytes to test/example assets only;
 it is not embedded in the library (see `fonts/SourceSerif4.NOTICE.txt`).
+
+## RTL lists, decoration and tracking
+
+Arabic/Hebrew paragraphs retain CoreText bidi ordering, joining and tracking,
+including mixed Latin/numeral runs. Tracking is removed at the visual line end;
+decorations use shaped visual spans, so one logical style can decorate disjoint
+pieces without drawing across intervening text. RTL underlines use outlines for
+skip-ink (macOS 13+); bitmap-only callers must use `outline_runs` instead.
+
+Lists mirror markers to the leading right edge and preserve RTL nesting, hanging
+markers, paragraph indentation, wrapping and truncation. Alignment remains the
+physical left/center/right setting. Fonts and variable axes are host-supplied;
+the Hebrew example explicitly selects weight 400 and width 100.
+
+`cargo run --example rtl_text --all-features --locked` renders the
+[18-case Figma comparison](docs/rtl-text-compare.png). Arabic/Hebrew tracking,
+underline/strike/waves, mixed styles, wrapped lists, nesting, hanging markers and
+left alignment were inspected. Glyph/edge differences remain, including unexpected
+extra counter glyphs in the Figma export; native counters use the supplied font.
+Automatic decoration-color inheritance across mixed fills is not represented:
+the plugin rejects that combination and requires explicit decoration colors.
+Synthetic tests cover disjoint spans, retained insets, truncation and zero-upload
+caching. The pinned OFL Hebrew font adds 112,640 test/example bytes; no dependency
+or default-build size increase. Explicit bidi controls remain unsupported.

@@ -27,8 +27,10 @@ Completed implementation notes and comparisons are in the
    [list and small-caps comparisons](docs/lists-opentype-compare.png).
    Custom underlines are done (2026-11-19), with
    [styles, dimensions, colors and skip-ink comparisons](docs/custom-decorations-compare.png).
-   **Next: RTL lists/decoration/tracking**, then broader
-   Unicode coverage, text paint blends and advanced stroke styles. Vertical/random
+   RTL lists, decorations and tracking are done (2026-11-20), with
+   [Arabic/Hebrew and mixed-direction comparisons](docs/rtl-text-compare.png).
+   **Next: broader Unicode coverage**, then automatic decoration-color inheritance
+   across mixed fills, text paint blends and advanced stroke styles. Vertical/random
    font features and explicit kerning with tracking remain unsupported.
    Preserve hard errors until each case is implemented.
    **Done when:** generated Rust retains supported run styles and paragraph

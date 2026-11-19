@@ -238,12 +238,28 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
     CFRelease(paragraph);
     CTLineRef line=CTLineCreateWithAttributedString(attributed);
     metrics->advance=CTLineGetTypographicBounds(line,NULL,NULL,NULL);
-    if(CTLineGetGlyphCount(line)>0)metrics->advance-=input[count-1].tracking;
     metrics->ascent=ascent;metrics->descent=descent;
     metrics->baseline=(height-ascent-descent)/2+ascent;
     metrics->glyphs=(uint32_t)CTLineGetGlyphCount(line);metrics->lines=1;
     CGMutablePathRef ink=CGPathCreateMutable();
     CFArrayRef runs=CTLineGetGlyphRuns(line);
+    // Tracking is removed at the physical line end, which need not belong to
+    // the final logical style in a bidirectional line.
+    CFIndex terminal_visual=-1;double terminal_right=-INFINITY,terminal_tracking=0;
+    for(CFIndex i=0;i<CFArrayGetCount(runs);i++) {
+        CTRunRef run=(CTRunRef)CFArrayGetValueAtIndex(runs,i);
+        CFIndex n=CTRunGetGlyphCount(run);if(n>512){status=4;break;}
+        CGPoint positions[512];CGSize advances[512];
+        CTRunGetPositions(run,CFRangeMake(0,n),positions);
+        CTRunGetAdvances(run,CFRangeMake(0,n),advances);
+        for(CFIndex j=0;j<n;j++)if(positions[j].x+advances[j].width>terminal_right) {
+            int index=0;
+            CFNumberGetValue(CFDictionaryGetValue(CTRunGetAttributes(run),CFSTR("figleafRun")),kCFNumberIntType,&index);
+            terminal_right=positions[j].x+advances[j].width;
+            terminal_tracking=input[index].tracking;terminal_visual=i;
+        }
+    }
+    if(terminal_visual>=0)metrics->advance-=terminal_tracking;
     for(CFIndex i=0;i<CFArrayGetCount(runs);i++) {
         CTRunRef run=(CTRunRef)CFArrayGetValueAtIndex(runs,i);
         CFIndex index=CTRunGetStringRange(run).location;
@@ -283,11 +299,13 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
             double box_height=pixels?(double)rows/scale:height;
             double baseline=box_height-metrics->baseline;
             if(ctx){CGContextSetTextPosition(ctx,0,baseline);CTLineDraw(line,ctx);}
-            CFIndex start=0;
-            for(size_t i=0;i<count;i++) {
+            // A logical style can occupy disjoint visual spans after bidi ordering.
+            // Decorate each shaped run, never the two logical range endpoints.
+            for(CFIndex visual=0;visual<CFArrayGetCount(runs);visual++) {
+                CTRunRef run=(CTRunRef)CFArrayGetValueAtIndex(runs,visual);
+                int i=0;
+                CFNumberGetValue(CFDictionaryGetValue(CTRunGetAttributes(run),CFSTR("figleafRun")),kCFNumberIntType,&i);
                 const StyledRun *r=&input[i];
-                CFStringRef string=CFStringCreateWithBytes(NULL,r->text,r->len,kCFStringEncodingUTF8,false);
-                CFIndex end=start+CFStringGetLength(string);CFRelease(string);
                 if(r->decoration) {
                     CTFontRef font=(CTFontRef)r->font;
                     double thickness=CTFontGetUnderlineThickness(font),position=CTFontGetXHeight(font)/2;
@@ -300,9 +318,17 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                         position=(int16_t)((p[28]<<8)|p[29])*units;
                     }
                     if(table)CFRelease(table);
-                    double x=CTLineGetOffsetForStringIndex(line,start,NULL);
-                    double end_x=CTLineGetOffsetForStringIndex(line,end,NULL);
-                    if(i+1==count)end_x-=r->tracking;
+                    CFIndex n=CTRunGetGlyphCount(run);
+                    if(n==0)continue;
+                    CGPoint positions[512];CGSize advances[512];
+                    CTRunGetPositions(run,CFRangeMake(0,n),positions);
+                    CTRunGetAdvances(run,CFRangeMake(0,n),advances);
+                    double x=positions[0].x,end_x=x;
+                    for(CFIndex j=0;j<n;j++) {
+                        x=fmin(x,positions[j].x);
+                        end_x=fmax(end_x,positions[j].x+advances[j].width);
+                    }
+                    if(visual==terminal_visual)end_x=metrics->advance;
                     if(ctx)CGContextSetRGBFillColor(ctx,r->color[0],r->color[1],r->color[2],r->color[3]);
                     // Figma places the strike at the font's strikeout position,
                     // and the underline below the font's underline position.
@@ -318,7 +344,7 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                             ? metrics->baseline-CTFontGetUnderlinePosition(font)+thickness*.5
                             : metrics->baseline+r->decoration_offset;
                         if(!isnan(r->decoration_thickness))thickness=r->decoration_thickness;
-                        if(thickness==0){start=end;continue;}
+                        if(thickness==0)continue;
                         if((end_x-x)/thickness>8192){status=4;break;}
                         CGMutablePathRef decoration=CGPathCreateMutable();
                         if(r->decoration_style==0)CGPathAddRect(decoration,NULL,CGRectMake(x,top,end_x-x,thickness));
@@ -369,7 +395,6 @@ int figleaf_ct_runs(const StyledRun *input, size_t count, double scale,
                         }
                     }
                 }
-                start=end;
             }
             if(ctx)CGContextRelease(ctx);
         }

@@ -7,3 +7,8 @@ OFL-NotoSansDevanagari.txt 4386 bytes SHA256 a216f6f8d85c7228093e0ee5e258d9d377e
 Original sources (unmodified font bytes):
 https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosansarabic/NotoSansArabic%5Bwdth%2Cwght%5D.ttf
 https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosansdevanagari/NotoSansDevanagari%5Bwdth%2Cwght%5D.ttf
+
+Hebrew reference added from the same revision:
+NotoSansHebrew.ttf 112640 bytes SHA256 7ef36a2c3593758cdb622e1bdef4f84523e92fbc3ccc667438dd80ff54c2de88
+OFL-NotoSansHebrew.txt 4382 bytes SHA256 9b9fe028b5ba74d231659a1bbaf0ed09b11e759d1ca6a070999e16d151616b47
+https://github.com/google/fonts/blob/75706cfdd7c49a2be20f66c1e24c26f4f39a33b8/ofl/notosanshebrew/NotoSansHebrew%5Bwdth%2Cwght%5D.ttf

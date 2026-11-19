@@ -1,0 +1,2844 @@
+{
+  "id": "509:553",
+  "name": "Temporary RTL validation",
+  "type": "FRAME",
+  "visible": true,
+  "width": 1180,
+  "height": 1170,
+  "relativeTransform": [
+    [
+      1,
+      0,
+      19000
+    ],
+    [
+      0,
+      1,
+      19000
+    ]
+  ],
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "color": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      },
+      "boundVariables": {}
+    }
+  ],
+  "strokes": [],
+  "strokeWeight": 1,
+  "strokeAlign": "INSIDE",
+  "strokeJoin": "MITER",
+  "strokeCap": "NONE",
+  "strokeMiterLimit": 4,
+  "dashPattern": [],
+  "effects": [],
+  "opacity": 1,
+  "blendMode": "PASS_THROUGH",
+  "clipsContent": false,
+  "layoutMode": "NONE",
+  "cornerRadius": 0,
+  "cornerSmoothing": 0,
+  "children": [
+    {
+      "id": "509:554",
+      "name": "Arabic baseline",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          30
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم",
+          "start": 0,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 13,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:555",
+      "name": "Arabic tracking positive",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          420
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 2
+      },
+      "characters": "مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم",
+          "start": 0,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 13,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:556",
+      "name": "Arabic tracking negative",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          810
+        ],
+        [
+          0,
+          1,
+          20
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": -1
+      },
+      "characters": "مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم",
+          "start": 0,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": -1
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 13,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:557",
+      "name": "Underline",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          30
+        ],
+        [
+          0,
+          1,
+          210
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم",
+          "start": 0,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": "AUTO"
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 13,
+      "textDecorationStyle": "SOLID",
+      "textDecorationSkipInk": true,
+      "textDecorationOffset": {
+        "unit": "AUTO"
+      },
+      "textDecorationThickness": {
+        "unit": "AUTO"
+      },
+      "textDecorationColor": {
+        "value": "AUTO"
+      },
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:558",
+      "name": "Strike",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          420
+        ],
+        [
+          0,
+          1,
+          210
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "STRIKETHROUGH",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم",
+          "start": 0,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "STRIKETHROUGH",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 13,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:559",
+      "name": "Wavy underline",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          810
+        ],
+        [
+          0,
+          1,
+          210
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم",
+          "start": 0,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "WAVY",
+          "textDecorationSkipInk": false,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "textDecorationColor": {
+            "value": {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.8901960849761963,
+                "g": 0.1568627506494522,
+                "b": 0.250980406999588
+              },
+              "boundVariables": {}
+            }
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 13,
+      "textDecorationStyle": "WAVY",
+      "textDecorationSkipInk": false,
+      "textDecorationOffset": {
+        "unit": "AUTO"
+      },
+      "textDecorationThickness": {
+        "unit": "PIXELS",
+        "value": 2
+      },
+      "textDecorationColor": {
+        "value": {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.8901960849761963,
+            "g": 0.1568627506494522,
+            "b": 0.250980406999588
+          },
+          "boundVariables": {}
+        }
+      },
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:560",
+      "name": "Ordered RTL",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          30
+        ],
+        [
+          0,
+          1,
+          400
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم\nنص عربي طويل للقراءة والكتابة",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم\nنص عربي طويل للقراءة والكتابة",
+          "start": 0,
+          "end": 43,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 43,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "ORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:561",
+      "name": "Bullet RTL",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          420
+        ],
+        [
+          0,
+          1,
+          400
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم\nنص عربي طويل للقراءة والكتابة",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم\nنص عربي طويل للقراءة والكتابة",
+          "start": 0,
+          "end": 43,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "UNORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 43,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "UNORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:562",
+      "name": "Nested hanging",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          810
+        ],
+        [
+          0,
+          1,
+          400
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "مرحبا بالعالم\nنص عربي طويل للقراءة والكتابة",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": true,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا بالعالم\nنص عربي طويل للقراءة والكتابة",
+          "start": 0,
+          "end": 43,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 2,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 43,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "ORDERED"
+      },
+      "indentation": 2,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:563",
+      "name": "Mixed direction and styles",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          30
+        ],
+        [
+          0,
+          1,
+          590
+        ]
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 2
+      },
+      "characters": "مرحبا ABC 123 بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "مرحبا ",
+          "start": 0,
+          "end": 6,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": "ABC 123",
+          "start": 6,
+          "end": 13,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.1568627506494522,
+                "g": 0.4470588266849518,
+                "b": 0.8588235378265381
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        },
+        {
+          "characters": " بالعالم",
+          "start": 13,
+          "end": 21,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "textDecorationColor": {
+        "value": {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      }
+    },
+    {
+      "id": "509:564",
+      "name": "Wrapped tracked RTL",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          420
+        ],
+        [
+          0,
+          1,
+          590
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 1
+      },
+      "characters": "نص عربي طويل للقراءة والكتابة مرحبا بالعالم",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "نص عربي طويل للقراءة والكتابة مرحبا بالعالم",
+          "start": 0,
+          "end": 43,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": "AUTO"
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 1
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 43,
+      "textDecorationStyle": "SOLID",
+      "textDecorationSkipInk": true,
+      "textDecorationOffset": {
+        "unit": "AUTO"
+      },
+      "textDecorationThickness": {
+        "unit": "AUTO"
+      },
+      "textDecorationColor": {
+        "value": "AUTO"
+      },
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "509:565",
+      "name": "LTR with Arabic",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          810
+        ],
+        [
+          0,
+          1,
+          590
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Arabic",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 1
+      },
+      "characters": "Test مرحبا ABC بالعالم 123",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "Test مرحبا ABC بالعالم 123",
+          "start": 0,
+          "end": 26,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Arabic",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": "AUTO"
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 1
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 26,
+      "textDecorationStyle": "SOLID",
+      "textDecorationSkipInk": true,
+      "textDecorationOffset": {
+        "unit": "AUTO"
+      },
+      "textDecorationThickness": {
+        "unit": "AUTO"
+      },
+      "textDecorationColor": {
+        "value": "AUTO"
+      },
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "511:553",
+      "name": "Hebrew tracking",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          30
+        ],
+        [
+          0,
+          1,
+          780
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Hebrew",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 2
+      },
+      "characters": "שלום עולם",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "שלום עולם",
+          "start": 0,
+          "end": 9,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Hebrew",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 9,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "511:554",
+      "name": "Hebrew underline",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          420
+        ],
+        [
+          0,
+          1,
+          780
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Hebrew",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "שלום עולם",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "שלום עולם",
+          "start": 0,
+          "end": 9,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Hebrew",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": "AUTO"
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 9,
+      "textDecorationStyle": "SOLID",
+      "textDecorationSkipInk": true,
+      "textDecorationOffset": {
+        "unit": "AUTO"
+      },
+      "textDecorationThickness": {
+        "unit": "AUTO"
+      },
+      "textDecorationColor": {
+        "value": "AUTO"
+      },
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "511:555",
+      "name": "Hebrew mixed tracking",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          810
+        ],
+        [
+          0,
+          1,
+          780
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Hebrew",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "UNDERLINE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 2
+      },
+      "characters": "שלום ABC עולם 123",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "שלום ABC עולם 123",
+          "start": 0,
+          "end": 17,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Hebrew",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "UNDERLINE",
+          "textDecorationStyle": "SOLID",
+          "textDecorationSkipInk": true,
+          "textDecorationOffset": {
+            "unit": "AUTO"
+          },
+          "textDecorationThickness": {
+            "unit": "AUTO"
+          },
+          "textDecorationColor": {
+            "value": "AUTO"
+          },
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PIXELS",
+            "value": 2
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "NONE"
+          },
+          "indentation": 0,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 17,
+      "textDecorationStyle": "SOLID",
+      "textDecorationSkipInk": true,
+      "textDecorationOffset": {
+        "unit": "AUTO"
+      },
+      "textDecorationThickness": {
+        "unit": "AUTO"
+      },
+      "textDecorationColor": {
+        "value": "AUTO"
+      },
+      "listOptions": {
+        "type": "NONE"
+      },
+      "indentation": 0,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "511:556",
+      "name": "Hebrew ordered",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          30
+        ],
+        [
+          0,
+          1,
+          970
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Hebrew",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+          "start": 0,
+          "end": 34,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Hebrew",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 34,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "ORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "511:557",
+      "name": "Hebrew nested",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          420
+        ],
+        [
+          0,
+          1,
+          970
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Hebrew",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+      "textAlignHorizontal": "RIGHT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+          "start": 0,
+          "end": 34,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Hebrew",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "ORDERED"
+          },
+          "indentation": 2,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 34,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "ORDERED"
+      },
+      "indentation": 2,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    },
+    {
+      "id": "511:558",
+      "name": "Hebrew left aligned",
+      "type": "TEXT",
+      "visible": true,
+      "width": 340,
+      "height": 176,
+      "relativeTransform": [
+        [
+          1,
+          0,
+          810
+        ],
+        [
+          0,
+          1,
+          970
+        ]
+      ],
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.125490203499794,
+            "g": 0.125490203499794,
+            "b": 0.125490203499794
+          },
+          "boundVariables": {}
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 1,
+      "strokeAlign": "OUTSIDE",
+      "strokeJoin": "MITER",
+      "strokeCap": "NONE",
+      "strokeMiterLimit": 4,
+      "dashPattern": [],
+      "effects": [],
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "fontName": {
+        "family": "Noto Sans Hebrew",
+        "style": "Regular",
+        "variationSettings": {
+          "wght": 400,
+          "wdth": 100
+        }
+      },
+      "fontSize": 26,
+      "textCase": "ORIGINAL",
+      "textDecoration": "NONE",
+      "lineHeight": {
+        "unit": "PIXELS",
+        "value": 46
+      },
+      "letterSpacing": {
+        "unit": "PERCENT",
+        "value": 0
+      },
+      "characters": "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "TOP",
+      "textAutoResize": "NONE",
+      "textTruncation": "DISABLED",
+      "maxLines": null,
+      "hangingPunctuation": false,
+      "hangingList": false,
+      "hasMissingFont": false,
+      "paragraphSpacing": 0,
+      "paragraphIndent": 0,
+      "listSpacing": 0,
+      "styledSegments": [
+        {
+          "characters": "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+          "start": 0,
+          "end": 34,
+          "fontSize": 26,
+          "fontName": {
+            "family": "Noto Sans Hebrew",
+            "style": "Regular",
+            "variationSettings": {
+              "wght": 400,
+              "wdth": 100
+            }
+          },
+          "textDecoration": "NONE",
+          "textDecorationStyle": null,
+          "textDecorationSkipInk": null,
+          "textDecorationOffset": null,
+          "textDecorationThickness": null,
+          "textDecorationColor": null,
+          "textCase": "ORIGINAL",
+          "lineHeight": {
+            "unit": "PIXELS",
+            "value": 46
+          },
+          "letterSpacing": {
+            "unit": "PERCENT",
+            "value": 0
+          },
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.125490203499794,
+                "g": 0.125490203499794,
+                "b": 0.125490203499794
+              },
+              "boundVariables": {}
+            }
+          ],
+          "listOptions": {
+            "type": "UNORDERED"
+          },
+          "indentation": 1,
+          "boundVariables": {},
+          "paragraphSpacing": 0,
+          "listSpacing": 0,
+          "paragraphIndent": 0,
+          "openTypeFeatures": {}
+        }
+      ],
+      "start": 0,
+      "end": 34,
+      "textDecorationStyle": null,
+      "textDecorationSkipInk": null,
+      "textDecorationOffset": null,
+      "textDecorationThickness": null,
+      "textDecorationColor": null,
+      "listOptions": {
+        "type": "UNORDERED"
+      },
+      "indentation": 1,
+      "boundVariables": {},
+      "openTypeFeatures": {}
+    }
+  ]
+}

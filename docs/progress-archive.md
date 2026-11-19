@@ -659,3 +659,23 @@ parity or live Desktop-plugin evidence. Richer text fills/strokes are next.
   exports used the text fill; validation uses PNG. Synthetic checks cover color,
   percentages, zero thickness, overflow, invalid values and unchanged uploads.
   This does not complete the separate live development-plugin UI milestone.
+
+## 2026-11-20 — RTL lists, decorations and tracking
+
+- Removed RTL style exclusions in CoreText and the exporter. Decorations follow
+  shaped visual runs rather than logical endpoints; tracking trims the visual
+  line end. RTL auto underlines use outline skip-ink. Lists mirror markers and
+  use observed leading-edge gutters, with wrapped/truncated lines and alignment.
+- Saved 18 Arabic/Hebrew Figma cases, their node snapshot and generated Rust;
+  [comparison](rtl-text-compare.png) covers tracking of both signs, mixed bidi,
+  underlines/strike/waves, ordered/bulleted lists, nesting/hanging and alignment.
+  Font/edge differences remain, including unexpected extra Figma counter glyphs.
+  The Hebrew reference requires explicit wght=400/wdth=100 axes. Its pinned OFL
+  font adds 112,640 test/example bytes, no dependency or default-build cost.
+- Automatic decoration colors across mixed fills differed semantically; kept
+  that combination as a hard exporter error and used explicit underline colors
+  in the mixed-color reference. Explicit bidi controls remain unsupported.
+- Synthetic regression coverage checks disjoint decoration spans, marker
+  direction, continuation insets, wrapping/truncation and unchanged uploads.
+  The plugin remains read-only and all-or-nothing. This is not live validation
+  of the development-plugin UI.

@@ -3164,3 +3164,206 @@ fn custom_underlines_preserve_color_overflow_skip_ink_and_cache() {
         assert!(!renderer.problems().is_empty());
     }
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn rtl_lists_tracking_and_decorations_render_and_cache() {
+    use figleaf::paint::Align;
+    use figleaf::text::{
+        Axis, FontSource, ListOptions, TextDecoration, TextDecorationStyle, coretext::CoreText,
+    };
+    let axes = [
+        Axis {
+            tag: *b"wght",
+            value: 400.,
+        },
+        Axis {
+            tag: *b"wdth",
+            value: 100.,
+        },
+    ];
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/NotoSansHebrew.ttf"),
+        axes: &axes,
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let base = Text::new(
+        "שלום עולם\nטקסט ארוך לקריאה ולכתיבה",
+        Rect::new(10., 5., 180., 180.),
+    )
+    .size(26., 40.)
+    .wrap()
+    .align(Align::End, Align::Start)
+    .color(hex(0x222222))
+    .list_options(ListOptions::Ordered)
+    .indentation(1)
+    .letter_spacing(1.)
+    .text_decoration(TextDecoration::Underline);
+    let mut canvas = Canvas::new();
+    canvas.text(base.clone());
+    let first = gpu.render(
+        &mut renderer,
+        &canvas,
+        [220, 200],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    assert!(first.rgba.as_chunks::<4>().0.iter().any(|p| p[3] > 200));
+    let report = renderer
+        .prepare(
+            &gpu.device,
+            &gpu.queue,
+            &canvas,
+            [220, 200],
+            1.,
+            &mut backend,
+        )
+        .unwrap();
+    assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+    for align in [Align::Start, Align::Center, Align::End] {
+        for tracking in [-1., 0., 2.] {
+            let mut canvas = Canvas::new();
+            canvas.text(
+                base.clone()
+                    .align(align, Align::Start)
+                    .letter_spacing(tracking)
+                    .text_decoration_style(TextDecorationStyle::Wavy),
+            );
+            let image = gpu.render(
+                &mut renderer,
+                &canvas,
+                [220, 200],
+                1.,
+                [0.; 4],
+                &mut backend,
+            );
+            assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+            assert_ne!(first.rgba, image.rgba);
+        }
+    }
+    // An empty RTL list item still places its marker on the right.
+    let mut empty = figleaf::text::TextRun::new("\n")
+        .size(26., 40.)
+        .list_options(ListOptions::Ordered)
+        .indentation(1);
+    empty.direction = figleaf::text::TextDirection::RightToLeft;
+    let mut blank = Canvas::new();
+    blank.text(
+        Text::rich(vec![empty], Rect::new(10., 5., 180., 100.))
+            .wrap()
+            .align(Align::End, Align::Start),
+    );
+    let image = gpu.render(&mut renderer, &blank, [220, 200], 1., [0.; 4], &mut backend);
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+    let ink: Vec<_> = image
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p[3] > 200)
+        .map(|(i, _)| i % 220)
+        .collect();
+    assert!(!ink.is_empty() && ink.iter().all(|&x| x > 140));
+    // Decorated RTL paragraphs also survive ending truncation and finite line counts.
+    let mut canvas = Canvas::new();
+    canvas.text(
+        base.max_lines(1)
+            .text_truncation(figleaf::text::TextTruncation::Ending),
+    );
+    gpu.render(
+        &mut renderer,
+        &canvas,
+        [220, 200],
+        1.,
+        [0.; 4],
+        &mut backend,
+    );
+    assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+}
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn bidi_decorations_use_visual_spans_and_lists_preserve_leading_insets() {
+    use figleaf::text::{
+        Axis, Backend, DecorationValue, FontSource, ListOptions, TextDecoration, TextDirection,
+        TextRun, coretext::CoreText, layout_runs, resolve_runs,
+    };
+    let axes = [
+        Axis {
+            tag: *b"wght",
+            value: 400.,
+        },
+        Axis {
+            tag: *b"wdth",
+            value: 100.,
+        },
+    ];
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/NotoSansHebrew.ttf"),
+        axes: &axes,
+    })])
+    .unwrap();
+    let runs = [
+        TextRun::new("אב ABC")
+            .size(26., 40.)
+            .text_decoration(TextDecoration::Underline)
+            .text_decoration_thickness(DecorationValue::Pixels(2.))
+            .text_decoration_skip_ink(false),
+        TextRun::new(" DEF גד").size(26., 40.),
+    ];
+    let resolved = resolve_runs(&mut backend, &runs).unwrap();
+    let outlines = backend.outline_runs(&resolved).unwrap();
+    let starts: Vec<_> = outlines.decoration_paths[0]
+        .commands
+        .iter()
+        .filter_map(|c| match c {
+            figleaf::path::Command::MoveTo(p) => Some(p[0]),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        starts.len(),
+        2,
+        "a single logical style has two disjoint visual spans"
+    );
+    assert!((starts[1] - starts[0]).abs() > 30.);
+    assert!(outlines.decoration_paths[1].commands.is_empty());
+    let paragraphs = [TextRun::new("שלום עולם טקסט ארוך לקריאה ולכתיבה\nשלום")
+        .size(26., 40.)
+        .list_options(ListOptions::Ordered)
+        .indentation(1)];
+    let lines = layout_runs(&mut backend, &paragraphs, 180., true).unwrap();
+    assert!(lines.len() > 2);
+    assert!((lines[0].indent - 39.).abs() < 0.01);
+    let marker = lines[0].marker.as_ref().unwrap();
+    assert_eq!(marker.runs[0].text, "1.");
+    assert_eq!(marker.runs[0].direction, TextDirection::RightToLeft);
+    assert!(lines[1].marker.is_none());
+    assert_eq!(lines[1].indent, lines[0].indent);
+    assert_eq!(
+        lines.last().unwrap().marker.as_ref().unwrap().runs[0].text,
+        "2."
+    );
+    let mut nested = paragraphs[0].clone();
+    nested.indentation = 2;
+    nested.hanging_list = true;
+    assert!(
+        (layout_runs(&mut backend, &[nested], 180., true).unwrap()[0].indent - 39.).abs() < 0.01
+    );
+    // End tracking belongs to the rightmost visual style, not the last source run.
+    let tracked = [
+        TextRun::new("אב ").size(26., 40.).letter_spacing(3.),
+        TextRun::new("ABC").size(26., 40.).letter_spacing(0.),
+    ];
+    let measured = backend.measure_runs(&tracked).unwrap();
+    let resolved = resolve_runs(&mut backend, &tracked).unwrap();
+    assert_eq!(
+        backend.outline_runs(&resolved).unwrap().metrics.advance,
+        measured.advance
+    );
+}

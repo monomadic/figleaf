@@ -715,10 +715,9 @@ test('script-aware text exports intact Unicode and explicit font manifests',()=>
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
-test('unsupported script controls, emoji, casing and RTL styles stay hard errors',()=>{
+test('unsupported script controls, emoji and casing stay hard errors',()=>{
   for(const patch of [{characters:'🙂'},{characters:'a\u202eb'},{characters:'a\ufe0f'},
-    {characters:'ΕΛΛΗΝΙΚΑ',textCase:'LOWER'},{characters:'عربي',textDecoration:'UNDERLINE'},
-    {characters:'عربي',letterSpacing:{unit:'PIXELS',value:1}}]) {
+    {characters:'ΕΛΛΗΝΙΚΑ',textCase:'LOWER'}]) {
     const r=exportHierarchy([text(patch)]);assert.equal(r.code,null);assert.ok(r.errors.length);
   }
   for(const characters of ['हिन्दी','العربية','日本語、中文。','ภาษาไทย','e\u0301'])
@@ -786,7 +785,6 @@ test('list settings and OpenType overrides export deterministically and compile'
 test('unsupported lists and OpenType combinations fail without partial output',()=>{
   for(const patch of [{listOptions:{type:'UNKNOWN'}},{listOptions:{type:'ORDERED'},indentation:0},
     {indentation:6},{indentation:1.5},{listSpacing:-1},{listSpacing:Infinity},
-    {listOptions:{type:'UNORDERED'},characters:'العربية'},
     {openTypeFeatures:{liga:true}},{openTypeFeatures:{LIGA:1}},{openTypeFeatures:{VERT:true}},
     {openTypeFeatures:{RAND:true}},{openTypeFeatures:{KERN:true},letterSpacing:{unit:'PIXELS',value:1}},
     {textCase:'SMALL_CAPS',openTypeFeatures:{SMCP:false}}]) {
@@ -826,4 +824,28 @@ test('custom decoration color bindings are verified before export',async()=>{
   let visited=false;
   const valid=await exportWithVariables([n],'SRGB',{getVariableByIdAsync:async()=>({name:'Underline',resolveForConsumer:()=>{visited=true;return {resolvedType:'COLOR',value:solid.color};}})});
   assert.ok(visited);assert.deepEqual(Array.from(valid.errors),[]);assert.ok(valid.code.includes('text_decoration_color('));
+});
+
+test('RTL lists, decoration and tracking export intact and compile',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'rtl-text-reference.json'),'utf8'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/rtl_text.rs'),'utf8'));
+  for(const part of ['مرحبا','שלום','TextDecoration::Underline','TextDecoration::Strikethrough','TextDecorationStyle::Wavy','ListOptions::Ordered','ListOptions::Unordered','.letter_spacing(-1.0)'])assert.ok(r.code.includes(part),part);
+  for(const characters of ['עברית','العربية'])for(const textDecoration of ['NONE','UNDERLINE','STRIKETHROUGH'])
+    assert.deepEqual(exportHierarchy([text({characters,textDecoration,letterSpacing:{unit:'PIXELS',value:2},listOptions:{type:'ORDERED'},indentation:2})]).errors,[]);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-rtl-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut c=Canvas::new();draw_selection(&mut c,[0,1]);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('automatic decoration colors across mixed fills fail without partial Rust',()=>{
+  const root=JSON.parse(fs.readFileSync(path.join(__dirname,'rtl-text-reference.json'),'utf8'));
+  const n=root.children.find(n=>n.id==='509:563');
+  for(const s of n.styledSegments)s.textDecorationColor={value:'AUTO'};
+  n.getStyledTextSegments=()=>n.styledSegments;
+  const r=exportHierarchy([n]);assert.equal(r.code,null);assert.match(JSON.stringify(r.errors),/explicit decoration colors/);
 });

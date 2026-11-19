@@ -307,8 +307,8 @@ Script-aware output preserves supported BMP text, combining marks and explicit
 font/style ranges. The host uses CoreText with exact font bytes and optionally
 explicit fallback slots; generated comments explain this requirement. The plugin
 cannot recover Figma’s implicit glyph fallback chain and does not guess it.
-Emoji, variation selectors, explicit bidi controls, non-Latin case conversion and
-RTL decorations/tracking suppress all Rust. Missing glyph coverage and font
+Emoji, variation selectors, explicit bidi controls and non-Latin case conversion
+suppress all Rust. Missing glyph coverage and font
 changes inside a grapheme are diagnosed by the renderer. The
 [script comparison](../docs/scripts-compare.png) covers generated output;
 whole-plugin Desktop validation remains an open task.
@@ -331,8 +331,15 @@ the supplied font must provide the real features. The renderer diagnoses absent
 features rather than silently ignoring them.
 
 Invalid/conflicting paragraph settings, indentation outside 0–5 (1–5 for lists),
-RTL lists, malformed/vertical/random features, and enabled kerning with nonzero
+malformed/vertical/random features, and enabled kerning with nonzero
 tracking suppress all output. [Lists and small caps](../docs/lists-opentype-compare.png)
 were reviewed against a live Figma export; explicit feature toggles have synthetic
 shaping/export tests because the plugin API exposes them read-only. The exporter
 still only displays Rust and performs no filesystem writes.
+
+RTL lists, decoration and tracking now export through the same native text API;
+[Arabic/Hebrew comparison](../docs/rtl-text-compare.png) includes mixed-direction
+styles, nesting, hanging markers and wrapping. Unsupported automatic decoration
+color inheritance across mixed fills still suppresses all Rust; set explicit
+underline colors in Figma. Source snapshots and generated-code compilation are
+fixture evidence, not live development-plugin UI validation.

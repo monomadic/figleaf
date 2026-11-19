@@ -264,7 +264,7 @@ pub struct RunLine {
     pub runs: Vec<TextRun>,
     pub height: f32,
     pub metrics: Metrics,
-    /// First-line inset; zero on wrapped continuation lines.
+    /// Leading-edge inset: paragraph indent on the first line, plus list gutter.
     pub indent: f32,
     pub available_width: f32,
     /// Extra gap after a paragraph break, never after the final paragraph.
@@ -283,7 +283,7 @@ pub struct RunLine {
 pub struct ListMarker {
     pub runs: Vec<TextRun>,
     pub metrics: Metrics,
-    /// Horizontal position relative to the text box, before line alignment.
+    /// Leading-edge marker position before alignment; mirror for RTL paragraphs.
     pub x: f32,
 }
 #[derive(Clone)]
@@ -373,9 +373,6 @@ fn list_paragraphs(
         let marker = if options == ListOptions::None {
             None
         } else {
-            if first.direction == TextDirection::RightToLeft {
-                return Err(Error("RTL lists are unsupported"));
-            }
             counts[level - 1] += 1;
             counts[level..].fill(0);
             let mut marker = prior_style.clone().unwrap_or_else(|| first.clone());
@@ -384,6 +381,7 @@ fn list_paragraphs(
             } else {
                 format!("{}.", counter(counts[level - 1], level))
             };
+            marker.direction = first.direction;
             marker.text_decoration = TextDecoration::None;
             marker.decoration_options = DecorationOptions::default();
             marker.list_options = ListOptions::None;
@@ -429,8 +427,11 @@ fn list_paragraphs(
         .into_iter()
         .map(|(mut p, group, level, size, hanging)| {
             if let Some(marker) = &mut p.marker {
-                let gutter = (size * 1.2).max(widths[&(group, level)]);
-                p.inset = (level - 1) as f32 * size * 1.2 + if hanging { 0. } else { gutter };
+                let rtl = marker.runs[0].direction == TextDirection::RightToLeft;
+                let gap = if rtl { size * 0.3 } else { 0. };
+                let gutter = (size * 1.2).max(widths[&(group, level)]) + gap;
+                p.inset =
+                    (level - 1) as f32 * (size * 1.2 + gap) + if hanging { 0. } else { gutter };
                 marker.x = p.inset - size * 0.3 - marker.metrics.advance as f32;
             }
             p

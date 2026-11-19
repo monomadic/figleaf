@@ -56,7 +56,7 @@ pub fn supported_char(c: char) -> bool {
             && !c.is_control()
 }
 
-#[cfg(feature = "text-coretext")]
+#[cfg(any(feature = "text-coretext", feature = "wgpu"))]
 pub(crate) fn is_rtl_char(c: char) -> bool {
     matches!(c as u32,0x0590..=0x08ff|0xfb1d..=0xfdff|0xfe70..=0xfefc)
 }
@@ -466,7 +466,9 @@ pub mod coretext {
                         .resolve(run.style.size)
                         .map_or(f64::NAN, f64::from),
                     custom_decoration: u32::from(
-                        run.decoration_options != DecorationOptions::default(),
+                        run.decoration_options != DecorationOptions::default()
+                            || run.text_decoration == TextDecoration::Underline
+                                && run.text.chars().any(is_rtl_char),
                     ),
                     skip_ink: u32::from(run.decoration_options.skip_ink),
                     direction: run.direction as i32,
@@ -638,13 +640,6 @@ pub mod coretext {
             if source.is_empty() {
                 return Ok(runs.to_vec());
             }
-            if source.chars().any(is_rtl_char)
-                && runs.iter().any(|r| {
-                    r.text_decoration != TextDecoration::None || r.style.letter_spacing != 0.
-                })
-            {
-                return Err(Error("RTL decoration and tracking are not supported"));
-            }
             let boundaries = self.text_boundaries(&source)?;
             let mut result: Vec<TextRun> = Vec::new();
             let mut start = 0;
@@ -725,12 +720,6 @@ pub mod coretext {
                         } else {
                             TextDirection::LeftToRight
                         };
-                    }
-                    if part.direction == TextDirection::RightToLeft
-                        && (part.text_decoration != TextDecoration::None
-                            || part.style.letter_spacing != 0.)
-                    {
-                        return Err(Error("RTL decoration and tracking are not supported"));
                     }
                     let merged = result.last_mut().is_some_and(|last| {
                         let mut check = last.clone();
@@ -1301,7 +1290,7 @@ mod script_tests {
         }
         assert!(
             b.measure_runs(&[TextRun::new("عربي").text_decoration(TextDecoration::Underline)])
-                .is_err()
+                .is_ok()
         );
         assert!(
             b.measure_runs(&[TextRun::new("ΕΛΛΗΝΙΚΑ").text_case(TextCase::Lower)])
