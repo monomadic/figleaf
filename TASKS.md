@@ -77,7 +77,7 @@ Completed implementation notes and comparisons are in the
 - **Paint API/renderer:** primitives, paths, transforms, clipping, masks,
   resolved smoothed/complex stroke geometry, multiple paints, gradients,
   images/patterns, flattened opacity, blend modes, shadows and normal blur.
-  Support has explicit exceptions and resource limits; see [README](README.md).
+  Support has explicit exceptions and resource limits; see the [reference](docs/REFERENCE.md).
 - **Text/layout:** supported BMP scripts with explicit styled runs/fallback through CoreText, wrapping
   and text shadows;
   fixed/hug/fill auto layout with horizontal wrapping. Text measurement is

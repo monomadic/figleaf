@@ -2,14 +2,25 @@
 
 figleaf exists so a small native Rust UI can draw what its owner designed in
 Figma by calling a library instead of hand-drawing it each time: shapes,
-strokes, shadows and text with Figma's meaning, plus Figma's auto layout. An
-agent reads the values from Figma and writes figleaf calls into the host.
+strokes, shadows and text with Figma's meaning, plus Figma's auto layout. The
+Figma plugin in `plugin/` shows Rust for a selection; an agent or the owner
+pastes that into the host, or writes the same calls by hand from Figma's
+values. README.md has the steps under "Using figleaf in an app".
 
 ## Keep it small
 
-- It is a paint library and a layout solver. No importer, no file format, no
-  scene or widget runtime, no input handling. The host owns state, events and
-  its render pass. If a change needs one of those, stop and ask.
+- It is a paint library, a layout solver, and a read-only Figma plugin that
+  displays Rust calling them. The plugin is in scope: extend it together with
+  the library. It only shows code; it writes no files and has no network
+  access.
+- No file format, no scene or widget runtime, no input handling. The host owns
+  state, events and its render pass. If a change needs one of those, stop and
+  ask.
+- When putting a design into a host: use the plugin's output where the plugin
+  accepts the selection, and write calls by hand for small controls or for a
+  piece it refuses. An agent cannot click the plugin in Figma Desktop; ask the
+  owner to run it and paste the result, or hand-write from values read through
+  Figma's API.
 - Read TASKS.md and work on its first unmet task unless the user changes it.
 - New API should read like Figma's inspector: same names, same numbers.
 - Prefer the general mechanism over one that only fits the example.
@@ -29,7 +40,8 @@ agent reads the values from Figma and writes figleaf calls into the host.
 
 ## Rules
 
-Keep README.md and TASKS.md current and short. Do not modify figui, Switchblade,
+Keep README.md and TASKS.md current and short. README.md is the guide to using
+figleaf; per-feature detail goes in docs/REFERENCE.md and plugin/README.md. Do not modify figui, Switchblade,
 Abner or other host apps without a separate instruction.
 
 Validate with:

@@ -698,7 +698,7 @@ Earlier comparison links are retained below.
    Ending truncation and maximum line counts are done (2026-11-18),
    [including partial heights and mixed styles](truncation-compare.png).
    Script-aware shaping, explicit fallback and Unicode line breaking are done
-   for the [documented BMP profile](../README.md#script-aware-text-and-explicit-fallback)
+   for the [documented BMP profile](REFERENCE.md#script-aware-text-and-explicit-fallback)
    (2026-11-18), with [representative script comparisons](scripts-compare.png).
    Richer text fills and aligned/stacked strokes are done (2026-11-19),
    with [mixed paints and silhouette comparisons](text-paints-compare.png).
