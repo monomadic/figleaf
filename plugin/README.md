@@ -357,7 +357,7 @@ absolute children. Plain frames apply their children's resize constraints. Hidde
 participate. Draw calls use solved bounds and translations, including clips;
 layout errors return before appending paint. The plugin still only displays code.
 
-Vertical wrapping/grid layout, baseline alignment, negative gaps,
+Vertical wrapping/grid layout, vertical baseline alignment, negative gaps,
 rotated/scaled/skewed nodes, groups,
 pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
@@ -400,7 +400,7 @@ development plugin to load the rebuilt bundle.
 Horizontal wrapped auto layout now exports row gaps and automatic/space-between
 track distribution. Fixed/hug/fill sizing, min/max, inside borders, absolute
 children and measured text retain the responsive layout path. Invalid row gaps,
-unknown distribution, vertical wrapping and baseline alignment produce layer
+unknown distribution and vertical wrapping produce layer
 errors and no Rust. The [three-width fixture](../docs/responsive-wrap-360-compare.png)
 checks row breaking, hug height, fill-height stretching and row distribution.
 
@@ -412,3 +412,10 @@ sizing on that axis and still reject resizing resolved path/stroke geometry.
 Zero-size scale references and negative stretch spans fail explicitly; the latter
 are detected at layout time before paint is appended. See the
 [three-size comparison](../docs/responsive-constraints-300-compare.png).
+
+Horizontal baseline alignment now emits native first-baseline measurement for
+fixed and hug text, including inherited baselines through nested containers and
+per-track wrapped alignment. Shapes without text align by their bottom edge.
+Fill-height dependencies, vertical baseline stacks and baseline text with
+vertically stretching/scaling constraints hard-error. Missing fonts or baseline
+measurements fail before drawing. See the [two-width comparison](../docs/responsive-baseline-400-compare.png).

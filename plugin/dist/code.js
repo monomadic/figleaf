@@ -6,7 +6,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const errors = [], lines = [], fonts = [];
   const layoutNodes = new Map(), layoutLines = [], layoutRects = new WeakMap(), layoutTransforms = new WeakMap();
   let responsive = false;
-  const measuredText = new Map();
+  const measuredText = new Map(), baselineText = new Set();
   let maskIndex = 0, compositeIndex=0, unicodeText=false;
   const latinChar=c=>{const p=c.codePointAt(0);return p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff;};
   const supportedChar=c=>{const p=c.codePointAt(0);return p>=0x20&&!(p>=0x7f&&p<=0x9f)&&!(p>=0xd800&&p<=0xdfff)&&![0xad,0x61c,0x180e,0x20e3,0xfeff].includes(p)&&!(p>=0x200e&&p<=0x200f)&&!(p>=0x2028&&p<=0x202e)&&!(p>=0x2066&&p<=0x2069)&&!(p>=0xfff9&&p<=0xfffb)&&!(p>=0xfdd0&&p<=0xfdef)&&(p&0xffff)<0xfffe;};
@@ -455,7 +455,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           }
         }
         if(measuredText.has(n)&&errors.length===before) {
-          measuredText.set(n, `Text::rich(vec![${measureRuns.join(', ')}], Rect::new(0.0, 0.0, ${number(n.width)}, ${number(n.height)})).wrap()${truncation==='ENDING'?'.text_truncation(figleaf::text::TextTruncation::Ending)':''}${n.maxLines!=null?`.max_lines(${n.maxLines})`:''}`);
+          measuredText.set(n, `Text::rich(vec![${measureRuns.join(', ')}], Rect::new(0.0, 0.0, ${number(n.width)}, ${number(n.height)})).wrap()${truncation==='ENDING'?'.text_truncation(figleaf::text::TextTruncation::Ending)':''}${n.maxLines!=null?`.max_lines(${n.maxLines})`:''}${baselineText.has(n)?`.align(figleaf::paint::Align::Start, figleaf::paint::Align::${{TOP:'Start',CENTER:'Center',BOTTOM:'End'}[n.textAlignVertical??'TOP']})`:''}`);
         }
         if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');
         for (const type of ['DROP_SHADOW','INNER_SHADOW']) {
@@ -583,7 +583,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     if(depth>128)throw Error('Hierarchy exceeds 128 levels.');
     return (n.layoutMode && n.layoutMode!=='NONE') || (depth>0 && n.constraints && [n.constraints.horizontal,n.constraints.vertical].some(c=>c!=='MIN')) || (n.children||[]).some(c=>hasLayout(c,depth+1));
   }
-  function layoutNode(n, parent, path, depth=0) {
+  function layoutNode(n, parent, path, depth=0, baselineScope=false) {
     if(n.visible===false)return;
     try {
       if(depth>128 || layoutNodes.size>=5000)throw Error('Responsive layout exceeds hierarchy limits.');
@@ -596,7 +596,10 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const t=n.relativeTransform;inverse(t);
       if(t[0][0]!==1||t[0][1]!==0||t[1][0]!==0||t[1][1]!==1)throw Error('Responsive rotated, scaled or skewed nodes are unsupported.');
       const inFlow=parent!==null&&['HORIZONTAL','VERTICAL'].includes(parent.layoutMode)&&n.layoutPositioning!=='ABSOLUTE';
+      baselineScope ||= inFlow && parent.counterAxisAlignItems==='BASELINE';
       const sizing=[n.layoutSizingHorizontal??'FIXED',n.layoutSizingVertical??'FIXED'];
+      if(baselineScope && sizing[1]==='FILL')throw Error('Fill-height baseline dependencies are unsupported.');
+      if(n.counterAxisAlignItems==='BASELINE' && mode!=='HORIZONTAL')throw Error('Baseline alignment requires horizontal auto layout.');
       if(sizing.some(v=>!['FIXED','HUG','FILL'].includes(v)))throw Error('Unknown responsive sizing mode.');
       if(sizing.includes('HUG')&&!stack&&n.type!=='TEXT')throw Error('Responsive hug sizing requires an auto-layout frame or measured text.');
       if(parent!==null&&sizing.includes('FILL')&&!inFlow)throw Error('Responsive fill sizing requires an in-flow auto-layout child.');
@@ -608,10 +611,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if(['STRETCH','SCALE'].includes(c)&&sizing[a]!=='FIXED')throw Error('Stretch/scale constraints require fixed sizing on that axis.');
         if(c==='SCALE'&&[parent.width,parent.height][a]===0)throw Error('Scale constraints require a nonzero authored parent size.');
       });
+      if(baselineScope && n.type==='TEXT' && constrained && ['STRETCH','SCALE'].includes(constraints[1]))throw Error('Baseline text with vertically resizing constraints is unsupported.');
       if(n.type==='TEXT') {
         if(n.textAutoResize&&!['NONE','HEIGHT','WIDTH_AND_HEIGHT','TRUNCATE'].includes(n.textAutoResize))throw Error('Unknown text auto-resize mode.');
         if(n.textAutoResize==='HEIGHT'&&sizing[1]!=='HUG'||n.textAutoResize==='WIDTH_AND_HEIGHT'&&sizing.some(v=>v!=='HUG'))throw Error('Text auto-resize conflicts with responsive sizing.');
-        if(sizing.includes('HUG'))measuredText.set(n,null);
+        if(baselineScope)baselineText.add(n);
+        if(sizing.includes('HUG')||baselineScope)measuredText.set(n,null);
       }
       const min=[n.minWidth??0,n.minHeight??0], max=[n.maxWidth??Infinity,n.maxHeight??Infinity];
       [n.width,n.height,...min].forEach(v=>{number(v);if(v<0)throw Error('Negative layout size or minimum.');});
@@ -621,6 +626,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       let expr=stack?`Node::${mode==='HORIZONTAL'?'row':'column'}().size(${array([n.width,n.height])})`:`Node::fixed(${array([n.width,n.height])})`;
       expr+=`.width(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[0]]}).height(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[1]]})`;
       expr+=`.min(${array(min)}).max([${max.map(v=>v===Infinity?'f32::INFINITY':number(v)).join(', ')}])`;
+      if(baselineText.has(n))expr+='.measure_baseline()';
       if(parent&&!inFlow)expr+=`.absolute(${array([t[0][2],t[1][2]])})`;
       if(constrained&&constraints.some(c=>c!=='MIN'))expr+=`.constraints(${constraints.map(c=>'figleaf::layout::Constraint::'+({MIN:'Min',CENTER:'Center',MAX:'Max',STRETCH:'Stretch',SCALE:'Scale'}[c])).join(', ')})`;
       if(stack){
@@ -641,14 +647,14 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         const padding=[n.paddingLeft??0,n.paddingTop??0,n.paddingRight??0,n.paddingBottom??0],gap=n.itemSpacing??0;
         [...padding,gap].forEach(v=>{number(v);if(v<0)throw Error('Responsive negative padding/gaps are unsupported.');});
         const primary={MIN:'Min',CENTER:'Center',MAX:'Max',SPACE_BETWEEN:'SpaceBetween'}[n.primaryAxisAlignItems??'MIN'];
-        const counter={MIN:'Min',CENTER:'Center',MAX:'Max'}[n.counterAxisAlignItems??'MIN'];
+        const counter={MIN:'Min',CENTER:'Center',MAX:'Max',BASELINE:'Baseline'}[n.counterAxisAlignItems??'MIN'];
         if(!primary||!counter)throw Error('Responsive baseline/unknown alignment is unsupported.');
         expr+=`.paddings(${array(padding)}).gap(${number(gap)}).align(LayoutAlign::${primary}, LayoutAlign::${counter})`;
       }
       layoutLines.push(`    // ${comment(path)} [${comment(n.id)}]`);
       if(parent===null)layoutLines.push(`    let mut tree = Tree::new(${expr});`, '    let node_0 = tree.root();');
       else layoutLines.push(`    let node_${i} = tree.add(node_${layoutNodes.get(parent)}, ${expr});`);
-      if(n.type!=='BOOLEAN_OPERATION')for(const child of n.children||[])layoutNode(child,n,path+' / '+child.name,depth+1);
+      if(n.type!=='BOOLEAN_OPERATION')for(const child of n.children||[])layoutNode(child,n,path+' / '+child.name,depth+1,baselineScope);
     } catch(e){fail(n,path,e.message);}
   }
   try {responsive=!!hasLayout(selection[0]);if(responsive)layoutNode(selection[0],null,selection[0].name);}catch(e){fail(selection[0],selection[0].name,e.message);}
@@ -678,8 +684,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       ...layoutLines.map(line=>layoutNodes.size===1?line.replace('let mut tree =', 'let tree ='):line),
       ...(measuredText.size ? [
         ...[...measuredText].map(([n,expr])=>`    let text_${layoutNodes.get(n)} = ${expr};`),
-        '    let solved = tree.solve_measured(size, |node, width| {',
-        ...[...measuredText.keys()].map(n=>`        if node == node_${layoutNodes.get(n)} { return text_${layoutNodes.get(n)}.measure(backend, width).map(Some); }`),
+        `    let solved = tree.${baselineText.size?'solve_measured_with_baselines':'solve_measured'}(size, |node, width| {`,
+        ...[...measuredText.keys()].map(n=>`        if node == node_${layoutNodes.get(n)} { return text_${layoutNodes.get(n)}.${baselineText.size?`measure_with_baseline(backend, width, ${baselineText.has(n)&&(n.layoutSizingVertical??'FIXED')==='FIXED'?`Some(${number(Math.max(n.minHeight??0,Math.min(n.maxHeight??Infinity,n.height)))})`:'None'})`:'measure(backend, width)'}.map(Some); }`),
         '        Ok(None)', '    })?;',
       ] : ['    let solved = match size { Some(size) => tree.solve(size)?, None => tree.solve_natural()? };']),
       `    Ok([${[...layoutNodes.values()].map(i=>`solved[node_${i}]`).join(', ')}])`, '}',

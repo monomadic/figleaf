@@ -188,3 +188,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "responsive_constraints"
 required-features = ["wgpu"]
+
+[[example]]
+name = "responsive_baseline"
+required-features = ["wgpu", "text-coretext"]

@@ -968,7 +968,7 @@ test('wrapped generated layout matches live Figma at three widths',()=>{
 });
 
 test('wrapped export validates row gaps and distribution without partial Rust',()=>{
-  for(const patch of [{counterAxisSpacing:-1},{counterAxisSpacing:NaN},{counterAxisAlignContent:'BOGUS'},{layoutMode:'VERTICAL'},{counterAxisAlignItems:'BASELINE'}]) {
+  for(const patch of [{counterAxisSpacing:-1},{counterAxisSpacing:NaN},{counterAxisAlignContent:'BOGUS'},{layoutMode:'VERTICAL'},{counterAxisAlignItems:'UNKNOWN'}]) {
     const root=structuredClone(require('./responsive-wrap-reference.json'));
     Object.assign(root.children[0],patch);
     const r=exportHierarchy([root]);assert.equal(r.code,null);
@@ -1000,4 +1000,20 @@ test('constraints activate plain-frame responsive export and reject unsupported 
     r=exportHierarchy([copy]);assert.equal(r.code,null);assert.ok(r.errors.some(e=>e.nodeId===copy.children[0].id));
   }
   root.width=0;r=exportHierarchy([root]);assert.equal(r.code,null);assert.ok(r.errors.some(e=>e.message.includes('nonzero authored parent')));
+});
+
+test('baseline export emits font measurement and rejects cyclic fill height',()=>{
+  const root=structuredClone(require('./responsive-baseline-reference.json'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_baseline.rs'),'utf8'));
+  assert.match(r.code,/solve_measured_with_baselines/);assert.match(r.code,/LayoutAlign::Baseline/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-baseline-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut canvas=Canvas::new();let before=canvas.clone();assert!(draw_selection(&mut canvas,[Some(240.),None],[0],&mut figleaf::text::NoText).is_err());assert_eq!(canvas,before);}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+  root.children[0].children[0].layoutSizingVertical='FILL';
+  const invalid=exportHierarchy([root]);assert.equal(invalid.code,null);assert.ok(invalid.errors.some(e=>e.message.includes('Fill-height baseline')));
 });

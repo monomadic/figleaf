@@ -174,7 +174,7 @@ exports saved under `examples/generated`.
 ## Not supported yet
 
 More than 64 gradient stops, image adjustments/animation, progressive blurs, multisampled targets, layout
-grid, baseline alignment and space-between for wrapped lines, and for text: hyphenation,
+grid, vertical wrapping and fill-height baseline cycles, and for text: hyphenation,
 color fonts, keycap emoji, explicit bidi controls, script-specific case conversion,
 and any backend other than CoreText.
 

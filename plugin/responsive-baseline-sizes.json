@@ -1,0 +1,234 @@
+[
+  {
+    "size": [
+      240,
+      288
+    ],
+    "boxes": [
+      {
+        "name": "Temporary baseline validation",
+        "rect": [
+          0,
+          0,
+          240,
+          288
+        ]
+      },
+      {
+        "name": "Wrapped baselines",
+        "rect": [
+          12,
+          12,
+          216,
+          148
+        ]
+      },
+      {
+        "name": "Small",
+        "rect": [
+          12,
+          54,
+          48,
+          24
+        ]
+      },
+      {
+        "name": "Large",
+        "rect": [
+          70,
+          40,
+          96,
+          40
+        ]
+      },
+      {
+        "name": "Box",
+        "rect": [
+          176,
+          22,
+          20,
+          50
+        ]
+      },
+      {
+        "name": "Nested column",
+        "rect": [
+          12,
+          92,
+          48,
+          58
+        ]
+      },
+      {
+        "name": "Nested text",
+        "rect": [
+          12,
+          97,
+          48,
+          24
+        ]
+      },
+      {
+        "name": "Second line",
+        "rect": [
+          12,
+          121,
+          48,
+          24
+        ]
+      },
+      {
+        "name": "Fixed text boxes",
+        "rect": [
+          12,
+          180,
+          216,
+          96
+        ]
+      },
+      {
+        "name": "TOP",
+        "rect": [
+          12,
+          216,
+          40,
+          60
+        ]
+      },
+      {
+        "name": "CENTER",
+        "rect": [
+          62,
+          198,
+          40,
+          60
+        ]
+      },
+      {
+        "name": "BOTTOM",
+        "rect": [
+          112,
+          180,
+          40,
+          60
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      400,
+      245
+    ],
+    "boxes": [
+      {
+        "name": "Temporary baseline validation",
+        "rect": [
+          0,
+          0,
+          400,
+          245
+        ]
+      },
+      {
+        "name": "Wrapped baselines",
+        "rect": [
+          12,
+          12,
+          376,
+          105
+        ]
+      },
+      {
+        "name": "Small",
+        "rect": [
+          12,
+          54,
+          48,
+          24
+        ]
+      },
+      {
+        "name": "Large",
+        "rect": [
+          70,
+          40,
+          96,
+          40
+        ]
+      },
+      {
+        "name": "Box",
+        "rect": [
+          176,
+          22,
+          20,
+          50
+        ]
+      },
+      {
+        "name": "Nested column",
+        "rect": [
+          206,
+          49,
+          48,
+          58
+        ]
+      },
+      {
+        "name": "Nested text",
+        "rect": [
+          206,
+          54,
+          48,
+          24
+        ]
+      },
+      {
+        "name": "Second line",
+        "rect": [
+          206,
+          78,
+          48,
+          24
+        ]
+      },
+      {
+        "name": "Fixed text boxes",
+        "rect": [
+          12,
+          137,
+          376,
+          96
+        ]
+      },
+      {
+        "name": "TOP",
+        "rect": [
+          12,
+          173,
+          40,
+          60
+        ]
+      },
+      {
+        "name": "CENTER",
+        "rect": [
+          62,
+          155,
+          40,
+          60
+        ]
+      },
+      {
+        "name": "BOTTOM",
+        "rect": [
+          112,
+          137,
+          40,
+          60
+        ]
+      }
+    ]
+  }
+]

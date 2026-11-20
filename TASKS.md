@@ -27,7 +27,10 @@ Completed implementation notes and comparisons are in the
    fill-track stretching and space-between distribution; [reviewed at three widths](docs/responsive-wrap-360-compare.png).
    **Resize constraints done (2026-11-20):** plain/absolute min, center, max, stretch
    and scale; [reviewed at three sizes](docs/responsive-constraints-300-compare.png).
-   **Next:** baseline alignment, vertical wrapping, implicit border
+   **Baseline alignment done (2026-11-20):** horizontal/wrapped rows, nested first
+   baselines, fixed/hug text and native measurement; [reviewed at two widths](docs/responsive-baseline-400-compare.png).
+   Fill-height cycles and vertically resizing baseline text still hard-error.
+   **Next:** vertical wrapping, implicit border
    minimum-size expansion, rotated children and grid layout. Keep state and resize events
    in the host; add no scene runtime.
    **Done when:** the same generated panel lays out at several supplied sizes

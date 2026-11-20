@@ -6,7 +6,7 @@
 //! a size, and draw each thing at the rectangle it gets. Borrowed from figui,
 //! where it was checked against positions Figma recorded.
 //!
-//! Not covered: baseline alignment, rotated children, vertical wrapping, grid
+//! Not covered: fill-height baseline cycles, rotated children, vertical wrapping, grid
 //! layout and constraint-driven flipped geometry. Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
 //! measurement callback (for example [`crate::Text::measure`]).
 //!
@@ -33,12 +33,21 @@ pub enum Align {
     /// Primary axis only: first and last children touch the padding and the
     /// rest are spread evenly. The item spacing is ignored.
     SpaceBetween,
+    /// First text baseline (horizontal stacks, counter axis only).
+    Baseline,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Horizontal,
     Vertical,
+}
+
+/// Intrinsic dimensions and an optional first text baseline from the box top.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Measurement {
+    pub size: [f32; 2],
+    pub first_baseline: Option<f32>,
 }
 
 /// Figma resize constraints for plain-frame and absolute children.
@@ -84,6 +93,9 @@ pub struct Node {
     pub offset: [f32; 2],
     /// Horizontal, vertical; ignored for in-flow auto-layout children.
     pub constraints: [Constraint; 2],
+    pub first_baseline: Option<f32>,
+    /// Ask the measurement callback for a baseline even on fixed-size text.
+    pub measure_baseline: bool,
     /// Horizontal, vertical.
     pub sizing: [Sizing; 2],
     pub min: [f32; 2],
@@ -106,6 +118,8 @@ impl Node {
             size,
             offset,
             constraints: [Constraint::Min; 2],
+            first_baseline: None,
+            measure_baseline: false,
             sizing: [Sizing::Fixed; 2],
             min: [0.; 2],
             max: [f32::INFINITY; 2],
@@ -216,7 +230,47 @@ impl<'a> Solver<'a> {
             .fold(measured, f32::max)
     }
 
+    fn has_baseline(&self, i: usize) -> bool {
+        self.nodes[i].first_baseline.is_some()
+            || self.children[i].iter().any(|&c| self.has_baseline(c))
+    }
+
+    fn baseline(&mut self, i: usize, height: f32) -> f32 {
+        if let Some(baseline) = self.nodes[i].first_baseline {
+            return baseline;
+        }
+        if let Some(child) = self.children[i]
+            .iter()
+            .copied()
+            .find(|&c| self.has_baseline(c))
+        {
+            let mut positions = vec![[0.; 2]; self.nodes.len()];
+            self.arrange(i, height, &mut positions);
+            return positions[child][0] + self.baseline(child, positions[child][1]);
+        }
+        height
+    }
+
+    fn baseline_extent(&mut self, line: &[usize]) -> (f32, f32) {
+        if line.is_empty() {
+            return (0., 0.);
+        }
+        let mut above = f32::NEG_INFINITY;
+        let mut below = f32::NEG_INFINITY;
+        for &c in line {
+            let height = self.measure(c);
+            let baseline = self.baseline(c, height);
+            above = above.max(baseline);
+            below = below.max(height - baseline);
+        }
+        (above, below)
+    }
+
     fn track_thickness(&mut self, line: &[usize], l: AutoLayout) -> f32 {
+        if self.axis == 1 && l.counter_align == Align::Baseline {
+            let (above, below) = self.baseline_extent(line);
+            return above + below;
+        }
         if l.wrap
             && line
                 .iter()
@@ -321,7 +375,7 @@ impl<'a> Solver<'a> {
                 let k = flow.len();
                 let gaps = l.spacing * k.saturating_sub(1) as f32;
                 let (mut pos, gap) = match l.primary_align {
-                    Align::Min => (start, l.spacing),
+                    Align::Min | Align::Baseline => (start, l.spacing),
                     Align::Center => (start + (inner - sum - gaps) / 2., l.spacing),
                     Align::Max => (start + inner - sum - gaps, l.spacing),
                     Align::SpaceBetween if k > 1 => (start, (inner - sum) / (k - 1) as f32),
@@ -383,6 +437,11 @@ impl<'a> Solver<'a> {
                 }
             }
             for (line, (start, inner)) in lines.iter().zip(bands) {
+                let baseline = if l.counter_align == Align::Baseline {
+                    self.baseline_extent(line).0
+                } else {
+                    0.
+                };
                 for &c in line {
                     let s = if self.nodes[c].sizing[self.axis] == Sizing::Fill {
                         self.clamp(c, inner)
@@ -390,6 +449,7 @@ impl<'a> Solver<'a> {
                         self.measure(c)
                     };
                     let pos = match l.counter_align {
+                        Align::Baseline => start + baseline - self.baseline(c, s),
                         Align::Center => start + (inner - s) / 2.,
                         Align::Max => start + inner - s,
                         _ => start,
@@ -506,6 +566,13 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
         if let Some(parent) = n.parent
             && (nodes[parent].layout.is_none() || !n.in_flow)
         {
+            if n.measure_baseline
+                && matches!(n.constraints[1], Constraint::Stretch | Constraint::Scale)
+            {
+                return Err(Error(
+                    "baseline text with vertically resizing constraints is unsupported",
+                ));
+            }
             for axis in 0..2 {
                 if matches!(n.constraints[axis], Constraint::Stretch | Constraint::Scale)
                     && n.sizing[axis] != Sizing::Fixed
@@ -521,6 +588,9 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
                 }
             }
         }
+        if n.first_baseline.is_some_and(|b| !b.is_finite()) {
+            return Err(Error("invalid first baseline"));
+        }
         if let Some(l) = n.layout {
             let gaps = [l.spacing, l.counter_spacing];
             if !l.padding.iter().chain(&gaps).all(|v| v.is_finite())
@@ -528,11 +598,33 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
             {
                 return Err(Error("invalid layout input"));
             }
+            if l.primary_align == Align::Baseline
+                || (l.counter_align == Align::Baseline && l.direction != Direction::Horizontal)
+            {
+                return Err(Error(
+                    "baseline alignment requires a horizontal counter axis",
+                ));
+            }
             if l.wrap && l.direction == Direction::Vertical {
                 return Err(Error("only horizontal stacks wrap"));
             }
             if l.counter_align == Align::SpaceBetween {
                 return Err(Error("space between applies to the primary axis only"));
+            }
+        }
+    }
+    for (i, n) in nodes.iter().enumerate() {
+        if n.layout.is_some_and(|l| l.counter_align == Align::Baseline) {
+            let mut pending: Vec<usize> = children[i]
+                .iter()
+                .copied()
+                .filter(|&c| nodes[c].in_flow)
+                .collect();
+            while let Some(c) = pending.pop() {
+                if nodes[c].sizing[1] == Sizing::Fill {
+                    return Err(Error("fill-height baseline dependencies are unsupported"));
+                }
+                pending.extend(&children[c]);
             }
         }
     }
@@ -545,6 +637,14 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
 /// The size the root takes from its own sizing: hugging axes wrap the content.
 pub fn measure(nodes: &[Node]) -> Result<[f32; 2], Error> {
     let children = children_of(nodes)?;
+    if nodes
+        .iter()
+        .any(|n| n.measure_baseline && n.first_baseline.is_none())
+    {
+        return Err(Error(
+            "baseline measurement requires solve_measured_with_baselines",
+        ));
+    }
     let mut s = Solver::new(nodes, nodes, &children, 0, vec![None; nodes.len()]);
     let width = s.measure(0);
     // Heights depend on where wrapping stacks break at that width.
@@ -558,6 +658,14 @@ pub fn measure(nodes: &[Node]) -> Result<[f32; 2], Error> {
 /// overrides authored/hug sizing and is clamped to the root's min/max limits.
 pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
     let children = children_of(nodes)?;
+    if nodes
+        .iter()
+        .any(|n| n.measure_baseline && n.first_baseline.is_none())
+    {
+        return Err(Error(
+            "baseline measurement requires solve_measured_with_baselines",
+        ));
+    }
     if !root_size.iter().all(|v| v.is_finite() && *v >= 0.) {
         return Err(Error("invalid layout input"));
     }
@@ -665,6 +773,15 @@ impl Node {
     /// size. Used only outside auto-layout flow; scale/stretch resize fixed axes.
     pub fn constraints(mut self, horizontal: Constraint, vertical: Constraint) -> Self {
         self.constraints = [horizontal, vertical];
+        self
+    }
+    /// Baseline from the top of this box, typically supplied by text measurement.
+    pub fn first_baseline(mut self, baseline: f32) -> Self {
+        self.first_baseline = Some(baseline);
+        self
+    }
+    pub fn measure_baseline(mut self) -> Self {
+        self.measure_baseline = true;
         self
     }
     /// The same padding on every side. Stack settings on a node that is not a
@@ -788,6 +905,23 @@ impl Tree {
         size: [Option<f32>; 2],
         mut measure: impl FnMut(NodeId, Option<f32>) -> Result<Option<[f32; 2]>, Error>,
     ) -> Result<Solved, Error> {
+        self.solve_measured_with_baselines(size, |id, width| {
+            measure(id, width).map(|value| {
+                value.map(|size| Measurement {
+                    size,
+                    first_baseline: None,
+                })
+            })
+        })
+    }
+
+    /// Width-first text measurement including first baselines. Nodes marked
+    /// `measure_baseline` must return one at their final solved width.
+    pub fn solve_measured_with_baselines(
+        &self,
+        size: [Option<f32>; 2],
+        mut measure: impl FnMut(NodeId, Option<f32>) -> Result<Option<Measurement>, Error>,
+    ) -> Result<Solved, Error> {
         if size.iter().flatten().any(|v| !v.is_finite() || *v < 0.) {
             return Err(Error("invalid layout root size"));
         }
@@ -806,7 +940,7 @@ impl Tree {
                     return Err(Error("measured layout requires a leaf"));
                 }
                 if let Some(measured) = measure(NodeId(i), None)? {
-                    node.size[0] = check(measured)?[0];
+                    node.size[0] = check(measured.size)?[0];
                 }
             }
         }
@@ -820,12 +954,25 @@ impl Tree {
         widths.arrange(0, width, &mut x);
         let wrapped_lines = widths.lines;
         for (i, node) in nodes.iter_mut().enumerate() {
-            if node.layout.is_none() && node.sizing[1] == Sizing::Hug {
+            if node.layout.is_none() && (node.sizing[1] == Sizing::Hug || node.measure_baseline) {
                 if !children[i].is_empty() {
                     return Err(Error("measured layout requires a leaf"));
                 }
-                if let Some(measured) = measure(NodeId(i), Some(x[i][1]))? {
-                    node.size[1] = check(measured)?[1];
+                let measured = measure(NodeId(i), Some(x[i][1]))?;
+                if node.measure_baseline && measured.is_none_or(|m| m.first_baseline.is_none()) {
+                    return Err(Error("text measurement did not supply a first baseline"));
+                }
+                if let Some(measured) = measured {
+                    let size = check(measured.size)?;
+                    if node.sizing[1] == Sizing::Hug {
+                        node.size[1] = size[1];
+                    }
+                    if measured.first_baseline.is_some_and(|b| !b.is_finite()) {
+                        return Err(Error("invalid measured first baseline"));
+                    }
+                    if node.measure_baseline {
+                        node.first_baseline = measured.first_baseline;
+                    }
                 }
             }
         }
@@ -1454,5 +1601,63 @@ mod constraint_tests {
         let solved = tree.solve([300., 150.]).unwrap();
         assert_eq!(solved[stretch], Rect::new(20., 10., 80., 20.));
         assert_eq!(solved[scale], Rect::new(30., 10., 80., 20.));
+    }
+}
+
+#[cfg(test)]
+mod baseline_tests {
+    use super::*;
+    #[test]
+    fn baselines_expand_hug_height_and_inherit_through_containers() {
+        let mut tree = Tree::new(Node::row().align(Align::Min, Align::Baseline).padding(10.));
+        let small = tree.add(tree.root(), Node::fixed([40., 24.]).first_baseline(18.));
+        let large = tree.add(tree.root(), Node::fixed([60., 40.]).first_baseline(32.));
+        tree.add(tree.root(), Node::fixed([20., 50.]));
+        let nested = tree.add(tree.root(), Node::column().padding(5.));
+        let inner = tree.add(nested, Node::fixed([20., 24.]).first_baseline(18.));
+        tree.add(nested, Node::fixed([20., 24.]).first_baseline(18.));
+        let solved = tree.solve_natural().unwrap();
+        assert_eq!(solved.size()[1], 105.);
+        assert_eq!(solved[small].y, 42.);
+        assert_eq!(solved[large].y, 28.);
+        assert_eq!(solved[nested].y, 37.);
+        assert_eq!(solved[inner].y, 42.);
+        tree.node_mut(small).sizing[1] = Sizing::Fill;
+        assert!(tree.solve_natural().is_err());
+    }
+    #[test]
+    fn fixed_text_requires_baseline_measurement_and_rejects_bad_metrics() {
+        let mut tree = Tree::new(Node::row().align(Align::Min, Align::Baseline));
+        let text = tree.add(tree.root(), Node::fixed([40., 24.]).measure_baseline());
+        tree.add(tree.root(), Node::fixed([20., 50.]));
+        assert!(tree.solve([100., 100.]).is_err());
+        assert!(
+            tree.solve_measured([Some(100.), None], |_, _| Ok(Some([40., 24.])))
+                .is_err()
+        );
+        let solved = tree
+            .solve_measured_with_baselines([Some(100.), None], |id, width| {
+                assert_eq!(id, text);
+                assert_eq!(width, Some(40.));
+                Ok(Some(Measurement {
+                    size: [40., 24.],
+                    first_baseline: Some(18.),
+                }))
+            })
+            .unwrap();
+        assert_eq!(solved[text].y, 32.);
+        assert_eq!(solved.size(), [100., 56.]);
+        assert!(
+            tree.solve_measured_with_baselines([Some(100.), None], |_, _| Ok(Some(Measurement {
+                size: [40., 24.],
+                first_baseline: Some(f32::NAN)
+            })))
+            .is_err()
+        );
+        assert!(
+            Tree::new(Node::column().align(Align::Min, Align::Baseline))
+                .solve([100., 100.])
+                .is_err()
+        );
     }
 }

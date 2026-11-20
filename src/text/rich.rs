@@ -1886,8 +1886,21 @@ impl crate::Text {
         backend: &mut dyn Backend,
         width: Option<f32>,
     ) -> Result<[f32; 2], Error> {
+        self.measure_with_baseline(backend, width, None)
+            .map(|m| m.size)
+    }
+
+    /// Measures the first rendered baseline as well as natural dimensions.
+    /// `height` supplies a fixed box height for vertical alignment/truncation;
+    /// `None` uses the natural text height. No font state is retained.
+    pub fn measure_with_baseline(
+        &self,
+        backend: &mut dyn Backend,
+        width: Option<f32>,
+        height: Option<f32>,
+    ) -> Result<crate::layout::Measurement, Error> {
         let mut runs = self.layout_source()?;
-        let empty = self.runs.is_empty() && self.string.is_empty();
+        let empty = runs.iter().all(|run| run.text.is_empty());
         // An empty plain label still owns one line box; shape a space to check
         // the supplied font and resolve automatic line height, then discard width.
         if empty {
@@ -1902,7 +1915,7 @@ impl crate::Text {
         let lines = layout_text(
             backend,
             &runs,
-            [width, 1e7],
+            [width, height.unwrap_or(1e7)],
             wrap,
             ParagraphStyle {
                 spacing: self.paragraph_spacing,
@@ -1915,15 +1928,41 @@ impl crate::Text {
             .iter()
             .map(|line| line.indent + line.metrics.advance as f32)
             .fold(0., f32::max);
-        let height = lines
+        let natural_height: f32 = lines
             .iter()
             .map(|line| line.height + line.spacing_after)
             .sum();
-        let size = [if empty { 0. } else { measured_width }, height];
+        let size = [if empty { 0. } else { measured_width }, natural_height];
         if size.iter().any(|v| !v.is_finite() || *v < 0. || *v > 1e7) {
             return Err(Error("invalid measured text dimensions"));
         }
-        Ok(size)
+        let spare = height.unwrap_or(natural_height) - natural_height;
+        let offset = match self.vertical_align {
+            crate::paint::Align::Start => 0.,
+            crate::paint::Align::Center => spare / 2.,
+            crate::paint::Align::End => spare,
+        };
+        let first_baseline = if let Some(line) = lines.first() {
+            let baseline = if line.runs.is_empty() && line.marker.is_none() {
+                // Blank first lines still have the baseline of their font.
+                let style = resolve_style(backend, runs[0].style)?;
+                backend.measure(" ", style)?.baseline as f32
+            } else {
+                line.metrics.baseline as f32 + line.baseline_offset
+            };
+            // Figma aligns the line baseline on logical pixels; glyph raster
+            // metrics remain fractional in the renderer.
+            Some(offset + baseline.round())
+        } else {
+            None
+        };
+        if first_baseline.is_some_and(|b| !b.is_finite()) {
+            return Err(Error("invalid measured text baseline"));
+        }
+        Ok(crate::layout::Measurement {
+            size,
+            first_baseline,
+        })
     }
 }
 
@@ -2022,5 +2061,42 @@ mod measured_text_tests {
             [0., 24.]
         );
         assert!(plain.font(63).measure(&mut backend, None).is_err());
+    }
+}
+
+#[cfg(all(test, feature = "text-coretext"))]
+mod baseline_measurement_tests {
+    use crate::{
+        Rect, Text,
+        paint::Align,
+        text::{FontSource, TextRun, coretext::CoreText},
+    };
+    #[test]
+    fn first_baseline_tracks_blank_lines_and_fixed_vertical_alignment() {
+        let mut backend = CoreText::new(&[Some(FontSource {
+            bytes: include_bytes!("../../fonts/JetBrainsMono-wght-2.211.ttf"),
+            axes: &[],
+        })])
+        .unwrap();
+        for string in ["Hi", "\nHi", ""] {
+            let text = Text::rich(
+                vec![TextRun::new(string).size(16., 24.)],
+                Rect::new(0., 0., 100., 60.),
+            )
+            .wrap();
+            let natural = text
+                .measure_with_baseline(&mut backend, Some(100.), None)
+                .unwrap();
+            assert_eq!(natural.first_baseline, Some(18.));
+            let centered = text
+                .clone()
+                .align(Align::Start, Align::Center)
+                .measure_with_baseline(&mut backend, Some(100.), Some(60.))
+                .unwrap();
+            assert_eq!(
+                centered.first_baseline,
+                Some(18. + (60. - natural.size[1]) / 2.)
+            );
+        }
     }
 }

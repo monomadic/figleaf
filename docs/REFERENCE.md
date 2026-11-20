@@ -825,7 +825,7 @@ min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
 hidden-child exclusion and absolute/plain children with resize constraints. Solved bounds
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
 text-based hug/automatic-height measurement is supported below. Unsupported vertical wrapping, grid,
-baseline, negative gaps, transformed nodes, groups,
+vertical baseline alignment, negative gaps, transformed nodes, groups,
 patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
 export errors. Static exports retain their previous transform/geometry support.
@@ -898,7 +898,7 @@ Automatic track placement follows counter-axis alignment. When every flow child
 fills vertically, tracks start at their minimum heights and share spare height;
 authored fill heights do not inflate tracks. Space-between distributes spare
 height between rows (zero gap when overflowing); a single row follows alignment.
-Vertical wrapping, baseline alignment and negative row gaps still hard-error.
+Vertical wrapping and negative row gaps still hard-error.
 
 `cargo run --example responsive_wrap --all-features --locked` compares generated
 Rust at [240](responsive-wrap-240-compare.png),
@@ -933,3 +933,33 @@ Rust even without auto layout. `cargo run --example responsive_constraints
 were visually reviewed; unchanged canvases upload nothing. Measured-text anchoring
 and invalid sizes have synthetic tests. This is fixture evidence, not live plugin
 UI validation or universal layout parity.
+
+### Responsive baseline alignment
+
+Horizontal rows use `layout::Align::Baseline` on the counter axis. Their hug
+height includes both the largest distance above the first baseline and the
+largest extent below it. Wrapped rows align each track separately. Containers
+inherit the first text baseline in child order; boxes without text use the bottom
+edge. Padding, inside borders and nested layout offsets remain part of the solve.
+
+A host can supply `Node::first_baseline` directly, or mark text nodes with
+`measure_baseline()` and use `Tree::solve_measured_with_baselines`. The callback
+returns `layout::Measurement { size, first_baseline }` at the final solved width,
+including for fixed-size text. `Text::measure_with_baseline` uses the same line
+layout and fonts as rendering, rounds the line baseline to logical pixels for
+alignment, and accepts an optional fixed height for vertical alignment/truncation.
+Missing or non-finite baseline measurements return errors. The original
+`solve_measured` size-only API remains unchanged.
+
+The plugin emits these measurements for text participating in baseline alignment,
+including text within nested containers. Fill-height dependencies, vertical
+baseline stacks and baseline text with vertically stretching/scaling constraints
+remain hard errors. The host still owns fonts and state; no dependency was added.
+
+`cargo run --example responsive_baseline --all-features --locked` checks all 12
+rectangles against live Figma at [240](responsive-baseline-240-compare.png) and
+[400](responsive-baseline-400-compare.png) pixels wide. Both comparisons were
+visually reviewed: positions match and small font-rasterization differences
+remain. Tests cover native font metrics, empty/blank first lines, nested baselines,
+failed measurement and unchanged-canvas caching. This is fixture evidence, not
+live development-plugin UI validation or universal text parity.
