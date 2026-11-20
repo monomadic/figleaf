@@ -6,6 +6,10 @@ changes priorities. Extend the library/renderer and plugin together where applic
 Completed implementation notes and comparisons are in the
 [progress archive](docs/progress-archive.md); dated claims there are historical.
 
+Scaled icons in fixed frames (2026-11-20): a stretch/scale constraint only
+counts as resizing when the parent can resize, so component icons (a vector set
+to scale inside a fixed 7x7 frame) export inside auto layout.
+
 Exporting without the plugin (2026-11-20): `plugin/snapshot.js` snapshots a
 hierarchy through Figma's MCP `use_figma` and `node plugin/cli.js export` runs
 the plugin's exporter on it, so an agent can export without Figma Desktop.

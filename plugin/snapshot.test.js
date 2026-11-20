@@ -167,3 +167,32 @@ test('the CLI prints Rust on success and layer paths on failure', () => {
   assert.match(failed.stderr, /\[355:242\]: /);
   fs.rmSync(dir, { recursive: true });
 });
+
+test('a scaled icon in a fixed-size frame exports from a real snapshot and compiles', async () => {
+  // Switchblade's `Tag pill / Form=Applied`, snapshotted from Figma
+  // through use_figma (2026-11-20): the remove well's `Icon / Close` is a
+  // fixed 7x7 frame inside a hugging auto-layout well, and its vector is
+  // constrained to SCALE. The frame never resizes, so neither does the
+  // vector's resolved geometry.
+  const snapshot = load('tag-pill-applied-snapshot.json');
+  const result = await exportSnapshot(snapshot);
+  assert.deepEqual(result.errors, []);
+  assert.match(result.code, /Constraint::Scale/);
+  assert.match(result.code, /Shape::vector\(Rect::new\(0\.0, 0\.0, boxes\[4\]\.w, boxes\[4\]\.h\)/);
+  const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'figleaf-applied-'));
+  try {
+    execFileSync('rustc', ['--edition=2024', '--crate-name=figleaf', '--crate-type=rlib', path.resolve(__dirname, '../src/lib.rs'), '-o', path.join(tmp, 'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp, 'main.rs'), result.code + '\nfn main() {}\n');
+    execFileSync('rustc', ['--edition=2024', '-A', 'unused', path.join(tmp, 'main.rs'), '--extern', `figleaf=${path.join(tmp, 'libfigleaf.rlib')}`, '-o', path.join(tmp, 'main')]);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+
+  // Once the frame can resize, the scaled geometry would have to resize
+  // with it, and that is still refused.
+  const resizing = structuredClone(snapshot);
+  const icon = resizing.root.children[2].children[0];
+  assert.equal(icon.name, 'Icon / Close');
+  icon.layoutSizingHorizontal = 'FILL';
+  const refused = await exportSnapshot(resizing);
+  assert.equal(refused.code, null);
+  assert.ok(refused.errors.some(e => /Responsive resizing of resolved path\/stroke geometry/.test(e.message)));
+});

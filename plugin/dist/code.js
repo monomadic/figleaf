@@ -583,7 +583,9 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     if(depth>128)throw Error('Hierarchy exceeds 128 levels.');
     return (n.layoutMode && n.layoutMode!=='NONE') || (depth>0 && n.constraints && [n.constraints.horizontal,n.constraints.vertical].some(c=>c!=='MIN')) || (n.children||[]).some(c=>hasLayout(c,depth+1));
   }
-  function layoutNode(n, parent, path, depth=0, baselineScope=false) {
+  // `parentResizes`: whether the parent's solved size can differ from its
+  // authored one. A stretch/scale constraint only resizes a child when it can.
+  function layoutNode(n, parent, path, depth=0, baselineScope=false, parentResizes=true) {
     if(n.visible===false)return;
     try {
       if(depth>128 || layoutNodes.size>=5000)throw Error('Responsive layout exceeds hierarchy limits.');
@@ -621,7 +623,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const min=[n.minWidth??0,n.minHeight??0], max=[n.maxWidth??Infinity,n.maxHeight??Infinity];
       [n.width,n.height,...min].forEach(v=>{number(v);if(v<0)throw Error('Negative layout size or minimum.');});
       max.forEach((v,a)=>{if(v!==Infinity)number(v);if(v<min[a])throw Error('Layout maximum is smaller than minimum.');});
-      const resizes=!parent||constrained&&constraints.some(c=>['STRETCH','SCALE'].includes(c))||sizing.some(v=>v!=='FIXED')||min.some((v,a)=>v>[n.width,n.height][a])||max.some((v,a)=>v<[n.width,n.height][a]);
+      const resizes=!parent||constrained&&parentResizes&&constraints.some(c=>['STRETCH','SCALE'].includes(c))||sizing.some(v=>v!=='FIXED')||min.some((v,a)=>v>[n.width,n.height][a])||max.some((v,a)=>v<[n.width,n.height][a]);
       if(resizes&&(['VECTOR','BOOLEAN_OPERATION','LINE'].includes(n.type)||(n.cornerSmoothing??0)>0||n.variableWidthStrokeProperties?.widthProfile&&n.variableWidthStrokeProperties.widthProfile!=='UNIFORM'||n.complexStrokeProperties?.type&&n.complexStrokeProperties.type!=='BASIC'))throw Error('Responsive resizing of resolved path/stroke geometry is unsupported.');
       let expr=stack?`Node::${mode==='HORIZONTAL'?'row':'column'}().size(${array([n.width,n.height])})`:`Node::fixed(${array([n.width,n.height])})`;
       expr+=`.width(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[0]]}).height(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[1]]})`;
@@ -654,7 +656,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       layoutLines.push(`    // ${comment(path)} [${comment(n.id)}]`);
       if(parent===null)layoutLines.push(`    let mut tree = Tree::new(${expr});`, '    let node_0 = tree.root();');
       else layoutLines.push(`    let node_${i} = tree.add(node_${layoutNodes.get(parent)}, ${expr});`);
-      if(n.type!=='BOOLEAN_OPERATION')for(const child of n.children||[])layoutNode(child,n,path+' / '+child.name,depth+1,baselineScope);
+      if(n.type!=='BOOLEAN_OPERATION')for(const child of n.children||[])layoutNode(child,n,path+' / '+child.name,depth+1,baselineScope,resizes);
     } catch(e){fail(n,path,e.message);}
   }
   try {responsive=!!hasLayout(selection[0]);if(responsive)layoutNode(selection[0],null,selection[0].name);}catch(e){fail(selection[0],selection[0].name,e.message);}

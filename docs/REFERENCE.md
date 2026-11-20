@@ -922,7 +922,9 @@ scale changes offset and size proportionally. Size limits still apply. Measured
 text uses the constrained width and retains center/end anchors after measurement.
 Stretch/scale require fixed sizing on the affected axis. A zero authored parent
 size cannot be scaled, and negative stretch spans (flipped geometry) return errors.
-The plugin also rejects constraint-driven resizing of resolved paths/strokes.
+The plugin also rejects constraint-driven resizing of resolved paths/strokes,
+counting a stretch/scale constraint as resizing only when the parent's own size
+can change; inside a fixed-size frame the geometry keeps its authored size.
 
 Plain selections with non-default descendant constraints now generate responsive
 Rust even without auto layout. `cargo run --example responsive_constraints

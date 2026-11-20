@@ -167,10 +167,10 @@ about 9 KB.
 export with Rust identical to the exporter's own; a property the exporter
 reads but the snapshot leaves out fails `snapshot.test.js`. Those tests use
 the fixtures with Figma's methods put back, not Figma. Against a real file
-(2026-11-20): Switchblade's `Tag pill / Form=Outline` (one part, 6.7 KB) and
-`Form=Excluded` (two parts) were snapshotted through `use_figma`, and the
-Outline variant was joined and exported, with its five variable bindings
-resolved in Figma and named in the output.
+(2026-11-20): six Switchblade `Tag pill` forms were snapshotted through
+`use_figma` (6.7-27.6 KB each), joined and exported, with their variable
+bindings resolved in Figma and named in the output; Switchblade compiles the
+generated layouts in its tests.
 
 ## Validation
 
@@ -473,7 +473,11 @@ Resize constraints now export left/top, right/bottom, center, stretch and scale
 for absolute children and children of plain frames. Non-default constraints also
 enable responsive output without auto layout. References use authored full parent
 bounds; padding/borders do not change the anchors. Stretch/scale require fixed
-sizing on that axis and still reject resizing resolved path/stroke geometry.
+sizing on that axis and still reject resizing resolved path/stroke geometry. A
+stretch/scale constraint only counts as resizing when its parent can resize:
+an icon vector set to scale inside a fixed-size frame (the usual component
+icon) keeps its authored size and exports (2026-11-20, checked on a real
+Switchblade `Tag pill` snapshot, `tag-pill-applied-snapshot.json`).
 Zero-size scale references and negative stretch spans fail explicitly; the latter
 are detected at layout time before paint is appended. See the
 [three-size comparison](../docs/responsive-constraints-300-compare.png).
