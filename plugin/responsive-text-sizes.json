@@ -1,0 +1,296 @@
+[
+  {
+    "size": [
+      320,
+      616
+    ],
+    "boxes": [
+      {
+        "name": "Temporary responsive text validation",
+        "rect": [
+          0,
+          0,
+          320,
+          616
+        ]
+      },
+      {
+        "name": "Intrinsic heading",
+        "rect": [
+          20,
+          20,
+          180,
+          28
+        ]
+      },
+      {
+        "name": "Hug row with fixed icon",
+        "rect": [
+          20,
+          60,
+          280,
+          302
+        ]
+      },
+      {
+        "name": "Fixed icon",
+        "rect": [
+          20,
+          195,
+          32,
+          32
+        ]
+      },
+      {
+        "name": "Nested hug column",
+        "rect": [
+          64,
+          60,
+          236,
+          302
+        ]
+      },
+      {
+        "name": "Reflowing paragraph",
+        "rect": [
+          76,
+          72,
+          212,
+          144
+        ]
+      },
+      {
+        "name": "Mixed paragraph",
+        "rect": [
+          76,
+          224,
+          212,
+          126
+        ]
+      },
+      {
+        "name": "Bounded intrinsic text",
+        "rect": [
+          20,
+          374,
+          220,
+          72
+        ]
+      },
+      {
+        "name": "Paragraph breaks",
+        "rect": [
+          20,
+          458,
+          280,
+          106
+        ]
+      },
+      {
+        "name": "Following footer",
+        "rect": [
+          20,
+          576,
+          280,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      480,
+      496
+    ],
+    "boxes": [
+      {
+        "name": "Temporary responsive text validation",
+        "rect": [
+          0,
+          0,
+          480,
+          496
+        ]
+      },
+      {
+        "name": "Intrinsic heading",
+        "rect": [
+          20,
+          20,
+          180,
+          28
+        ]
+      },
+      {
+        "name": "Hug row with fixed icon",
+        "rect": [
+          20,
+          60,
+          440,
+          206
+        ]
+      },
+      {
+        "name": "Fixed icon",
+        "rect": [
+          20,
+          147,
+          32,
+          32
+        ]
+      },
+      {
+        "name": "Nested hug column",
+        "rect": [
+          64,
+          60,
+          396,
+          206
+        ]
+      },
+      {
+        "name": "Reflowing paragraph",
+        "rect": [
+          76,
+          72,
+          372,
+          96
+        ]
+      },
+      {
+        "name": "Mixed paragraph",
+        "rect": [
+          76,
+          176,
+          372,
+          78
+        ]
+      },
+      {
+        "name": "Bounded intrinsic text",
+        "rect": [
+          20,
+          278,
+          220,
+          72
+        ]
+      },
+      {
+        "name": "Paragraph breaks",
+        "rect": [
+          20,
+          362,
+          440,
+          82
+        ]
+      },
+      {
+        "name": "Following footer",
+        "rect": [
+          20,
+          456,
+          440,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      640,
+      424
+    ],
+    "boxes": [
+      {
+        "name": "Temporary responsive text validation",
+        "rect": [
+          0,
+          0,
+          640,
+          424
+        ]
+      },
+      {
+        "name": "Intrinsic heading",
+        "rect": [
+          20,
+          20,
+          180,
+          28
+        ]
+      },
+      {
+        "name": "Hug row with fixed icon",
+        "rect": [
+          20,
+          60,
+          600,
+          134
+        ]
+      },
+      {
+        "name": "Fixed icon",
+        "rect": [
+          20,
+          111,
+          32,
+          32
+        ]
+      },
+      {
+        "name": "Nested hug column",
+        "rect": [
+          64,
+          60,
+          556,
+          134
+        ]
+      },
+      {
+        "name": "Reflowing paragraph",
+        "rect": [
+          76,
+          72,
+          532,
+          48
+        ]
+      },
+      {
+        "name": "Mixed paragraph",
+        "rect": [
+          76,
+          128,
+          532,
+          54
+        ]
+      },
+      {
+        "name": "Bounded intrinsic text",
+        "rect": [
+          20,
+          206,
+          220,
+          72
+        ]
+      },
+      {
+        "name": "Paragraph breaks",
+        "rect": [
+          20,
+          290,
+          600,
+          82
+        ]
+      },
+      {
+        "name": "Following footer",
+        "rect": [
+          20,
+          384,
+          600,
+          20
+        ]
+      }
+    ]
+  }
+]

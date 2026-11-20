@@ -8,20 +8,19 @@
 //!
 //! Not covered: baseline alignment, rotated children, grid layout, "space
 //! between" for wrapped lines, and constraints other than "keep the authored
-//! offset". Text does not measure itself: measure it with a text backend and
-//! set the node's size.
+//! offset". Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
+//! measurement callback (for example [`crate::Text::measure`]).
 //!
 //! Widths are solved first and heights second. The only thing heights take
-//! from widths is where a wrapping stack broke its lines; text reflow would
-//! need more.
+//! from widths is where wrapping stacks break and the measured height of leaves.
 use crate::{Error, Rect};
 use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Sizing {
     Fixed,
-    /// Shrink to content. Only auto layout frames hug; other nodes keep their
-    /// authored size (text measurement is not implemented).
+    /// Shrink to content. Auto-layout frames hug their children; leaves use
+    /// authored sizes unless a `solve_measured` callback supplies their size.
     Hug,
     /// Take the space the parent auto layout frame gives.
     Fill,
@@ -593,6 +592,79 @@ impl Tree {
         }
         Ok(Solved { rects })
     }
+    /// Solve intrinsic leaf sizes without retaining content or a text backend.
+    /// Each root axis can be supplied or left natural. For hug-width leaves the
+    /// callback first receives `None` (intrinsic width); for hug-height leaves it
+    /// then receives the final width. Return `None` for ordinary authored leaves.
+    /// Only the relevant returned dimension is used; both must be finite/nonnegative.
+    pub fn solve_measured(
+        &self,
+        size: [Option<f32>; 2],
+        mut measure: impl FnMut(NodeId, Option<f32>) -> Result<Option<[f32; 2]>, Error>,
+    ) -> Result<Solved, Error> {
+        if size.iter().flatten().any(|v| !v.is_finite() || *v < 0.) {
+            return Err(Error("invalid layout root size"));
+        }
+        let mut nodes = self.nodes.clone();
+        let children = children_of(&nodes)?;
+        let check = |v: [f32; 2]| -> Result<[f32; 2], Error> {
+            if v.iter().any(|v| !v.is_finite() || *v < 0.) {
+                Err(Error("invalid measured layout size"))
+            } else {
+                Ok(v)
+            }
+        };
+        for (i, node) in nodes.iter_mut().enumerate() {
+            if node.layout.is_none() && node.sizing[0] == Sizing::Hug {
+                if !children[i].is_empty() {
+                    return Err(Error("measured layout requires a leaf"));
+                }
+                if let Some(measured) = measure(NodeId(i), None)? {
+                    node.size[0] = check(measured)?[0];
+                }
+            }
+        }
+        let mut widths = Solver::new(&nodes, &children, 0, vec![None; nodes.len()]);
+        let width = match size[0] {
+            Some(v) => widths.clamp(0, v),
+            None => widths.measure(0),
+        };
+        let mut x = vec![[0.; 2]; nodes.len()];
+        x[0] = [0., width];
+        widths.arrange(0, width, &mut x);
+        let wrapped_lines = widths.lines;
+        for (i, node) in nodes.iter_mut().enumerate() {
+            if node.layout.is_none() && node.sizing[1] == Sizing::Hug {
+                if !children[i].is_empty() {
+                    return Err(Error("measured layout requires a leaf"));
+                }
+                if let Some(measured) = measure(NodeId(i), Some(x[i][1]))? {
+                    node.size[1] = check(measured)?[1];
+                }
+            }
+        }
+        let mut heights = Solver::new(&nodes, &children, 1, wrapped_lines);
+        let height = match size[1] {
+            Some(v) => heights.clamp(0, v),
+            None => heights.measure(0),
+        };
+        let mut y = vec![[0.; 2]; nodes.len()];
+        y[0] = [0., height];
+        heights.arrange(0, height, &mut y);
+        let mut rects: Vec<Rect> = x
+            .iter()
+            .zip(&y)
+            .map(|(x, y)| Rect::new(x[0], y[0], x[1], y[1]))
+            .collect();
+        for i in 0..rects.len() {
+            if let Some(p) = nodes[i].parent {
+                rects[i] = rects[i].translate([rects[p].x, rects[p].y]);
+            }
+            rects[i].validate()?;
+        }
+        Ok(Solved { rects })
+    }
+
     /// Places every node with the root at the size its own sizing gives:
     /// hugging axes wrap the content, other axes keep the root's size.
     pub fn solve_natural(&self) -> Result<Solved, Error> {
@@ -887,5 +959,71 @@ mod responsive_tests {
         for size in [[-1., 20.], [f32::INFINITY, 20.], [f32::NAN, 20.]] {
             assert!(tree.solve(size).is_err());
         }
+    }
+}
+
+#[cfg(test)]
+mod measured_tests {
+    use super::*;
+    #[test]
+    fn width_then_height_measurement_propagates_through_nested_hug_frames() {
+        let mut tree = Tree::new(
+            Node::column()
+                .size([200., 1.])
+                .height(Sizing::Hug)
+                .padding(10.)
+                .gap(5.),
+        );
+        let row = tree.add(tree.root(), Node::row().width(Sizing::Fill).gap(4.));
+        let title = tree.add(
+            row,
+            Node::fixed([999., 10.])
+                .width(Sizing::Hug)
+                .max([50., f32::INFINITY]),
+        );
+        let body = tree.add(
+            row,
+            Node::fixed([999., 999.])
+                .width(Sizing::Fill)
+                .height(Sizing::Hug),
+        );
+        let footer = tree.add(tree.root(), Node::fixed([30., 12.]));
+        for width in [200., 120.] {
+            let mut calls = Vec::new();
+            let solved = tree
+                .solve_measured([Some(width), None], |id, width| {
+                    calls.push((id, width));
+                    if id == title {
+                        assert!(width.is_none());
+                        return Ok(Some([70., 10.]));
+                    }
+                    if id == body {
+                        let w = width.unwrap();
+                        return Ok(Some([w, (200. / w).ceil() * 20.]));
+                    }
+                    Ok(None)
+                })
+                .unwrap();
+            let body_width = width - 20. - 50. - 4.;
+            let height = (200. / body_width).ceil() * 20.;
+            assert_eq!(solved[body].w, body_width);
+            assert_eq!(solved[row].h, height);
+            assert_eq!(solved[footer].y, 10. + height + 5.);
+            assert_eq!(solved.size(), [width, 20. + height + 5. + 12.]);
+            assert_eq!(calls, [(title, None), (body, Some(body_width))]);
+        }
+        assert_eq!(
+            tree.node(body).size,
+            [999., 999.],
+            "measurement must not mutate the tree"
+        );
+        assert!(
+            tree.solve_measured([Some(200.), None], |_, _| Err(Error("missing font")))
+                .is_err()
+        );
+        assert!(
+            tree.solve_measured([Some(200.), None], |_, _| Ok(Some([f32::NAN, 1.])))
+                .is_err()
+        );
     }
 }

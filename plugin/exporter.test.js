@@ -917,3 +917,18 @@ test('responsive roots can be selected fill children and reject dependent patter
   root.fills=[];root.children=[];
   const empty=exportHierarchy([root]);assert.deepEqual(empty.errors,[]);assert.match(empty.code,/let tree = Tree::new/);
 });
+
+test('responsive text emits native measurement and compiles without dependencies',()=>{
+  const root=structuredClone(require('./responsive-text-reference.json'));
+  function attach(n){if(n.styledSegments)n.getStyledTextSegments=()=>n.styledSegments;(n.children||[]).forEach(attach);}attach(root);
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_text.rs'),'utf8'));
+  assert.match(r.code,/tree.solve_measured/);assert.match(r.code,/\.measure\(backend, width\)/);assert.match(r.code,/size: \[Option<f32>; 2\]/);
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-text-layout-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){let mut c=Canvas::new();assert!(draw_selection(&mut c,[Some(320.),None],[0],&mut figleaf::text::NoText).is_err());assert!(c.items().is_empty());}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+  const invalid=structuredClone(require('./responsive-text-reference.json'));invalid.children[0].textAutoResize='UNKNOWN';attach(invalid);assert.equal(exportHierarchy([invalid]).code,null);
+});

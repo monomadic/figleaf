@@ -753,7 +753,7 @@ pub fn layout_paragraphs(
     defaults: ParagraphStyle,
 ) -> Result<Vec<RunLine>, Error> {
     defaults.validate(width)?;
-    validate_runs(runs, width, 1., wrap)?;
+    validate_runs(runs, width, 1., true)?;
     let resolved = resolve_runs(backend, runs)?;
     let runs = resolved.as_slice();
     let string: String = runs.iter().map(|r| r.text.as_str()).collect();
@@ -944,7 +944,7 @@ pub fn layout_text(
     max_lines: Option<usize>,
 ) -> Result<Vec<RunLine>, Error> {
     validate_truncation(size[1], max_lines)?;
-    validate_runs(runs, size[0], 1., wrap)?;
+    validate_runs(runs, size[0], 1., true)?;
     let resolved = resolve_runs(backend, runs)?;
     let mut lines = layout_paragraphs(backend, &resolved, size[0], wrap, paragraph)?;
     if truncation == TextTruncation::Disabled {
@@ -1821,5 +1821,206 @@ mod list_tests {
             )
             .is_err()
         );
+    }
+}
+
+impl crate::Text {
+    pub(crate) fn layout_source(&self) -> Result<Vec<TextRun>, Error> {
+        if !self.runs.is_empty() && !self.string.is_empty() {
+            return Err(Error("styled text cannot also contain a plain string"));
+        }
+        if !self.runs.is_empty()
+            && (self.text_case != TextCase::Original
+                || self.text_decoration != TextDecoration::None
+                || self.decoration_options != DecorationOptions::default())
+        {
+            return Err(Error("rich text requires case and decoration on each run"));
+        }
+        if !self.runs.is_empty()
+            && (!self.open_type_features.is_empty()
+                || self.list_options != ListOptions::None
+                || self.indentation != 0
+                || self.list_spacing != 0.
+                || self.hanging_list)
+        {
+            return Err(Error(
+                "rich text requires OpenType and list settings on each run",
+            ));
+        }
+        if !self.runs.is_empty() && (self.paints.is_some() || !self.fill_blend_modes.is_empty()) {
+            return Err(Error("rich text requires paints on each run"));
+        }
+        let runs = if self.runs.is_empty() {
+            vec![TextRun {
+                text: self.string.clone(),
+                style: self.style(),
+                color: self.color,
+                paints: self.paints.clone(),
+                fill_blend_modes: self.fill_blend_modes.clone(),
+                decoration_paints: None,
+                decoration_blend_modes: Vec::new(),
+                text_decoration: self.text_decoration,
+                decoration_options: self.decoration_options,
+                text_case: self.text_case,
+                open_type_features: self.open_type_features.clone(),
+                list_options: self.list_options,
+                indentation: self.indentation,
+                list_spacing: self.list_spacing,
+                hanging_list: self.hanging_list,
+                direction: TextDirection::Auto,
+                paragraph_spacing: None,
+                paragraph_indent: None,
+            }]
+        } else {
+            self.runs.clone()
+        };
+        Ok(runs)
+    }
+
+    /// Natural text-box dimensions using the same shaping, paragraph and line
+    /// limits as the renderer. `None` measures unwrapped intrinsic width; a width
+    /// measures wrapped height. Paint, alignment, transforms and effects do not
+    /// contribute to layout dimensions. Exact fonts/fallback remain host-owned.
+    pub fn measure(
+        &self,
+        backend: &mut dyn Backend,
+        width: Option<f32>,
+    ) -> Result<[f32; 2], Error> {
+        let mut runs = self.layout_source()?;
+        let empty = self.runs.is_empty() && self.string.is_empty();
+        // An empty plain label still owns one line box; shape a space to check
+        // the supplied font and resolve automatic line height, then discard width.
+        if empty {
+            runs[0].text = " ".to_owned();
+        }
+        let wrap = self.wrap && width.is_some();
+        let width = match width {
+            Some(0.) if empty => 1.,
+            Some(width) => width,
+            None => super::MAX_WIDTH,
+        };
+        let lines = layout_text(
+            backend,
+            &runs,
+            [width, 1e7],
+            wrap,
+            ParagraphStyle {
+                spacing: self.paragraph_spacing,
+                indent: self.paragraph_indent,
+            },
+            self.text_truncation,
+            self.max_lines,
+        )?;
+        let measured_width = lines
+            .iter()
+            .map(|line| line.indent + line.metrics.advance as f32)
+            .fold(0., f32::max);
+        let height = lines
+            .iter()
+            .map(|line| line.height + line.spacing_after)
+            .sum();
+        let size = [if empty { 0. } else { measured_width }, height];
+        if size.iter().any(|v| !v.is_finite() || *v < 0. || *v > 1e7) {
+            return Err(Error("invalid measured text dimensions"));
+        }
+        Ok(size)
+    }
+}
+
+#[cfg(all(test, feature = "text-coretext"))]
+mod measured_text_tests {
+    use super::*;
+    use crate::{Rect, Text};
+    fn backend() -> super::super::coretext::CoreText {
+        super::super::coretext::CoreText::new(&[Some(super::super::FontSource {
+            bytes: include_bytes!("../../fonts/JetBrainsMono-wght-2.211.ttf"),
+            axes: &[],
+        })])
+        .unwrap()
+    }
+    #[test]
+    fn measurement_uses_rendered_lines_paragraphs_and_line_limits() {
+        let mut backend = backend();
+        let text = Text::rich(
+            vec![
+                TextRun::new("Mixed words ").size(16., 24.),
+                TextRun::new("larger words\nand another paragraph").size(24., 32.),
+            ],
+            Rect::default(),
+        )
+        .wrap()
+        .paragraph_spacing(10.)
+        .text_truncation(TextTruncation::Ending)
+        .max_lines(2);
+        for width in [100., 240.] {
+            let size = text.measure(&mut backend, Some(width)).unwrap();
+            let lines = layout_text(
+                &mut backend,
+                &text.runs,
+                [width, 1e7],
+                true,
+                ParagraphStyle {
+                    spacing: 10.,
+                    indent: 0.,
+                },
+                TextTruncation::Ending,
+                Some(2),
+            )
+            .unwrap();
+            assert_eq!(
+                size[1],
+                lines
+                    .iter()
+                    .map(|l| l.height + l.spacing_after)
+                    .sum::<f32>()
+            );
+            let rendered = layout_text(
+                &mut backend,
+                &text.runs,
+                [width, size[1]],
+                true,
+                ParagraphStyle {
+                    spacing: 10.,
+                    indent: 0.,
+                },
+                TextTruncation::Ending,
+                Some(2),
+            )
+            .unwrap();
+            assert_eq!(rendered.len(), lines.len());
+        }
+        let multiline = Text::new("short\nlonger", Rect::default())
+            .size(16., 24.)
+            .wrap();
+        let intrinsic = multiline.measure(&mut backend, None).unwrap();
+        assert_eq!(intrinsic[1], 48.);
+        assert_eq!(
+            intrinsic[0],
+            Text::new("longer", Rect::default())
+                .size(16., 24.)
+                .measure(&mut backend, None)
+                .unwrap()[0]
+        );
+        let plain = Text::new("one two three four five", Rect::default())
+            .size(16., 24.)
+            .wrap();
+        assert!(
+            plain.measure(&mut backend, Some(70.)).unwrap()[1]
+                > plain.measure(&mut backend, Some(240.)).unwrap()[1]
+        );
+        assert!(
+            plain
+                .measure(&mut super::super::NoText, Some(100.))
+                .is_err()
+        );
+        assert!(plain.measure(&mut backend, Some(0.)).is_err());
+        assert_eq!(
+            Text::new("", Rect::default())
+                .size(16., 24.)
+                .measure(&mut backend, Some(0.))
+                .unwrap(),
+            [0., 24.]
+        );
+        assert!(plain.font(63).measure(&mut backend, None).is_err());
     }
 }

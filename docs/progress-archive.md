@@ -749,3 +749,25 @@ this does not claim general pixel parity. The renderer reports no problems and
 uploads nothing on unchanged output. Generated code compiles without dependencies;
 unsupported responsive descendants suppress all Rust. Development-plugin UI use
 has not been claimed. Temporary Figma fixtures were removed after validation.
+
+## Width-dependent responsive text — 2026-11-20
+
+Added host-owned intrinsic measurement callbacks to `Tree::solve_measured`.
+Hug widths are measured before width allocation; hug heights use final widths
+before nested parent/sibling height layout. Root axes can independently be supplied
+or natural. `Text::measure` and rendering share text-source validation and paragraph
+layout, retaining mixed fonts/styles, explicit fallback, lists and line limits.
+Hard paragraph breaks also work during unwrapped intrinsic-width measurement.
+
+The plugin emits measured text calls and accepts native auto-height/hug text.
+Missing fonts and invalid measurements return errors without partially appending
+drawing commands. No dependencies, font discovery, filesystem writes or scene
+runtime were added. Stroke-inclusive responsive layout remains a hard error.
+
+All ten rectangles in one generated hierarchy match live Figma at widths
+320/480/640 (heights 616/496/424). The comparisons were visually reviewed at 2×:
+[narrow](responsive-text-320-compare.png), [medium](responsive-text-480-compare.png),
+[wide](responsive-text-640-compare.png). Normal font rasterization differences
+remain; this is not pixel parity. Tests cover callbacks, nested dependencies,
+line limits, failures, compilation and zero unchanged-canvas uploads. Temporary
+Figma fixtures were removed; running development-plugin UI validation is still open.

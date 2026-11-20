@@ -253,7 +253,11 @@ Covers horizontal and vertical auto layout, wrapping (`.wrap(gap_between_lines)`
 padding, gap, alignment including space-between, fixed / hug / fill sizing, min
 and max sizes, and absolutely positioned children. Supplied root sizes are clamped
 to the root min/max. `solve_natural` sizes a hugging root to its content. Text
-does not measure itself: ask the text backend for the advance and set the node.
+can be measured through `Tree::solve_measured([width, height], callback)`:
+root axes use `Some(value)` or `None` for natural sizing. The callback receives a
+leaf ID and optional width; use `Text::measure(backend, width)` for text leaves.
+Intrinsic widths are resolved first, then heights at final widths, before parent
+hug heights and sibling positions are arranged. The host owns the text and backend.
 
 ## Drawing
 
@@ -839,7 +843,7 @@ parity. Independent opaque cells are rendered separately to respect the existing
 Noto Emoji/Music/Math font assets, used only by tests/examples; library dependencies
 and default builds are unchanged. Brush-text geometry has synthetic exporter coverage;
 the live fixture covers variable-width and dynamic strokes. Full plugin UI validation
-and width-dependent text layout remain separate roadmap tasks. Vertical/random OpenType features
+and remaining responsive layout semantics remain separate roadmap tasks. Vertical/random OpenType features
 and explicitly enabled kerning with nonzero tracking still report unsupported.
 
 ## Responsive plugin output
@@ -855,7 +859,7 @@ This first export stage covers nested horizontal/vertical stacks, fixed/hug/fill
 min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
 hidden-child exclusion and absolute/plain children pinned left/top. Solved bounds
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
-text-based hug/automatic-height measurement is next. Unsupported wrapping, grid,
+text-based hug/automatic-height measurement is supported below. Unsupported stack wrapping, grid,
 baseline, negative gaps, other constraints, transformed nodes, groups,
 stroke-inclusive layout, patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
@@ -870,3 +874,29 @@ were visually reviewed. This is fixture evidence, not universal layout parity
 or live development-plugin UI validation. The example also checks zero uploads
 on an unchanged canvas. The solver now redistributes competing fill min/max
 bounds correctly and includes fill-child minima in counter-axis hug sizing.
+
+### Width-dependent text measurement
+
+Responsive selections with hug/auto-sized text additionally take the host's font
+slots and `&mut dyn text::Backend`. Their generated size argument is
+`[Option<f32>; 2]`: `[Some(320.), None]` supplies width while letting the panel hug
+its measured height. Selections without measured text retain the previous
+`Option<[f32; 2]>` signature. Generated `selection_layout` and drawing functions
+return errors before appending paint if measurement fails.
+
+`Text::measure` shares the renderer's plain/rich text source, paragraph layout,
+shaping, fallback, automatic line heights and line limits. Paints/effects do not
+inflate layout dimensions. The general solver callback retains no scene or font
+state and adds no dependencies. Use the same source text/styles and backend for
+measurement and rendering; unsupported fonts/limits are errors, not authored-height
+fallbacks. Wrapped-stack export and stroke-inclusive layout remain unsupported.
+
+`cargo run --example responsive_text --all-features --locked` compares one generated
+hierarchy at [320](docs/responsive-text-320-compare.png),
+[480](docs/responsive-text-480-compare.png) and
+[640](docs/responsive-text-640-compare.png) pixels wide. All ten node rectangles match
+the live Figma captures; panel heights are 616, 496 and 424. The 2× comparisons were
+visually reviewed, with normal glyph rasterization differences (mean channel
+difference 2.04, 1.87 and 1.75/255). Synthetic tests cover measurement failures,
+line limits and unchanged uploads. This does not claim pixel parity or live plugin UI
+validation. Reopen the local development plugin after updating its bundled code.

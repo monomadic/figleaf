@@ -4,6 +4,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   const errors = [], lines = [], fonts = [];
   const layoutNodes = new Map(), layoutLines = [], layoutRects = new WeakMap(), layoutTransforms = new WeakMap();
   let responsive = false;
+  const measuredText = new Map();
   let maskIndex = 0, compositeIndex=0, unicodeText=false;
   const latinChar=c=>{const p=c.codePointAt(0);return p>=0x20&&p<=0x7e||p>=0xa0&&p<=0xac||p>=0xae&&p<=0x24f||p>=0x2010&&p<=0x2027||p>=0x2030&&p<=0x205e||p>=0x20a0&&p<=0x20bf||p>=0x2100&&p<=0x22ff;};
   const supportedChar=c=>{const p=c.codePointAt(0);return p>=0x20&&!(p>=0x7f&&p<=0x9f)&&!(p>=0xd800&&p<=0xdfff)&&![0xad,0x61c,0x180e,0x20e3,0xfeff].includes(p)&&!(p>=0x200e&&p<=0x200f)&&!(p>=0x2028&&p<=0x202e)&&!(p>=0x2066&&p<=0x2069)&&!(p>=0xfff9&&p<=0xfffb)&&!(p>=0xfdd0&&p<=0xfdef)&&(p&0xffff)<0xfffe;};
@@ -379,7 +380,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           if(end!==text?.length)reject('Styled text ranges do not cover the text.');
         }
         const styles=segments?.length?segments:[n];
-        const generated=[];
+        const generated=[], measureRuns=[];
         let paragraphSettings=null, inWord=false, transformedText='';
         for(const s of styles) {
           const paints=visible(s.fills||[]);
@@ -447,7 +448,12 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
             const key=JSON.stringify(s.fontName);let font=fonts.findIndex(f=>JSON.stringify(f)===key);
             if(font<0){font=fonts.length;fonts.push(s.fontName);}if(fonts.length>64)reject('More than 64 fonts are unsupported.');
             generated.push(`${mixedRuns?'figleaf::text::TextRun':'Text'}::new(${string(mixedRuns?s.characters:text)}${mixedRuns?'':`, ${rect(box)}`}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${paints.length===1&&paints[0].type==='SOLID'?`.color(${color(paints[0].color,paints[0].opacity)})`:`.paints(vec![${paints.map(paintCode).join(', ')}])`}${paints.some(blended)?`.fill_blend_modes(vec![${paints.map(p=>`BlendMode::${blendModes[p.blendMode ?? 'NORMAL']}`).join(', ')}])`:''}${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${s.textDecoration!=='NONE'?`.text_decoration(figleaf::text::TextDecoration::${decorations[s.textDecoration]})`:''}${decorationCode}${spacing?`.paragraph_spacing(${number(spacing)})`:""}${indent?`.paragraph_indent(${number(indent)})`:""}`);
+            if(measuredText.has(n))measureRuns.push(`figleaf::text::TextRun::new(${string(mixedRuns?s.characters:text)}).font(fonts[${font}]).size(${number(s.fontSize)}, ${number(height)})${s.lineHeight?.unit==='AUTO'?'.auto_line_height()':''}.letter_spacing(${number(tracking)})${listCode}${featureCode}${s.textCase!=='ORIGINAL'?`.text_case(figleaf::text::TextCase::${cases[s.textCase]})`:''}${spacing?`.paragraph_spacing(${number(spacing)})`:''}${indent?`.paragraph_indent(${number(indent)})`:''}`);
+
           }
+        }
+        if(measuredText.has(n)&&errors.length===before) {
+          measuredText.set(n, `Text::rich(vec![${measureRuns.join(', ')}], Rect::new(0.0, 0.0, ${number(n.width)}, ${number(n.height)})).wrap()${truncation==='ENDING'?'.text_truncation(figleaf::text::TextTruncation::Ending)':''}${n.maxLines!=null?`.max_lines(${n.maxLines})`:''}`);
         }
         if(unescape(encodeURIComponent(transformedText)).length>512 || [...transformedText].some(c=>c!=='\n'&&!supportedChar(c)))reject('Case-transformed text exceeds the supported Unicode scope or byte limit.');
         for (const type of ['DROP_SHADOW','INNER_SHADOW']) {
@@ -590,11 +596,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const inFlow=parent!==null&&['HORIZONTAL','VERTICAL'].includes(parent.layoutMode)&&n.layoutPositioning!=='ABSOLUTE';
       const sizing=[n.layoutSizingHorizontal??'FIXED',n.layoutSizingVertical??'FIXED'];
       if(sizing.some(v=>!['FIXED','HUG','FILL'].includes(v)))throw Error('Unknown responsive sizing mode.');
-      if(sizing.includes('HUG')&&!stack)throw Error('Responsive hug sizing requires an auto-layout frame; text measurement is a later task.');
+      if(sizing.includes('HUG')&&!stack&&n.type!=='TEXT')throw Error('Responsive hug sizing requires an auto-layout frame or measured text.');
       if(parent!==null&&sizing.includes('FILL')&&!inFlow)throw Error('Responsive fill sizing requires an in-flow auto-layout child.');
       if(n.type==='GROUP')throw Error('Responsive groups require group-bound recomputation and are unsupported.');
       if(!inFlow&&parent&&n.constraints&&(n.constraints.horizontal!=='MIN'||n.constraints.vertical!=='MIN'))throw Error('Responsive absolute/plain children currently require left/top constraints.');
-      if(n.type==='TEXT'&&n.textAutoResize&&n.textAutoResize!=='NONE')throw Error('Responsive auto-sized text requires width-dependent measurement, not an authored-size approximation.');
+      if(n.type==='TEXT') {
+        if(n.textAutoResize&&!['NONE','HEIGHT','WIDTH_AND_HEIGHT','TRUNCATE'].includes(n.textAutoResize))throw Error('Unknown text auto-resize mode.');
+        if(n.textAutoResize==='HEIGHT'&&sizing[1]!=='HUG'||n.textAutoResize==='WIDTH_AND_HEIGHT'&&sizing.some(v=>v!=='HUG'))throw Error('Text auto-resize conflicts with responsive sizing.');
+        if(sizing.includes('HUG'))measuredText.set(n,null);
+      }
       const min=[n.minWidth??0,n.minHeight??0], max=[n.maxWidth??Infinity,n.maxHeight??Infinity];
       [n.width,n.height,...min].forEach(v=>{number(v);if(v<0)throw Error('Negative layout size or minimum.');});
       max.forEach((v,a)=>{if(v!==Infinity)number(v);if(v<min[a])throw Error('Layout maximum is smaller than minimum.');});
@@ -619,7 +629,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     } catch(e){fail(n,path,e.message);}
   }
   try {responsive=!!hasLayout(selection[0]);if(responsive)layoutNode(selection[0],null,selection[0].name);}catch(e){fail(selection[0],selection[0].name,e.message);}
-  if(responsive)lines.push('    let boxes = selection_layout(size)?;');
+  if(responsive)lines.push(`    let boxes = selection_layout(size${measuredText.size?', fonts, backend':''})?;`);
   const compositeRoot=needsComposite(selection[0]);
   if(compositeRoot)lines.push('    let mut selection_content = Canvas::new();');
   try { visit(selection[0], selection[0].name, identity, null, true,0,compositeRoot?'selection_content':'canvas');
@@ -640,13 +650,18 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     'use figleaf::{Canvas, Rect, Shape, Text, Shadow, StrokeAlign, Gradient, LinearGradient, VectorPath, WindingRule, Transform, StrokeCap, StrokeJoin, ArcData, Clip, Mask, MaskType, Paint, Image, ImagePaint, ImageScaleMode, Pattern, TileType, PatternAlignment, Composite, BlendMode};',
     ...(responsive ? [
       'use figleaf::layout::{Node, Sizing, Tree, Align as LayoutAlign};',
-      '// None uses authored/hug root sizing. Some(size) supplies a root size, clamped to min/max.',
-      `pub fn selection_layout(size: Option<[f32; 2]>) -> Result<[Rect; ${layoutNodes.size}], figleaf::Error> {`,
+      measuredText.size ? '// Each root axis: None uses authored/hug sizing; Some(value) supplies its size, clamped to min/max.' : '// None uses authored/hug root sizing. Some(size) supplies a root size, clamped to min/max.',
+      `pub fn selection_layout(size: ${measuredText.size?'[Option<f32>; 2]':'Option<[f32; 2]>'}${measuredText.size?`, fonts: [usize; ${fonts.length}], backend: &mut dyn figleaf::text::Backend`:''}) -> Result<[Rect; ${layoutNodes.size}], figleaf::Error> {`,
       ...layoutLines.map(line=>layoutNodes.size===1?line.replace('let mut tree =', 'let tree ='):line),
-      '    let solved = match size { Some(size) => tree.solve(size)?, None => tree.solve_natural()? };',
+      ...(measuredText.size ? [
+        ...[...measuredText].map(([n,expr])=>`    let text_${layoutNodes.get(n)} = ${expr};`),
+        '    let solved = tree.solve_measured(size, |node, width| {',
+        ...[...measuredText.keys()].map(n=>`        if node == node_${layoutNodes.get(n)} { return text_${layoutNodes.get(n)}.measure(backend, width).map(Some); }`),
+        '        Ok(None)', '    })?;',
+      ] : ['    let solved = match size { Some(size) => tree.solve(size)?, None => tree.solve_natural()? };']),
       `    Ok([${[...layoutNodes.values()].map(i=>`solved[node_${i}]`).join(', ')}])`, '}',
     ] : []),
-    '', `pub fn draw_selection(canvas: &mut Canvas${responsive?', size: Option<[f32; 2]>':''}${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''})${responsive?' -> Result<(), figleaf::Error>':''} {`,
+    '', `pub fn draw_selection(canvas: &mut Canvas${responsive?`, size: ${measuredText.size?'[Option<f32>; 2]':'Option<[f32; 2]>'}`:''}${fonts.length ? `, fonts: [usize; ${fonts.length}]` : ''}${measuredText.size?', backend: &mut dyn figleaf::text::Backend':''})${responsive?' -> Result<(), figleaf::Error>':''} {`,
   ];
   return { code: [...preamble, ...lines, ...(responsive?['    Ok(())']:[]), '}',''].join('\n'), errors: [], fonts, nodeCount: count };
 }

@@ -3510,3 +3510,57 @@ fn unicode_text_blends_strokes_and_decoration_inheritance() {
     );
     assert!(!renderer.problems().is_empty());
 }
+
+#[cfg(feature = "text-coretext")]
+#[test]
+fn responsive_text_measurement_matches_live_figma_sizes_and_caches() {
+    mod generated {
+        include!("../examples/generated/responsive_text.rs");
+    }
+    mod reference {
+        include!("../examples/generated/responsive_text_expected.rs");
+    }
+    use figleaf::text::{Axis, FontSource, coretext::CoreText};
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[Axis {
+            tag: *b"wght",
+            value: 400.,
+        }],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    for &(width, height, expected) in reference::CASES {
+        let size = [Some(width as f32), None];
+        let actual = generated::selection_layout(size, [0], &mut backend).unwrap();
+        for (actual, expected) in actual.iter().zip(expected) {
+            assert_eq!([actual.x, actual.y, actual.w, actual.h], *expected);
+        }
+        let mut canvas = Canvas::new();
+        generated::draw_selection(&mut canvas, size, [0], &mut backend).unwrap();
+        gpu.render(
+            &mut renderer,
+            &canvas,
+            [width, height],
+            1.,
+            [1.; 4],
+            &mut backend,
+        );
+        assert!(renderer.problems().is_empty(), "{:?}", renderer.problems());
+        let report = renderer
+            .prepare(
+                &gpu.device,
+                &gpu.queue,
+                &canvas,
+                [width, height],
+                1.,
+                &mut backend,
+            )
+            .unwrap();
+        assert!(!report.changed && report.uploaded_bytes == 0 && report.textures_created == 0);
+        let before = canvas.clone();
+        assert!(generated::draw_selection(&mut canvas, size, [0], &mut NoText).is_err());
+        assert_eq!(canvas, before);
+    }
+}

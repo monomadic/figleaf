@@ -20,8 +20,9 @@ Output is a `draw_selection` Rust function appending shapes/text to a caller's
 `Canvas`, with the selected root at `(0, 0)`. Hierarchies containing auto layout
 also emit `selection_layout(size)` and take `size: Option<[f32; 2]>` in
 `draw_selection`, returning a `Result`. `Some(size)` resizes the root within its
-min/max bounds; `None` uses authored/hug sizing. Other hierarchies retain static
-paint output. Values/variable modes remain resolved at export time. Ancestor
+min/max bounds; `None` uses authored/hug sizing. Measured text instead uses
+independent axis options and a backend, as described below. Other hierarchies retain
+static paint output. Values/variable modes remain resolved at export time. Ancestor
 clipping/effects outside the selected root, interactions, component state, and
 live variable bindings are not exported. Hidden layers,
 paints, and effects are intentionally excluded.
@@ -356,14 +357,32 @@ absolute children. Plain frames preserve child offsets. Hidden layers do not
 participate. Draw calls use solved bounds and translations, including clips;
 layout errors return before appending paint. The plugin still only displays code.
 
-Text-based hug/automatic height, wrapped/grid layout, baseline alignment, negative
-gaps, non-left/top constraints, rotated/scaled/skewed nodes, groups,
+Wrapped/grid layout, baseline alignment, negative gaps, non-left/top constraints,
+rotated/scaled/skewed nodes, groups,
 stroke-inclusive layout, pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
-Fixed-height text can wrap in its solved width without resizing surrounding rows.
+Fixed-height text can wrap in its solved width; auto-height text uses the measured
+layout path below to resize surrounding rows.
 Selecting a fill-sized root uses its authored size for `None`, since its parent is
 outside the export. The host supplies subsequent root sizes.
 
 The same generated Rust was checked against all node rectangles and renders in
 three live Figma sizes; see the [comparison](../docs/responsive-layout-480-compare.png).
 Whole-plugin UI validation remains a separate task.
+
+### Measured responsive text
+
+Hug-width and auto-height text export native measurement calls. When present,
+`selection_layout` and `draw_selection` take `[Option<f32>; 2]`, font slots and a
+host-supplied text backend. For example, `[Some(320.), None]` fixes width and hugs
+height; `[None, None]` uses the root's authored/hug sizing. Intrinsic width is
+measured before fill allocation, then text height at the final width. Nested hug
+frames and subsequent siblings follow the result. No system fonts are guessed,
+and font/measurement errors return before drawing changes the caller's canvas.
+
+[Three-width Figma comparison](../docs/responsive-text-480-compare.png) covers mixed
+styles, paragraph breaks/spacing, indentation and a hug-width label with max width.
+Generated code compiles without dependencies; actual font measurement uses the
+host's backend. This is export-fixture evidence, not validation of a running plugin
+window. `node plugin/build.js --check` checks the local bundle; close/reopen the
+development plugin to load a rebuilt bundle. Stroke-inclusive layout still errors.

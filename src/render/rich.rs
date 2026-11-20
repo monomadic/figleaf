@@ -31,30 +31,7 @@ pub(super) fn prepare(
     result
 }
 pub(super) fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<Composite, Error> {
-    if !t.runs.is_empty() && !t.string.is_empty() {
-        return Err(Error("styled text cannot also contain a plain string"));
-    }
-    if !t.runs.is_empty()
-        && (t.text_case != text::TextCase::Original
-            || t.text_decoration != text::TextDecoration::None
-            || t.decoration_options != text::DecorationOptions::default())
-    {
-        return Err(Error("rich text requires case and decoration on each run"));
-    }
-    if !t.runs.is_empty()
-        && (!t.open_type_features.is_empty()
-            || t.list_options != text::ListOptions::None
-            || t.indentation != 0
-            || t.list_spacing != 0.
-            || t.hanging_list)
-    {
-        return Err(Error(
-            "rich text requires OpenType and list settings on each run",
-        ));
-    }
-    if !t.runs.is_empty() && (t.paints.is_some() || !t.fill_blend_modes.is_empty()) {
-        return Err(Error("rich text requires paints on each run"));
-    }
+    let runs = t.layout_source()?;
     if t.stroke.is_none()
         && (!t.stroke_paints.is_empty()
             || !t.stroke_blend_modes.is_empty()
@@ -68,30 +45,6 @@ pub(super) fn build(t: &Text, scale: f32, backend: &mut dyn Backend) -> Result<C
     t.transform.inverse()?;
     t.transform.bounds(t.rect).validate()?;
     let raster_scale = (scale * t.transform.max_scale()).max(scale).max(0.5);
-    let runs = if t.runs.is_empty() {
-        vec![text::TextRun {
-            text: t.string.clone(),
-            style: t.style(),
-            color: t.color,
-            paints: t.paints.clone(),
-            fill_blend_modes: t.fill_blend_modes.clone(),
-            decoration_paints: None,
-            decoration_blend_modes: Vec::new(),
-            text_decoration: t.text_decoration,
-            decoration_options: t.decoration_options,
-            text_case: t.text_case,
-            open_type_features: t.open_type_features.clone(),
-            list_options: t.list_options,
-            indentation: t.indentation,
-            list_spacing: t.list_spacing,
-            hanging_list: t.hanging_list,
-            direction: text::TextDirection::Auto,
-            paragraph_spacing: None,
-            paragraph_indent: None,
-        }]
-    } else {
-        t.runs.clone()
-    };
     // Validate even invisible/whitespace-only styles before looking for outlines.
     for run in &runs {
         let mut check = Shape::vector(
