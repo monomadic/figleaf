@@ -861,7 +861,7 @@ hidden-child exclusion and absolute/plain children pinned left/top. Solved bound
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
 text-based hug/automatic-height measurement is supported below. Unsupported stack wrapping, grid,
 baseline, negative gaps, other constraints, transformed nodes, groups,
-stroke-inclusive layout, patterns sourced inside the selection and resizing of
+patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
 export errors. Static exports retain their previous transform/geometry support.
 
@@ -889,7 +889,7 @@ shaping, fallback, automatic line heights and line limits. Paints/effects do not
 inflate layout dimensions. The general solver callback retains no scene or font
 state and adds no dependencies. Use the same source text/styles and backend for
 measurement and rendering; unsupported fonts/limits are errors, not authored-height
-fallbacks. Wrapped-stack export and stroke-inclusive layout remain unsupported.
+fallbacks. Wrapped-stack export remains unsupported.
 
 `cargo run --example responsive_text --all-features --locked` compares one generated
 hierarchy at [320](docs/responsive-text-320-compare.png),
@@ -900,3 +900,23 @@ visually reviewed, with normal glyph rasterization differences (mean channel
 difference 2.04, 1.87 and 1.75/255). Synthetic tests cover measurement failures,
 line limits and unchanged uploads. This does not claim pixel parity or live plugin UI
 validation. Reopen the local development plugin after updating its bundled code.
+
+### Stroke-inclusive responsive layout
+
+`layout::Node::strokes_included_in_layout(true)` reserves a frame's visible
+inside strokes in addition to its padding. Use `stroke_weight` or
+`stroke_weights([top, right, bottom, left])` and `stroke_align`, matching the
+painted frame. Center/outside strokes do not reserve space. Pass zero weights
+when all stroke paints are hidden or absent; visible zero-opacity strokes count.
+Host sizes smaller than the combined inside border widths return an error;
+Figma's implicit minimum-size expansion is not yet reproduced.
+Multiple paints reserve the width once. Child strokes do not add margins, and
+absolute children keep their authored offsets.
+
+The plugin emits these settings automatically. Border space participates in
+hug/fill sizing and width-dependent text measurement without new dependencies.
+`cargo run --example responsive_strokes --all-features --locked` renders the
+[reviewed comparison](docs/responsive-strokes-240-compare.png). Ten rectangles
+match live Figma at two widths; the simple solid-border rendering was checked at
+240 pixels. Synthetic tests additionally cover measured text and absolute offsets.
+This is bounded fixture evidence, not live development-plugin UI validation.

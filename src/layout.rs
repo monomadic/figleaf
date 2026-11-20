@@ -13,7 +13,7 @@
 //!
 //! Widths are solved first and heights second. The only thing heights take
 //! from widths is where wrapping stacks break and the measured height of leaves.
-use crate::{Error, Rect};
+use crate::{Error, Rect, StrokeAlign};
 use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,6 +72,12 @@ pub struct Node {
     /// Takes part in its parent's stack: visible and not absolutely positioned.
     pub in_flow: bool,
     pub layout: Option<AutoLayout>,
+    /// Visible stroke widths: top, right, bottom, left. Use zero when all
+    /// stroke paints are hidden or absent; visible zero-opacity paints count.
+    pub stroke_weights: [f32; 4],
+    pub stroke_align: StrokeAlign,
+    /// Reserve the frame's inside strokes in addition to padding.
+    pub strokes_included_in_layout: bool,
 }
 
 impl Node {
@@ -85,6 +91,9 @@ impl Node {
             max: [f32::INFINITY; 2],
             in_flow: true,
             layout: None,
+            stroke_weights: [0.; 4],
+            stroke_align: StrokeAlign::Inside,
+            strokes_included_in_layout: false,
         }
     }
 }
@@ -136,7 +145,7 @@ impl<'a> Solver<'a> {
     }
 
     fn hug(&mut self, i: usize, l: AutoLayout) -> f32 {
-        let (start, end) = pads(l, self.axis);
+        let (start, end) = pads(&self.nodes[i], l, self.axis);
         let flow: Vec<usize> = self.flow(i);
         // Figma output: a hugging frame with nothing in its flow keeps its size.
         if flow.is_empty() {
@@ -223,7 +232,7 @@ impl<'a> Solver<'a> {
             }
             return;
         };
-        let (start, end) = pads(l, self.axis);
+        let (start, end) = pads(&self.nodes[i], l, self.axis);
         let inner = size - start - end;
         let flow = self.flow(i);
         if primary(l) == self.axis {
@@ -357,8 +366,17 @@ fn primary(l: AutoLayout) -> usize {
     }
 }
 
-fn pads(l: AutoLayout, axis: usize) -> (f32, f32) {
-    (l.padding[axis], l.padding[axis + 2])
+fn pads(n: &Node, l: AutoLayout, axis: usize) -> (f32, f32) {
+    let weights = if n.strokes_included_in_layout && n.stroke_align == StrokeAlign::Inside {
+        n.stroke_weights
+    } else {
+        [0.; 4]
+    };
+    let (start, end) = if axis == 0 { (3, 1) } else { (0, 2) };
+    (
+        l.padding[axis] + weights[start],
+        l.padding[axis + 2] + weights[end],
+    )
 }
 
 /// Checks the input and lists each node's children.
@@ -376,6 +394,9 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
             .chain(&n.offset)
             .chain(&n.min)
             .all(|v| v.is_finite());
+        if n.stroke_weights.iter().any(|v| !v.is_finite() || *v < 0.) {
+            return Err(Error("invalid layout stroke widths"));
+        }
         if !finite
             || n.size.iter().chain(&n.min).any(|&v| v < 0.)
             || (0..2).any(|axis| n.max[axis].is_nan() || n.max[axis] < n.min[axis])
@@ -439,10 +460,25 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
         }
         lines = s.lines;
     }
-    for rect in &out {
-        rect.validate()?;
+    for (n, rect) in nodes.iter().zip(&out) {
+        validate_bounds(n, rect)?;
     }
     Ok(out)
+}
+
+fn validate_bounds(n: &Node, rect: &Rect) -> Result<(), Error> {
+    rect.validate()?;
+    if n.layout.is_some()
+        && n.strokes_included_in_layout
+        && n.stroke_align == StrokeAlign::Inside
+        && (rect.w < n.stroke_weights[1] + n.stroke_weights[3]
+            || rect.h < n.stroke_weights[0] + n.stroke_weights[2])
+    {
+        return Err(Error(
+            "layout frame is smaller than its included inside strokes",
+        ));
+    }
+    Ok(())
 }
 
 /// Builders named after Figma's auto layout panel.
@@ -520,6 +556,25 @@ impl Node {
         self.stack_mut().padding = padding;
         self
     }
+    /// Uniform visible stroke width. See [`Node::stroke_weights`].
+    pub fn stroke_weight(self, weight: f32) -> Self {
+        self.stroke_weights([weight; 4])
+    }
+    /// Top, right, bottom, left; counted once regardless of paint count.
+    pub fn stroke_weights(mut self, weights: [f32; 4]) -> Self {
+        self.stroke_weights = weights;
+        self
+    }
+    pub fn stroke_align(mut self, align: StrokeAlign) -> Self {
+        self.stroke_align = align;
+        self
+    }
+    /// Only inside strokes of an auto-layout frame reserve content space.
+    /// Center/outside strokes and absolute-child offsets are unaffected.
+    pub fn strokes_included_in_layout(mut self, included: bool) -> Self {
+        self.strokes_included_in_layout = included;
+        self
+    }
     /// Figma's "gap between items".
     pub fn gap(mut self, spacing: f32) -> Self {
         self.stack_mut().spacing = spacing;
@@ -588,7 +643,7 @@ impl Tree {
         for i in 1..rects.len() {
             let p = rects[self.nodes[i].parent.unwrap()];
             rects[i] = rects[i].translate([p.x, p.y]);
-            rects[i].validate()?;
+            validate_bounds(&self.nodes[i], &rects[i])?;
         }
         Ok(Solved { rects })
     }
@@ -660,7 +715,7 @@ impl Tree {
             if let Some(p) = nodes[i].parent {
                 rects[i] = rects[i].translate([rects[p].x, rects[p].y]);
             }
-            rects[i].validate()?;
+            validate_bounds(&nodes[i], &rects[i])?;
         }
         Ok(Solved { rects })
     }
@@ -1025,5 +1080,70 @@ mod measured_tests {
             tree.solve_measured([Some(200.), None], |_, _| Ok(Some([f32::NAN, 1.])))
                 .is_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod stroke_tests {
+    use super::*;
+
+    #[test]
+    fn inside_borders_reserve_space_once_and_leave_absolute_offsets() {
+        for align in [
+            StrokeAlign::Inside,
+            StrokeAlign::Center,
+            StrokeAlign::Outside,
+        ] {
+            for included in [false, true] {
+                let mut tree = Tree::new(
+                    Node::row()
+                        .paddings([3., 5., 7., 9.])
+                        .stroke_weights([2., 4., 6., 8.])
+                        .stroke_align(align)
+                        .strokes_included_in_layout(included),
+                );
+                let child = tree.add(tree.root(), Node::fill().stroke_weight(100.));
+                let absolute = tree.add(tree.root(), Node::fixed([5., 5.]).absolute([1., 2.]));
+                let solved = tree.solve([120., 80.]).unwrap();
+                let expected = if included && align == StrokeAlign::Inside {
+                    Rect::new(11., 7., 98., 58.)
+                } else {
+                    Rect::new(3., 5., 110., 66.)
+                };
+                assert_eq!(solved[child], expected);
+                assert_eq!(solved[absolute], Rect::new(1., 2., 5., 5.));
+            }
+        }
+    }
+
+    #[test]
+    fn borders_participate_in_hug_and_width_dependent_measurement() {
+        let mut tree = Tree::new(
+            Node::column()
+                .padding(3.)
+                .stroke_weight(10.)
+                .strokes_included_in_layout(true),
+        );
+        let child = tree.add(tree.root(), Node::fixed([30., 20.]));
+        assert_eq!(
+            tree.solve_measured([None, None], |_, _| Ok(None))
+                .unwrap()
+                .size(),
+            [56., 46.]
+        );
+        tree.node_mut(child).sizing = [Sizing::Fill, Sizing::Hug];
+        let solved = tree
+            .solve_measured([Some(100.), None], |_, width| {
+                assert_eq!(width, Some(74.));
+                Ok(Some([74., 40.]))
+            })
+            .unwrap();
+        assert_eq!(solved.size(), [100., 66.]);
+        assert_eq!(solved[child], Rect::new(13., 13., 74., 40.));
+        assert!(tree.solve([12., 12.]).is_err());
+        for weight in [-1., f32::NAN, f32::INFINITY] {
+            tree.node_mut(tree.root()).stroke_weights = [weight; 4];
+            assert!(tree.solve([100., 100.]).is_err());
+        }
     }
 }

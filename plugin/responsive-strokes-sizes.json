@@ -1,0 +1,198 @@
+[
+  {
+    "size": [
+      240,
+      240
+    ],
+    "boxes": [
+      {
+        "name": "Temporary responsive stroke validation",
+        "rect": [
+          0,
+          0,
+          240,
+          240
+        ]
+      },
+      {
+        "name": "INSIDE",
+        "rect": [
+          20,
+          14,
+          204,
+          44
+        ]
+      },
+      {
+        "name": "Fill",
+        "rect": [
+          32,
+          26,
+          144,
+          20
+        ]
+      },
+      {
+        "name": "Fixed",
+        "rect": [
+          182,
+          26,
+          30,
+          20
+        ]
+      },
+      {
+        "name": "CENTER",
+        "rect": [
+          20,
+          72,
+          204,
+          36
+        ]
+      },
+      {
+        "name": "Fill",
+        "rect": [
+          28,
+          80,
+          152,
+          20
+        ]
+      },
+      {
+        "name": "Fixed",
+        "rect": [
+          186,
+          80,
+          30,
+          20
+        ]
+      },
+      {
+        "name": "OUTSIDE",
+        "rect": [
+          20,
+          122,
+          204,
+          36
+        ]
+      },
+      {
+        "name": "Fill",
+        "rect": [
+          28,
+          130,
+          152,
+          20
+        ]
+      },
+      {
+        "name": "Fixed",
+        "rect": [
+          186,
+          130,
+          30,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      360,
+      240
+    ],
+    "boxes": [
+      {
+        "name": "Temporary responsive stroke validation",
+        "rect": [
+          0,
+          0,
+          360,
+          240
+        ]
+      },
+      {
+        "name": "INSIDE",
+        "rect": [
+          20,
+          14,
+          324,
+          44
+        ]
+      },
+      {
+        "name": "Fill",
+        "rect": [
+          32,
+          26,
+          264,
+          20
+        ]
+      },
+      {
+        "name": "Fixed",
+        "rect": [
+          302,
+          26,
+          30,
+          20
+        ]
+      },
+      {
+        "name": "CENTER",
+        "rect": [
+          20,
+          72,
+          324,
+          36
+        ]
+      },
+      {
+        "name": "Fill",
+        "rect": [
+          28,
+          80,
+          272,
+          20
+        ]
+      },
+      {
+        "name": "Fixed",
+        "rect": [
+          306,
+          80,
+          30,
+          20
+        ]
+      },
+      {
+        "name": "OUTSIDE",
+        "rect": [
+          20,
+          122,
+          324,
+          36
+        ]
+      },
+      {
+        "name": "Fill",
+        "rect": [
+          28,
+          130,
+          272,
+          20
+        ]
+      },
+      {
+        "name": "Fixed",
+        "rect": [
+          306,
+          130,
+          30,
+          20
+        ]
+      }
+    ]
+  }
+]

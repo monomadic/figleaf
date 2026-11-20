@@ -359,7 +359,7 @@ layout errors return before appending paint. The plugin still only displays code
 
 Wrapped/grid layout, baseline alignment, negative gaps, non-left/top constraints,
 rotated/scaled/skewed nodes, groups,
-stroke-inclusive layout, pattern sources inside the responsive selection and
+pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
 Fixed-height text can wrap in its solved width; auto-height text uses the measured
 layout path below to resize surrounding rows.
@@ -386,3 +386,13 @@ Generated code compiles without dependencies; actual font measurement uses the
 host's backend. This is export-fixture evidence, not validation of a running plugin
 window. `node plugin/build.js --check` checks the local bundle; close/reopen the
 development plugin to load a rebuilt bundle. Stroke-inclusive layout still errors.
+
+Stroke-inclusive responsive frames now export their visible stroke widths and
+alignment to the solver. Inside strokes add to padding; center/outside strokes
+and child strokes do not reserve space. Hidden/absent paints contribute nothing,
+zero-opacity visible paints count, and multiple paints count the widths once.
+Individual side widths, nested hug/fill and width-dependent text measurement use
+the same content area; absolute children retain their offsets.
+The generated layout matches ten live Figma rectangles at two widths; see the
+[border comparison](../docs/responsive-strokes-240-compare.png). Reopen the local
+development plugin to load the rebuilt bundle.

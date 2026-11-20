@@ -890,7 +890,7 @@ test('unsupported responsive behavior gives layer-specific errors and no Rust',(
     {layoutMode:'GRID'},{layoutWrap:'WRAP'},{counterAxisAlignItems:'BASELINE'},
     {paddingLeft:-1},{itemSpacing:-2},{minWidth:-1},{maxWidth:100},{width:NaN},
     {relativeTransform:[[0,-1,0],[1,0,0]]},
-    {strokesIncludedInLayout:true,strokes:[solid],strokeWeight:2},
+    {strokesIncludedInLayout:true,strokes:[solid],strokeTopWeight:-2},
   ]) {
     const root=structuredClone(require('./responsive-layout-reference.json'));Object.assign(root,patch);
     const r=exportHierarchy([root]);assert.equal(r.code,null,JSON.stringify(patch));assert.ok(r.errors.some(e=>e.nodeId===root.id));
@@ -931,4 +931,26 @@ test('responsive text emits native measurement and compiles without dependencies
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
   const invalid=structuredClone(require('./responsive-text-reference.json'));invalid.children[0].textAutoResize='UNKNOWN';attach(invalid);assert.equal(exportHierarchy([invalid]).code,null);
+});
+
+test('stroke-inclusive generated layout matches live Figma at two widths',()=>{
+  const root=require('./responsive-strokes-reference.json');
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_strokes.rs'),'utf8'));
+  const checks=require('./responsive-strokes-sizes.json').map(({size,boxes})=>`let actual=selection_layout(Some([${size.map(x=>x+'.0')}])).unwrap();${boxes.map((b,i)=>`assert_eq!(actual[${i}],Rect::new(${b.rect.map(x=>x+'.0')}),${JSON.stringify(b.name)});`).join('')}`).join('\n');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-strokes-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('layout stroke paint visibility counts zero opacity and multiple paints once',()=>{
+  for(const [strokes,expected] of [[[solid],1],[[{...solid,opacity:0}],1],[[solid,solid],1],[[{...solid,visible:false}],0],[[],0]]) {
+    const root=structuredClone(require('./responsive-strokes-reference.json'));
+    root.children=[];root.strokes=strokes;
+    const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+    assert.equal((r.code.match(/strokes_included_in_layout\(true\)/g)||[]).length,expected);
+  }
 });
