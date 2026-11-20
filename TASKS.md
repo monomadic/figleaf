@@ -46,8 +46,9 @@ pixel against writing the same piece at the offset by hand, not against Figma.
    Fill-height cycles and vertically resizing baseline text still hard-error.
    **Vertical wrapping done (2026-11-20):** columns, hug-width propagation, fill
    stretching and bounded text remeasurement; [reviewed at three heights](docs/responsive-vertical-wrap-360-compare.png).
-   **Next:** implicit border
-   minimum-size expansion, rotated children and grid layout. Keep state and resize events
+   **Implicit frame minima done (2026-11-21):** padding/inside-border expansion,
+   fill redistribution and responsive border paint order; [reviewed undersized frame](docs/responsive-border-min-2-compare.png).
+   **Next:** rotated children and grid layout. Keep state and resize events
    in the host; add no scene runtime.
    **Done when:** the same generated panel lays out at several supplied sizes
    without re-export, agrees with corresponding Figma layouts, and reports

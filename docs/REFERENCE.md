@@ -873,8 +873,9 @@ inside strokes in addition to its padding. Use `stroke_weight` or
 `stroke_weights([top, right, bottom, left])` and `stroke_align`, matching the
 painted frame. Center/outside strokes do not reserve space. Pass zero weights
 when all stroke paints are hidden or absent; visible zero-opacity strokes count.
-Host sizes smaller than the combined inside border widths return an error;
-Figma's implicit minimum-size expansion is not yet reproduced.
+Auto-layout frames expand to at least their padding plus included inside borders,
+even when the host size or explicit maximum is smaller. Fill children reserve
+this space first, then share the remainder subject to their explicit min/max.
 Multiple paints reserve the width once. Child strokes do not add margins, and
 absolute children keep their authored offsets.
 
@@ -986,3 +987,18 @@ The plugin and snapshot CLI share the exporter and accept vertical wrapping.
 renders were visually reviewed; unchanged canvases upload nothing. Nested hug
 propagation, width-dependent text and a deliberately oscillating layout are
 synthetic tests, not whole-panel or live plugin UI validation.
+
+### Implicit frame minima
+
+Padding and visible included inside borders set a per-axis minimum for auto-layout
+frames. Fixed, hug, fill, wrapping and measured layout use this same minimum;
+center/outside strokes do not contribute. Overflowing children remain governed by
+frame clipping. Responsive frame inside borders paint after children so overflow
+does not cover the border.
+
+`cargo run --example responsive_border_min --all-features --locked` compares
+[160×80](responsive-border-min-160-compare.png), [70×50](responsive-border-min-70-compare.png)
+and [requested 2×3](responsive-border-min-2-compare.png) layouts to Figma. The last
+expands to 20×20. All nine captured rectangles and three renders match this fixture;
+unchanged canvases upload nothing. Synthetic tests cover explicit maximum conflicts,
+fill redistribution and wrapped minimum sizes. This is bounded fixture evidence.

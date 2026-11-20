@@ -200,7 +200,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     const reject = message => fail(n, path, message);
     let childClip = clip;
     let world = parentTransform;
-    let scope=null;
+    let scope=null, deferredBorder=null;
     const outerTarget=target;
     try {
       const types = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'RECTANGLE', 'ELLIPSE', 'LINE', 'TEXT', 'VECTOR', 'POLYGON', 'STAR', 'BOOLEAN_OPERATION'];
@@ -527,7 +527,15 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         if (strokeNote) lines.push(`    // ${comment(strokeNote)} (resolved Figma outlines).`);
         if (smoothed) lines.push(`    // Corner smoothing: ${number(smoothing)} (resolved Figma contours).`);
 
-        lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
+        if(responsive && n.children?.length && strokes.length && n.strokeAlign==='INSIDE' && ['FRAME','COMPONENT','COMPONENT_SET','INSTANCE'].includes(n.type)) {
+          const name=`frame_${layoutNodes.get(n)}`, border=`border_${layoutNodes.get(n)}`;
+          lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    let mut ${name} = ${expression};`,
+            `    let mut ${border} = ${name}.clone();`,
+            `    ${border}.fills.clear();`, `    ${border}.fill_blend_modes.clear();`, `    ${border}.shadows.clear();`,
+            `    ${name}.stroke = None;`, `    ${name}.stroke_weights = None;`, `    ${name}.stroke_paints.clear();`, `    ${name}.stroke_blend_modes.clear();`,
+            `    ${target}.shape(${name});`);
+          deferredBorder=`    ${target}.shape(${border});`;
+        } else lines.push(`    // ${comment(path)} [${comment(n.id)}]`, `    ${target}.${n.type === 'TEXT' ? 'text' : 'shape'}(${expression});`);
       }
       if (n.clipsContent) {
         if (radii.some(r=>r<0)) reject('Invalid clip corner radius.');
@@ -560,6 +568,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       } else visit(child,path+' / '+child.name,world,childClip,false,depth+1,active ? `masked_${active.id}` : target,false,maskDepth+(active?1:0),compositeDepth);
     }
     finishMask();
+    if(deferredBorder)lines.push(deferredBorder);
     if(scope){try {
       let expression=`Composite::new(${scope.name}).opacity(${number(asMask?1:(n.opacity??1))}).blend_mode(BlendMode::${scope.mode}).effect_transform(${matrix(world)})`;
       for(const c of scope.clips)expression+=`.intersect_clip(${c.paths ? `Clip::paths(${c.paths})` : `Clip::rounded_rect(${rect(c.rect)}, ${array(c.radii)})`}.transform(${matrix(c.transform)}))`;

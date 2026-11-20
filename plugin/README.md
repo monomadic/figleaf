@@ -496,3 +496,10 @@ The solver remeasures text while resolving width/height dependencies; cycles or
 layouts that do not settle within 64 passes return an error before drawing.
 The fixture was captured through `snapshot.js` and exported with `cli.js`, using
 the same exporter as the read-only plugin. No new node properties were needed.
+
+Auto-layout padding and included inside borders now impose implicit minimum sizes,
+even over a smaller explicit maximum. Existing emitted padding/stroke calls drive
+this behavior; no additional snapshot properties are required. Fill frames reserve
+that space before sharing the remainder. Responsive inside frame borders paint
+above children, including overflow at small sizes. See the
+[minimum-size comparison](../docs/responsive-border-min-2-compare.png).

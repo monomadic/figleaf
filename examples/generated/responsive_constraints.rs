@@ -44,10 +44,20 @@ pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(),
     // Temporary constraint validation / Scale [535:558]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[5].w, boxes[5].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[5].x, boxes[5].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
     // Temporary constraint validation / Nested constrained auto layout [535:559]
-    canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[6].x, boxes[6].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
+    let mut frame_6 = Shape::rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[6].x, boxes[6].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y)));
+    let mut border_6 = frame_6.clone();
+    border_6.fills.clear();
+    border_6.fill_blend_modes.clear();
+    border_6.shadows.clear();
+    frame_6.stroke = None;
+    frame_6.stroke_weights = None;
+    frame_6.stroke_paints.clear();
+    frame_6.stroke_blend_modes.clear();
+    canvas.shape(frame_6);
     // Temporary constraint validation / Nested constrained auto layout / Flow [535:560]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[7].w, boxes[7].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[7].x, boxes[7].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[6].x, boxes[6].y))));
     // Temporary constraint validation / Nested constrained auto layout / Absolute bottom right [535:561]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[8].w, boxes[8].h)).fill([0.15, 0.22, 0.35, 1.0]).transform(Transform::translation(boxes[8].x, boxes[8].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[6].x, boxes[6].y))));
+    canvas.shape(border_6);
     Ok(())
 }

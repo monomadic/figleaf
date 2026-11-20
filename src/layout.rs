@@ -164,7 +164,9 @@ impl<'a> Solver<'a> {
 
     fn clamp(&self, i: usize, v: f32) -> f32 {
         let n = &self.nodes[i];
-        v.min(n.max[self.axis]).max(n.min[self.axis])
+        v.min(n.max[self.axis])
+            .max(n.min[self.axis])
+            .max(implicit_min(n, self.axis))
     }
 
     /// Size along the axis before the parent stretches or fills it.
@@ -227,7 +229,7 @@ impl<'a> Solver<'a> {
         // A fill child does not contribute its authored size beside fixed/hug
         // siblings, but its minimum still constrains the hugging parent.
         line.iter()
-            .map(|&c| self.nodes[c].min[self.axis])
+            .map(|&c| self.nodes[c].min[self.axis].max(implicit_min(&self.nodes[c], self.axis)))
             .fold(measured, f32::max)
     }
 
@@ -279,7 +281,7 @@ impl<'a> Solver<'a> {
         {
             // Figma ignores authored fill heights when sizing a wrapped track.
             line.iter()
-                .map(|&c| self.nodes[c].min[self.axis])
+                .map(|&c| self.nodes[c].min[self.axis].max(implicit_min(&self.nodes[c], self.axis)))
                 .fold(1., f32::max)
         } else {
             self.thickness(line)
@@ -493,9 +495,10 @@ impl<'a> Solver<'a> {
             open.iter()
                 .map(|&k| {
                     let n = &self.nodes[flow[k]];
-                    share
-                        .max(f64::from(n.min[self.axis]))
+                    (share + f64::from(implicit_min(n, self.axis)))
                         .min(f64::from(n.max[self.axis]))
+                        .max(f64::from(n.min[self.axis]))
+                        .max(f64::from(implicit_min(n, self.axis)))
                 })
                 .sum::<f64>()
         };
@@ -514,7 +517,10 @@ impl<'a> Solver<'a> {
             hi = 0.;
         }
         for k in open {
-            sizes[k] = self.clamp(flow[k], hi as f32);
+            sizes[k] = self.clamp(
+                flow[k],
+                hi as f32 + implicit_min(&self.nodes[flow[k]], self.axis),
+            );
         }
         sizes
     }
@@ -766,16 +772,19 @@ fn solve_coupled(
     ))
 }
 
+/// Auto-layout padding and included inside borders cannot be compressed.
+fn implicit_min(n: &Node, axis: usize) -> f32 {
+    n.layout.map_or(0., |layout| {
+        let (start, end) = pads(n, layout, axis);
+        start + end
+    })
+}
+
 fn validate_bounds(n: &Node, rect: &Rect) -> Result<(), Error> {
     rect.validate()?;
-    if n.layout.is_some()
-        && n.strokes_included_in_layout
-        && n.stroke_align == StrokeAlign::Inside
-        && (rect.w < n.stroke_weights[1] + n.stroke_weights[3]
-            || rect.h < n.stroke_weights[0] + n.stroke_weights[2])
-    {
+    if rect.w < implicit_min(n, 0) || rect.h < implicit_min(n, 1) {
         return Err(Error(
-            "layout frame is smaller than its included inside strokes",
+            "layout frame is smaller than its padding and inside strokes",
         ));
     }
     Ok(())
@@ -1514,7 +1523,7 @@ mod stroke_tests {
             .unwrap();
         assert_eq!(solved.size(), [100., 66.]);
         assert_eq!(solved[child], Rect::new(13., 13., 74., 40.));
-        assert!(tree.solve([12., 12.]).is_err());
+        assert_eq!(tree.solve([12., 12.]).unwrap().size(), [26., 26.]);
         for weight in [-1., f32::NAN, f32::INFINITY] {
             tree.node_mut(tree.root()).stroke_weights = [weight; 4];
             assert!(tree.solve([100., 100.]).is_err());
@@ -1812,5 +1821,82 @@ mod vertical_wrap_tests {
             })
             .unwrap_err();
         assert!(error.0.contains("did not converge"));
+    }
+}
+
+#[cfg(test)]
+mod implicit_min_tests {
+    use super::*;
+
+    #[test]
+    fn padding_and_inside_borders_expand_fixed_roots_even_past_maximum() {
+        for align in [
+            StrokeAlign::Inside,
+            StrokeAlign::Center,
+            StrokeAlign::Outside,
+        ] {
+            for included in [false, true] {
+                let tree = Tree::new(
+                    Node::row()
+                        .size([50., 50.])
+                        .paddings([3., 5., 7., 9.])
+                        .stroke_weights([2., 4., 6., 8.])
+                        .stroke_align(align)
+                        .strokes_included_in_layout(included)
+                        .max([12., 12.]),
+                );
+                let expected = if included && align == StrokeAlign::Inside {
+                    [22., 22.]
+                } else {
+                    [10., 14.]
+                };
+                assert_eq!(tree.solve([2., 3.]).unwrap().size(), expected);
+                assert_eq!(
+                    tree.solve_measured([Some(2.), Some(3.)], |_, _| Ok(None))
+                        .unwrap()
+                        .size(),
+                    expected
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fill_reserves_implicit_space_before_sharing_the_remainder() {
+        let mut tree = Tree::new(Node::row().size([80., 50.]));
+        let padded = tree.add(
+            tree.root(),
+            Node::row()
+                .size([30., 30.])
+                .width(Sizing::Fill)
+                .padding_xy(10., 0.),
+        );
+        let other = tree.add(tree.root(), Node::fixed([20., 10.]).width(Sizing::Fill));
+        let result = tree.solve_natural().unwrap();
+        assert_eq!(result[padded].w, 50.);
+        assert_eq!(result[other].w, 30.);
+        tree.node_mut(padded).max[0] = 25.;
+        let result = tree.solve_natural().unwrap();
+        assert_eq!(result[padded].w, 25.);
+        assert_eq!(result[other].w, 55.);
+        tree.node_mut(padded).max[0] = 12.;
+        let result = tree.solve_natural().unwrap();
+        assert_eq!(result[padded].w, 20.);
+        assert_eq!(result[other].w, 60.);
+    }
+
+    #[test]
+    fn wrapped_frames_break_at_their_implicit_minimum() {
+        let mut tree = Tree::new(Node::row().size([35., 100.]).wrap(4.).gap(2.));
+        let frame = Node::row()
+            .size([0., 10.])
+            .width(Sizing::Fill)
+            .stroke_weight(10.)
+            .strokes_included_in_layout(true);
+        let a = tree.add(tree.root(), frame.clone());
+        let b = tree.add(tree.root(), frame);
+        let result = tree.solve_natural().unwrap();
+        assert_eq!(result[a], Rect::new(0., 0., 35., 20.));
+        assert_eq!(result[b], Rect::new(0., 24., 35., 20.));
     }
 }

@@ -34,13 +34,32 @@ pub fn selection_layout(size: Option<[f32; 2]>) -> Result<[Rect; 10], figleaf::E
 pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(), figleaf::Error> {
     let boxes = selection_layout(size)?;
     // Temporary responsive stroke validation [526:555]
-    canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h)).fill([1.0, 1.0, 1.0, 1.0]).strokes([2.0, 4.0, 6.0, 8.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[0].x, boxes[0].y)));
+    let mut frame_0 = Shape::rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h)).fill([1.0, 1.0, 1.0, 1.0]).strokes([2.0, 4.0, 6.0, 8.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[0].x, boxes[0].y));
+    let mut border_0 = frame_0.clone();
+    border_0.fills.clear();
+    border_0.fill_blend_modes.clear();
+    border_0.shadows.clear();
+    frame_0.stroke = None;
+    frame_0.stroke_weights = None;
+    frame_0.stroke_paints.clear();
+    frame_0.stroke_blend_modes.clear();
+    canvas.shape(frame_0);
     // Temporary responsive stroke validation / INSIDE [526:556]
-    canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h)).strokes([4.0, 4.0, 4.0, 4.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[1].x, boxes[1].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
+    let mut frame_1 = Shape::rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h)).strokes([4.0, 4.0, 4.0, 4.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[1].x, boxes[1].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y)));
+    let mut border_1 = frame_1.clone();
+    border_1.fills.clear();
+    border_1.fill_blend_modes.clear();
+    border_1.shadows.clear();
+    frame_1.stroke = None;
+    frame_1.stroke_weights = None;
+    frame_1.stroke_paints.clear();
+    frame_1.stroke_blend_modes.clear();
+    canvas.shape(frame_1);
     // Temporary responsive stroke validation / INSIDE / Fill [526:557]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[2].w, boxes[2].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[2].x, boxes[2].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[1].x, boxes[1].y))));
     // Temporary responsive stroke validation / INSIDE / Fixed [526:558]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[3].w, boxes[3].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[3].x, boxes[3].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[1].x, boxes[1].y))));
+    canvas.shape(border_1);
     // Temporary responsive stroke validation / CENTER [526:559]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[4].w, boxes[4].h)).strokes([4.0, 4.0, 4.0, 4.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Center).transform(Transform::translation(boxes[4].x, boxes[4].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
     // Temporary responsive stroke validation / CENTER / Fill [526:560]
@@ -53,5 +72,6 @@ pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(),
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[8].w, boxes[8].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[8].x, boxes[8].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[7].w, boxes[7].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[7].x, boxes[7].y))));
     // Temporary responsive stroke validation / OUTSIDE / Fixed [526:564]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[9].w, boxes[9].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[9].x, boxes[9].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[7].w, boxes[7].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[7].x, boxes[7].y))));
+    canvas.shape(border_0);
     Ok(())
 }

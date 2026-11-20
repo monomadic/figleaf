@@ -1029,3 +1029,15 @@ test('vertical wrapped layout matches live Figma at three heights',()=>{
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
+test('implicit border minima match live Figma at three requested sizes',()=>{
+  const root=require('./responsive-border-min-reference.json');
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_border_min.rs'),'utf8'));
+  const checks=require('./responsive-border-min-sizes.json').map(({size,boxes})=>`let actual=selection_layout(Some([${size.map(x=>Number.isInteger(x)?x+'.0':String(x))}])).unwrap();${boxes.map((b,i)=>`assert_eq!(actual[${i}],Rect::new(${b.rect.map(x=>Number.isInteger(x)?x+'.0':String(x))}),${JSON.stringify(b.name)});`).join('')}`).join('\n');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-border-min-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});

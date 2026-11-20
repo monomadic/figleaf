@@ -48,7 +48,16 @@ pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(),
     // Temporary vertical wrapping validation [550:553]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h)).fill([1.0, 1.0, 1.0, 1.0]).transform(Transform::translation(boxes[0].x, boxes[0].y)));
     // Temporary vertical wrapping validation / Hug columns [550:554]
-    canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[1].x, boxes[1].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
+    let mut frame_1 = Shape::rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[1].x, boxes[1].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y)));
+    let mut border_1 = frame_1.clone();
+    border_1.fills.clear();
+    border_1.fill_blend_modes.clear();
+    border_1.shadows.clear();
+    frame_1.stroke = None;
+    frame_1.stroke_weights = None;
+    frame_1.stroke_paints.clear();
+    frame_1.stroke_blend_modes.clear();
+    canvas.shape(frame_1);
     // Temporary vertical wrapping validation / Hug columns / Item 0 [550:555]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[2].w, boxes[2].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[2].x, boxes[2].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[1].x, boxes[1].y))));
     // Temporary vertical wrapping validation / Hug columns / Item 1 [550:556]
@@ -57,8 +66,18 @@ pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(),
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[4].w, boxes[4].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[4].x, boxes[4].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[1].x, boxes[1].y))));
     // Temporary vertical wrapping validation / Hug columns / Item 3 [550:558]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[5].w, boxes[5].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[5].x, boxes[5].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[1].w, boxes[1].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[1].x, boxes[1].y))));
+    canvas.shape(border_1);
     // Temporary vertical wrapping validation / Stretch columns [550:559]
-    canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[6].x, boxes[6].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
+    let mut frame_6 = Shape::rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[6].x, boxes[6].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y)));
+    let mut border_6 = frame_6.clone();
+    border_6.fills.clear();
+    border_6.fill_blend_modes.clear();
+    border_6.shadows.clear();
+    frame_6.stroke = None;
+    frame_6.stroke_weights = None;
+    frame_6.stroke_paints.clear();
+    frame_6.stroke_blend_modes.clear();
+    canvas.shape(frame_6);
     // Temporary vertical wrapping validation / Stretch columns / Item 0 [550:560]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[7].w, boxes[7].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[7].x, boxes[7].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[6].x, boxes[6].y))));
     // Temporary vertical wrapping validation / Stretch columns / Item 1 [550:561]
@@ -67,8 +86,18 @@ pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(),
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[9].w, boxes[9].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[9].x, boxes[9].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[6].x, boxes[6].y))));
     // Temporary vertical wrapping validation / Stretch columns / Item 3 [550:563]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[10].w, boxes[10].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[10].x, boxes[10].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[6].w, boxes[6].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[6].x, boxes[6].y))));
+    canvas.shape(border_6);
     // Temporary vertical wrapping validation / Space between columns [550:564]
-    canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[11].w, boxes[11].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[11].x, boxes[11].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))));
+    let mut frame_11 = Shape::rect(Rect::new(0.0, 0.0, boxes[11].w, boxes[11].h)).strokes([2.0, 2.0, 2.0, 2.0], [0.15, 0.22, 0.35, 1.0], StrokeAlign::Inside).transform(Transform::translation(boxes[11].x, boxes[11].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y)));
+    let mut border_11 = frame_11.clone();
+    border_11.fills.clear();
+    border_11.fill_blend_modes.clear();
+    border_11.shadows.clear();
+    frame_11.stroke = None;
+    frame_11.stroke_weights = None;
+    frame_11.stroke_paints.clear();
+    frame_11.stroke_blend_modes.clear();
+    canvas.shape(frame_11);
     // Temporary vertical wrapping validation / Space between columns / Item 0 [550:565]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[12].w, boxes[12].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[12].x, boxes[12].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[11].w, boxes[11].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[11].x, boxes[11].y))));
     // Temporary vertical wrapping validation / Space between columns / Item 1 [550:566]
@@ -77,5 +106,6 @@ pub fn draw_selection(canvas: &mut Canvas, size: Option<[f32; 2]>) -> Result<(),
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[14].w, boxes[14].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[14].x, boxes[14].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[11].w, boxes[11].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[11].x, boxes[11].y))));
     // Temporary vertical wrapping validation / Space between columns / Item 3 [550:568]
     canvas.shape(Shape::rect(Rect::new(0.0, 0.0, boxes[15].w, boxes[15].h)).fill([0.25, 0.6, 0.85, 1.0]).transform(Transform::translation(boxes[15].x, boxes[15].y)).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[0].w, boxes[0].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[0].x, boxes[0].y))).intersect_clip(Clip::rounded_rect(Rect::new(0.0, 0.0, boxes[11].w, boxes[11].h), [0.0, 0.0, 0.0, 0.0]).transform(Transform::translation(boxes[11].x, boxes[11].y))));
+    canvas.shape(border_11);
     Ok(())
 }

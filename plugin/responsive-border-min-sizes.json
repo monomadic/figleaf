@@ -1,0 +1,119 @@
+[
+  {
+    "size": [
+      160,
+      80
+    ],
+    "actualSize": [
+      160,
+      80
+    ],
+    "boxes": [
+      {
+        "name": "Temporary border minimum validation",
+        "rect": [
+          0,
+          0,
+          160,
+          80
+        ]
+      },
+      {
+        "name": "Border fill",
+        "rect": [
+          10,
+          10,
+          79,
+          40
+        ]
+      },
+      {
+        "name": "Plain fill",
+        "rect": [
+          93,
+          10,
+          57,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      70,
+      50
+    ],
+    "actualSize": [
+      70,
+      50
+    ],
+    "boxes": [
+      {
+        "name": "Temporary border minimum validation",
+        "rect": [
+          0,
+          0,
+          70,
+          50
+        ]
+      },
+      {
+        "name": "Border fill",
+        "rect": [
+          10,
+          10,
+          34,
+          40
+        ]
+      },
+      {
+        "name": "Plain fill",
+        "rect": [
+          48,
+          10,
+          12,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      2,
+      3
+    ],
+    "actualSize": [
+      20,
+      20
+    ],
+    "boxes": [
+      {
+        "name": "Temporary border minimum validation",
+        "rect": [
+          0,
+          0,
+          20,
+          20
+        ]
+      },
+      {
+        "name": "Border fill",
+        "rect": [
+          10,
+          10,
+          22,
+          40
+        ]
+      },
+      {
+        "name": "Plain fill",
+        "rect": [
+          36,
+          10,
+          1,
+          20
+        ]
+      }
+    ]
+  }
+]
