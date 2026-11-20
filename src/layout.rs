@@ -7,8 +7,7 @@
 //! where it was checked against positions Figma recorded.
 //!
 //! Not covered: baseline alignment, rotated children, vertical wrapping, grid
-//! layout, and constraints other than "keep the authored
-//! offset". Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
+//! layout and constraint-driven flipped geometry. Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
 //! measurement callback (for example [`crate::Text::measure`]).
 //!
 //! Widths are solved first and heights second. The only thing heights take
@@ -42,6 +41,16 @@ pub enum Direction {
     Vertical,
 }
 
+/// Figma resize constraints for plain-frame and absolute children.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Constraint {
+    Min,
+    Center,
+    Max,
+    Stretch,
+    Scale,
+}
+
 /// Figma's distribution of wrapped tracks along the counter axis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlignContent {
@@ -73,6 +82,8 @@ pub struct Node {
     pub size: [f32; 2],
     /// Authored position in the parent, used for nodes outside a stack's flow.
     pub offset: [f32; 2],
+    /// Horizontal, vertical; ignored for in-flow auto-layout children.
+    pub constraints: [Constraint; 2],
     /// Horizontal, vertical.
     pub sizing: [Sizing; 2],
     pub min: [f32; 2],
@@ -94,6 +105,7 @@ impl Node {
             parent,
             size,
             offset,
+            constraints: [Constraint::Min; 2],
             sizing: [Sizing::Fixed; 2],
             min: [0.; 2],
             max: [f32::INFINITY; 2],
@@ -108,6 +120,7 @@ impl Node {
 
 struct Solver<'a> {
     nodes: &'a [Node],
+    reference: &'a [Node],
     children: Vec<Vec<usize>>,
     measured: Vec<Option<f32>>,
     axis: usize,
@@ -119,12 +132,14 @@ struct Solver<'a> {
 impl<'a> Solver<'a> {
     fn new(
         nodes: &'a [Node],
+        reference: &'a [Node],
         children: &[Vec<usize>],
         axis: usize,
         lines: Vec<Option<Vec<Vec<usize>>>>,
     ) -> Self {
         Self {
             nodes,
+            reference,
             children: children.to_vec(),
             measured: vec![None; nodes.len()],
             axis,
@@ -250,13 +265,44 @@ impl<'a> Solver<'a> {
             .collect()
     }
 
+    fn constrained(&mut self, child: usize, parent: usize, size: f32) -> [f32; 2] {
+        let axis = self.axis;
+        let n = &self.reference[child];
+        let before = self.reference[parent].size[axis];
+        let delta = size - before;
+        let offset = n.offset[axis];
+        let authored = n.size[axis];
+        let measured = self.measure(child);
+        match n.constraints[axis] {
+            Constraint::Min => [offset, measured],
+            Constraint::Max => [offset + delta + authored - measured, measured],
+            Constraint::Center => [offset + (delta + authored - measured) / 2., measured],
+            Constraint::Stretch => {
+                let span = authored + delta;
+                // A negative span implies flipped geometry, which this solver
+                // does not represent. Preserve the error for bounds validation.
+                [
+                    offset,
+                    if span < 0. {
+                        span
+                    } else {
+                        self.clamp(child, span)
+                    },
+                ]
+            }
+            Constraint::Scale => [
+                offset * size / before,
+                self.clamp(child, authored * size / before),
+            ],
+        }
+    }
+
     /// Places the children of `i`, whose size on this axis is `size`.
     fn arrange(&mut self, i: usize, size: f32, out: &mut [[f32; 2]]) {
         let Some(l) = self.nodes[i].layout else {
             for c in self.children[i].clone() {
-                let s = self.measure(c);
-                out[c] = [self.nodes[c].offset[self.axis], s];
-                self.arrange(c, s, out);
+                out[c] = self.constrained(c, i, size);
+                self.arrange(c, out[c][1], out);
             }
             return;
         };
@@ -354,7 +400,7 @@ impl<'a> Solver<'a> {
         }
         for c in self.children[i].clone() {
             if !self.nodes[c].in_flow {
-                out[c] = [self.nodes[c].offset[self.axis], self.measure(c)];
+                out[c] = self.constrained(c, i, size);
             }
             let s = out[c][1];
             self.arrange(c, s, out);
@@ -457,6 +503,24 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
         {
             return Err(Error("invalid layout input"));
         }
+        if let Some(parent) = n.parent
+            && (nodes[parent].layout.is_none() || !n.in_flow)
+        {
+            for axis in 0..2 {
+                if matches!(n.constraints[axis], Constraint::Stretch | Constraint::Scale)
+                    && n.sizing[axis] != Sizing::Fixed
+                {
+                    return Err(Error(
+                        "stretch/scale constraints require fixed sizing on that axis",
+                    ));
+                }
+                if n.constraints[axis] == Constraint::Scale && nodes[parent].size[axis] == 0. {
+                    return Err(Error(
+                        "scale constraint requires a nonzero authored parent size",
+                    ));
+                }
+            }
+        }
         if let Some(l) = n.layout {
             let gaps = [l.spacing, l.counter_spacing];
             if !l.padding.iter().chain(&gaps).all(|v| v.is_finite())
@@ -481,11 +545,11 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
 /// The size the root takes from its own sizing: hugging axes wrap the content.
 pub fn measure(nodes: &[Node]) -> Result<[f32; 2], Error> {
     let children = children_of(nodes)?;
-    let mut s = Solver::new(nodes, &children, 0, vec![None; nodes.len()]);
+    let mut s = Solver::new(nodes, nodes, &children, 0, vec![None; nodes.len()]);
     let width = s.measure(0);
     // Heights depend on where wrapping stacks break at that width.
     s.arrange(0, width, &mut vec![[0.; 2]; nodes.len()]);
-    let height = Solver::new(nodes, &children, 1, s.lines).measure(0);
+    let height = Solver::new(nodes, nodes, &children, 1, s.lines).measure(0);
     Rect::new(0., 0., width, height).validate()?;
     Ok([width, height])
 }
@@ -500,7 +564,7 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
     let mut out = vec![Rect::default(); nodes.len()];
     let mut lines = vec![None; nodes.len()];
     for (axis, &root) in root_size.iter().enumerate() {
-        let mut s = Solver::new(nodes, &children, axis, lines);
+        let mut s = Solver::new(nodes, nodes, &children, axis, lines);
         let mut axis_out = vec![[0f32; 2]; nodes.len()];
         let root = s.clamp(0, root);
         axis_out[0] = [0., root];
@@ -595,6 +659,12 @@ impl Node {
     pub fn absolute(mut self, offset: [f32; 2]) -> Self {
         self.offset = offset;
         self.in_flow = false;
+        self
+    }
+    /// Horizontal and vertical constraints, relative to the parent's authored
+    /// size. Used only outside auto-layout flow; scale/stretch resize fixed axes.
+    pub fn constraints(mut self, horizontal: Constraint, vertical: Constraint) -> Self {
+        self.constraints = [horizontal, vertical];
         self
     }
     /// The same padding on every side. Stack settings on a node that is not a
@@ -740,7 +810,7 @@ impl Tree {
                 }
             }
         }
-        let mut widths = Solver::new(&nodes, &children, 0, vec![None; nodes.len()]);
+        let mut widths = Solver::new(&nodes, &self.nodes, &children, 0, vec![None; nodes.len()]);
         let width = match size[0] {
             Some(v) => widths.clamp(0, v),
             None => widths.measure(0),
@@ -759,7 +829,7 @@ impl Tree {
                 }
             }
         }
-        let mut heights = Solver::new(&nodes, &children, 1, wrapped_lines);
+        let mut heights = Solver::new(&nodes, &self.nodes, &children, 1, wrapped_lines);
         let height = match size[1] {
             Some(v) => heights.clamp(0, v),
             None => heights.measure(0),
@@ -1286,5 +1356,103 @@ mod wrapped_measurement_tests {
             overflow[ids[2]].y, 100.,
             "overflowing tracks have zero distributed gap"
         );
+    }
+}
+
+#[cfg(test)]
+mod constraint_tests {
+    use super::*;
+
+    #[test]
+    fn constraints_use_authored_parent_bounds_and_ignore_flow() {
+        let mut tree = Tree::new(Node::fixed([200., 100.]));
+        let modes = [
+            Constraint::Min,
+            Constraint::Center,
+            Constraint::Max,
+            Constraint::Stretch,
+            Constraint::Scale,
+        ];
+        let ids = modes.map(|mode| {
+            tree.add(
+                tree.root(),
+                Node::fixed([60., 20.])
+                    .absolute([20., 10.])
+                    .constraints(mode, mode),
+            )
+        });
+        let solved = tree.solve([300., 150.]).unwrap();
+        for (id, expected) in ids.into_iter().zip([
+            [20., 10., 60., 20.],
+            [70., 35., 60., 20.],
+            [120., 60., 60., 20.],
+            [20., 10., 160., 70.],
+            [30., 15., 90., 30.],
+        ]) {
+            assert_eq!(
+                solved[id],
+                Rect::new(expected[0], expected[1], expected[2], expected[3])
+            );
+        }
+        assert!(
+            tree.solve([100., 50.]).is_err(),
+            "negative stretch spans require unsupported flipped geometry"
+        );
+        tree.node_mut(tree.root()).size = [0., 100.];
+        assert!(tree.solve([100., 100.]).is_err());
+        let mut flow = Tree::new(Node::row().size([200., 100.]).padding(10.));
+        let child = flow.add(
+            flow.root(),
+            Node::fixed([60., 20.]).constraints(Constraint::Max, Constraint::Scale),
+        );
+        assert_eq!(
+            flow.solve([300., 150.]).unwrap()[child],
+            Rect::new(10., 10., 60., 20.)
+        );
+    }
+
+    #[test]
+    fn constrained_text_measures_final_width_and_preserves_bottom_anchor() {
+        let mut tree = Tree::new(Node::fixed([200., 100.]));
+        let text = tree.add(
+            tree.root(),
+            Node::fixed([100., 20.])
+                .height(Sizing::Hug)
+                .absolute([10., 50.])
+                .constraints(Constraint::Stretch, Constraint::Max),
+        );
+        let solved = tree
+            .solve_measured([Some(300.), Some(150.)], |id, width| {
+                assert_eq!(id, text);
+                assert_eq!(width, Some(200.));
+                Ok(Some([200., 40.]))
+            })
+            .unwrap();
+        assert_eq!(solved[text], Rect::new(10., 80., 200., 40.));
+        assert_eq!(tree.node(text).size, [100., 20.]);
+        tree.node_mut(text).constraints[1] = Constraint::Stretch;
+        assert!(tree.solve([300., 150.]).is_err());
+    }
+
+    #[test]
+    fn scale_and_stretch_obey_size_limits_without_moving_start_anchor() {
+        let mut tree = Tree::new(Node::fixed([200., 100.]));
+        let stretch = tree.add(
+            tree.root(),
+            Node::fixed([60., 20.])
+                .absolute([20., 10.])
+                .constraints(Constraint::Stretch, Constraint::Min)
+                .max([80., 100.]),
+        );
+        let scale = tree.add(
+            tree.root(),
+            Node::fixed([60., 20.])
+                .absolute([20., 10.])
+                .constraints(Constraint::Scale, Constraint::Min)
+                .max([80., 100.]),
+        );
+        let solved = tree.solve([300., 150.]).unwrap();
+        assert_eq!(solved[stretch], Rect::new(20., 10., 80., 20.));
+        assert_eq!(solved[scale], Rect::new(30., 10., 80., 20.));
     }
 }

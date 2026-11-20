@@ -25,7 +25,9 @@ Completed implementation notes and comparisons are in the
    widths, hug/fill and measured content; [reviewed fixture](docs/responsive-strokes-240-compare.png).
    **Horizontal wrapping done (2026-11-20):** row breaking, row gaps, hug heights,
    fill-track stretching and space-between distribution; [reviewed at three widths](docs/responsive-wrap-360-compare.png).
-   **Next:** constraints, baseline alignment, vertical wrapping, implicit border
+   **Resize constraints done (2026-11-20):** plain/absolute min, center, max, stretch
+   and scale; [reviewed at three sizes](docs/responsive-constraints-300-compare.png).
+   **Next:** baseline alignment, vertical wrapping, implicit border
    minimum-size expansion, rotated children and grid layout. Keep state and resize events
    in the host; add no scene runtime.
    **Done when:** the same generated panel lays out at several supplied sizes

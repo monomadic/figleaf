@@ -857,10 +857,10 @@ new dependencies are introduced.
 
 This first export stage covers nested horizontal/vertical stacks, fixed/hug/fill,
 min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
-hidden-child exclusion and absolute/plain children pinned left/top. Solved bounds
+hidden-child exclusion and absolute/plain children with resize constraints. Solved bounds
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
 text-based hug/automatic-height measurement is supported below. Unsupported vertical wrapping, grid,
-baseline, negative gaps, other constraints, transformed nodes, groups,
+baseline, negative gaps, transformed nodes, groups,
 patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
 export errors. Static exports retain their previous transform/geometry support.
@@ -942,3 +942,29 @@ Rust at [240](docs/responsive-wrap-240-compare.png),
 live Figma captures; all three solid-shape renders were visually reviewed and
 unchanged canvases upload nothing. Nested measured text is covered synthetically;
 this does not claim complete layout parity or live plugin UI validation.
+
+### Responsive resize constraints
+
+`Node::constraints(horizontal, vertical)` accepts `Constraint::{Min, Center,
+Max, Stretch, Scale}`. Constraints apply to plain-frame children and absolute
+children of auto layout, relative to the parent's authored size and full bounds
+(padding and borders do not shift the reference). In-flow auto-layout children
+continue to use sizing and alignment. Keep authored sizes/offsets unchanged
+between solves; each solve starts from that reference, so resizing does not drift.
+
+Stretch preserves the starting offset and changes size by the parent's delta;
+scale changes offset and size proportionally. Size limits still apply. Measured
+text uses the constrained width and retains center/end anchors after measurement.
+Stretch/scale require fixed sizing on the affected axis. A zero authored parent
+size cannot be scaled, and negative stretch spans (flipped geometry) return errors.
+The plugin also rejects constraint-driven resizing of resolved paths/strokes.
+
+Plain selections with non-default descendant constraints now generate responsive
+Rust even without auto layout. `cargo run --example responsive_constraints
+--all-features --locked` checks all nine rectangles against Figma at
+[240](docs/responsive-constraints-240-compare.png),
+[300](docs/responsive-constraints-300-compare.png) and
+[420](docs/responsive-constraints-420-compare.png) pixels wide. All three renders
+were visually reviewed; unchanged canvases upload nothing. Measured-text anchoring
+and invalid sizes have synthetic tests. This is fixture evidence, not live plugin
+UI validation or universal layout parity.

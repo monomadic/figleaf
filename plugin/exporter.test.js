@@ -897,7 +897,7 @@ test('unsupported responsive behavior gives layer-specific errors and no Rust',(
   }
   for(const patch of [
     {layoutSizingHorizontal:'HUG'}, {layoutSizingHorizontal:'FILL',layoutPositioning:'ABSOLUTE'},
-    {layoutPositioning:'ABSOLUTE',constraints:{horizontal:'MAX',vertical:'MIN'}},
+    {layoutPositioning:'ABSOLUTE',constraints:{horizontal:'UNKNOWN',vertical:'MIN'}},
     {layoutSizingHorizontal:'BOGUS'},{type:'GROUP'},
     {type:'TEXT',textAutoResize:'HEIGHT'},
     {type:'VECTOR',layoutSizingHorizontal:'FILL'},
@@ -977,4 +977,27 @@ test('wrapped export validates row gaps and distribution without partial Rust',(
   const root=structuredClone(require('./responsive-wrap-reference.json'));
   root.children[0].counterAxisSpacing=null;
   assert.deepEqual(exportHierarchy([root]).errors,[]);
+});
+test('constrained generated layout matches live Figma at three widths',()=>{
+  const root=require('./responsive-constraints-reference.json');
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_constraints.rs'),'utf8'));
+  const checks=require('./responsive-constraints-sizes.json').map(({size,boxes})=>`let actual=selection_layout(Some([${size.map(x=>Number.isInteger(x)?x+'.0':String(x))}])).unwrap();${boxes.map((b,i)=>`assert_eq!(actual[${i}],Rect::new(${b.rect.map(x=>Number.isInteger(x)?x+'.0':String(x))}),${JSON.stringify(b.name)});`).join('')}`).join('\n');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-constraints-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('constraints activate plain-frame responsive export and reject unsupported resizing',()=>{
+  const root=structuredClone(require('./responsive-constraints-reference.json'));
+  root.children.pop(); // No auto-layout descendant: constraints alone enable responsive output.
+  let r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);assert.match(r.code,/fn selection_layout/);
+  for(const patch of [{constraints:{horizontal:'BOGUS',vertical:'MIN'}},{type:'VECTOR',constraints:{horizontal:'SCALE',vertical:'MIN'}},{cornerSmoothing:0.5,constraints:{horizontal:'STRETCH',vertical:'MIN'}}]) {
+    const copy=structuredClone(root);Object.assign(copy.children[0],patch);
+    r=exportHierarchy([copy]);assert.equal(r.code,null);assert.ok(r.errors.some(e=>e.nodeId===copy.children[0].id));
+  }
+  root.width=0;r=exportHierarchy([root]);assert.equal(r.code,null);assert.ok(r.errors.some(e=>e.message.includes('nonzero authored parent')));
 });

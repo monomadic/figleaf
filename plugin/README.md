@@ -352,12 +352,12 @@ generated-code compilation are fixture evidence, not live development-plugin UI 
 ## Responsive layout — first stage
 
 Nested horizontal/vertical stacks export ordinary `layout::Tree` calls: fixed,
-hug and fill axes, min/max, padding, nonnegative gaps, alignment and left/top-pinned
-absolute children. Plain frames preserve child offsets. Hidden layers do not
+hug and fill axes, min/max, padding, nonnegative gaps, alignment and constrained
+absolute children. Plain frames apply their children's resize constraints. Hidden layers do not
 participate. Draw calls use solved bounds and translations, including clips;
 layout errors return before appending paint. The plugin still only displays code.
 
-Vertical wrapping/grid layout, baseline alignment, negative gaps, non-left/top constraints,
+Vertical wrapping/grid layout, baseline alignment, negative gaps,
 rotated/scaled/skewed nodes, groups,
 pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
@@ -403,3 +403,12 @@ children and measured text retain the responsive layout path. Invalid row gaps,
 unknown distribution, vertical wrapping and baseline alignment produce layer
 errors and no Rust. The [three-width fixture](../docs/responsive-wrap-360-compare.png)
 checks row breaking, hug height, fill-height stretching and row distribution.
+
+Resize constraints now export left/top, right/bottom, center, stretch and scale
+for absolute children and children of plain frames. Non-default constraints also
+enable responsive output without auto layout. References use authored full parent
+bounds; padding/borders do not change the anchors. Stretch/scale require fixed
+sizing on that axis and still reject resizing resolved path/stroke geometry.
+Zero-size scale references and negative stretch spans fail explicitly; the latter
+are detected at layout time before paint is appended. See the
+[three-size comparison](../docs/responsive-constraints-300-compare.png).

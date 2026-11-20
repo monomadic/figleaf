@@ -581,7 +581,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
   function hasLayout(n, depth=0) {
     if(n.visible===false)return false;
     if(depth>128)throw Error('Hierarchy exceeds 128 levels.');
-    return (n.layoutMode && n.layoutMode!=='NONE') || (n.children||[]).some(c=>hasLayout(c,depth+1));
+    return (n.layoutMode && n.layoutMode!=='NONE') || (depth>0 && n.constraints && [n.constraints.horizontal,n.constraints.vertical].some(c=>c!=='MIN')) || (n.children||[]).some(c=>hasLayout(c,depth+1));
   }
   function layoutNode(n, parent, path, depth=0) {
     if(n.visible===false)return;
@@ -601,7 +601,13 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if(sizing.includes('HUG')&&!stack&&n.type!=='TEXT')throw Error('Responsive hug sizing requires an auto-layout frame or measured text.');
       if(parent!==null&&sizing.includes('FILL')&&!inFlow)throw Error('Responsive fill sizing requires an in-flow auto-layout child.');
       if(n.type==='GROUP')throw Error('Responsive groups require group-bound recomputation and are unsupported.');
-      if(!inFlow&&parent&&n.constraints&&(n.constraints.horizontal!=='MIN'||n.constraints.vertical!=='MIN'))throw Error('Responsive absolute/plain children currently require left/top constraints.');
+      const constraints=[n.constraints?.horizontal??'MIN',n.constraints?.vertical??'MIN'];
+      const constrained=parent!==null&&!inFlow;
+      if(constrained && constraints.some(c=>!['MIN','CENTER','MAX','STRETCH','SCALE'].includes(c)))throw Error('Unknown responsive constraint.');
+      if(constrained)constraints.forEach((c,a)=>{
+        if(['STRETCH','SCALE'].includes(c)&&sizing[a]!=='FIXED')throw Error('Stretch/scale constraints require fixed sizing on that axis.');
+        if(c==='SCALE'&&[parent.width,parent.height][a]===0)throw Error('Scale constraints require a nonzero authored parent size.');
+      });
       if(n.type==='TEXT') {
         if(n.textAutoResize&&!['NONE','HEIGHT','WIDTH_AND_HEIGHT','TRUNCATE'].includes(n.textAutoResize))throw Error('Unknown text auto-resize mode.');
         if(n.textAutoResize==='HEIGHT'&&sizing[1]!=='HUG'||n.textAutoResize==='WIDTH_AND_HEIGHT'&&sizing.some(v=>v!=='HUG'))throw Error('Text auto-resize conflicts with responsive sizing.');
@@ -610,12 +616,13 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const min=[n.minWidth??0,n.minHeight??0], max=[n.maxWidth??Infinity,n.maxHeight??Infinity];
       [n.width,n.height,...min].forEach(v=>{number(v);if(v<0)throw Error('Negative layout size or minimum.');});
       max.forEach((v,a)=>{if(v!==Infinity)number(v);if(v<min[a])throw Error('Layout maximum is smaller than minimum.');});
-      const resizes=!parent||sizing.some(v=>v!=='FIXED')||min.some((v,a)=>v>[n.width,n.height][a])||max.some((v,a)=>v<[n.width,n.height][a]);
+      const resizes=!parent||constrained&&constraints.some(c=>['STRETCH','SCALE'].includes(c))||sizing.some(v=>v!=='FIXED')||min.some((v,a)=>v>[n.width,n.height][a])||max.some((v,a)=>v<[n.width,n.height][a]);
       if(resizes&&(['VECTOR','BOOLEAN_OPERATION','LINE'].includes(n.type)||(n.cornerSmoothing??0)>0||n.variableWidthStrokeProperties?.widthProfile&&n.variableWidthStrokeProperties.widthProfile!=='UNIFORM'||n.complexStrokeProperties?.type&&n.complexStrokeProperties.type!=='BASIC'))throw Error('Responsive resizing of resolved path/stroke geometry is unsupported.');
       let expr=stack?`Node::${mode==='HORIZONTAL'?'row':'column'}().size(${array([n.width,n.height])})`:`Node::fixed(${array([n.width,n.height])})`;
       expr+=`.width(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[0]]}).height(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[1]]})`;
       expr+=`.min(${array(min)}).max([${max.map(v=>v===Infinity?'f32::INFINITY':number(v)).join(', ')}])`;
       if(parent&&!inFlow)expr+=`.absolute(${array([t[0][2],t[1][2]])})`;
+      if(constrained&&constraints.some(c=>c!=='MIN'))expr+=`.constraints(${constraints.map(c=>'figleaf::layout::Constraint::'+({MIN:'Min',CENTER:'Center',MAX:'Max',STRETCH:'Stretch',SCALE:'Scale'}[c])).join(', ')})`;
       if(stack){
         if(n.strokesIncludedInLayout && (n.strokes||[]).some(p=>p.visible!==false)) {
           const weights=['Top','Right','Bottom','Left'].map(side=>n[`stroke${side}Weight`]??n.strokeWeight??0);

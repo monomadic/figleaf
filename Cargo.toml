@@ -184,3 +184,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "responsive_wrap"
 required-features = ["wgpu"]
+
+[[example]]
+name = "responsive_constraints"
+required-features = ["wgpu"]

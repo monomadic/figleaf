@@ -1,0 +1,269 @@
+[
+  {
+    "size": [
+      300,
+      300
+    ],
+    "boxes": [
+      {
+        "name": "Temporary resized constraints",
+        "rect": [
+          0,
+          0,
+          300,
+          300
+        ]
+      },
+      {
+        "name": "Top left",
+        "rect": [
+          20,
+          20,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Top right",
+        "rect": [
+          230,
+          20,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Center",
+        "rect": [
+          130,
+          80,
+          40,
+          30
+        ]
+      },
+      {
+        "name": "Stretch",
+        "rect": [
+          20,
+          130,
+          260,
+          20
+        ]
+      },
+      {
+        "name": "Scale",
+        "rect": [
+          30,
+          170,
+          60,
+          20
+        ]
+      },
+      {
+        "name": "Nested constrained auto layout",
+        "rect": [
+          20,
+          220,
+          260,
+          60
+        ]
+      },
+      {
+        "name": "Flow",
+        "rect": [
+          32,
+          232,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Absolute bottom right",
+        "rect": [
+          230,
+          255,
+          30,
+          15
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      240,
+      240
+    ],
+    "boxes": [
+      {
+        "name": "Temporary resized constraints",
+        "rect": [
+          0,
+          0,
+          240,
+          240
+        ]
+      },
+      {
+        "name": "Top left",
+        "rect": [
+          20,
+          20,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Top right",
+        "rect": [
+          170,
+          20,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Center",
+        "rect": [
+          100,
+          50,
+          40,
+          30
+        ]
+      },
+      {
+        "name": "Stretch",
+        "rect": [
+          20,
+          130,
+          200,
+          20
+        ]
+      },
+      {
+        "name": "Scale",
+        "rect": [
+          24,
+          136,
+          48,
+          16
+        ]
+      },
+      {
+        "name": "Nested constrained auto layout",
+        "rect": [
+          20,
+          160,
+          200,
+          60
+        ]
+      },
+      {
+        "name": "Flow",
+        "rect": [
+          32,
+          172,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Absolute bottom right",
+        "rect": [
+          170,
+          195,
+          30,
+          15
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      420,
+      360
+    ],
+    "boxes": [
+      {
+        "name": "Temporary resized constraints",
+        "rect": [
+          0,
+          0,
+          420,
+          360
+        ]
+      },
+      {
+        "name": "Top left",
+        "rect": [
+          20,
+          20,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Top right",
+        "rect": [
+          350,
+          20,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Center",
+        "rect": [
+          190,
+          110,
+          40,
+          30
+        ]
+      },
+      {
+        "name": "Stretch",
+        "rect": [
+          20,
+          130,
+          380,
+          20
+        ]
+      },
+      {
+        "name": "Scale",
+        "rect": [
+          42,
+          204,
+          84,
+          24
+        ]
+      },
+      {
+        "name": "Nested constrained auto layout",
+        "rect": [
+          20,
+          280,
+          380,
+          60
+        ]
+      },
+      {
+        "name": "Flow",
+        "rect": [
+          32,
+          292,
+          50,
+          20
+        ]
+      },
+      {
+        "name": "Absolute bottom right",
+        "rect": [
+          350,
+          315,
+          30,
+          15
+        ]
+      }
+    ]
+  }
+]
