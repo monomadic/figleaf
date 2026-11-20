@@ -1497,6 +1497,51 @@ impl Canvas {
     pub fn items(&self) -> &[Item] {
         &self.items
     }
+
+    /// Adds everything on `other`, moved by `offset` in this canvas's space:
+    /// the way to place a piece the Figma plugin exported, which always draws
+    /// with its top left at the origin. Shapes, text, their clips, effects,
+    /// masks and composites all move together; nothing is redrawn or
+    /// re-exported. Fractional offsets are allowed.
+    pub fn append_at(&mut self, mut other: Canvas, offset: [f32; 2]) -> &mut Self {
+        other.translate(offset);
+        self.items.append(&mut other.items);
+        self
+    }
+
+    /// Composes a translation onto every item's local-to-canvas transform and
+    /// onto each clip's own transform, which is how every kind of item places
+    /// itself.
+    fn translate(&mut self, by: [f32; 2]) {
+        let moved = Transform::translation(by[0], by[1]);
+        let clip = |c: &mut crate::Clip| c.transform = moved.compose(c.transform);
+        for item in &mut self.items {
+            match item {
+                Item::Shape(s) => {
+                    s.transform = moved.compose(s.transform);
+                    s.clip_transform = moved.compose(s.clip_transform);
+                    s.clips.iter_mut().for_each(clip);
+                }
+                Item::Text(t) => {
+                    t.transform = moved.compose(t.transform);
+                    t.clip_transform = moved.compose(t.clip_transform);
+                    t.clips.iter_mut().for_each(clip);
+                }
+                Item::Composite(c) => {
+                    c.content.translate(by);
+                    c.effect_transform = moved.compose(c.effect_transform);
+                    c.clips.iter_mut().for_each(clip);
+                    if let Some((_, boundary)) = &mut c.background_blur {
+                        clip(boundary);
+                    }
+                }
+                Item::Masked(m) => {
+                    m.mask.canvas.translate(by);
+                    m.content.translate(by);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1654,6 +1699,86 @@ mod tests {
         assert!(Shape::rect(r).gradient(many).problem().is_some());
         let flat = LinearGradient::between([0.5, 0.5], [0.5, 0.5]).stop(0., hex(0));
         assert!(Shape::rect(r).gradient(flat).problem().is_some());
+    }
+
+    #[test]
+    fn append_at_moves_every_kind_of_item_and_its_clips() {
+        use crate::{BlendMode, Clip, Composite, Mask, MaskType};
+        let at = |x: f32, y: f32| Transform::translation(x, y);
+        let shape = Shape::rect(Rect::new(1., 2., 10., 10.))
+            .fill(hex(0))
+            .clip_transformed(Rect::new(0., 0., 5., 5.), 0., at(1., 1.))
+            .intersect_clip(Clip::rect(Rect::new(0., 0., 4., 4.)));
+        let mut piece = Canvas::new();
+        piece.shape(shape);
+        piece.text(Text::new("t", Rect::new(0., 0., 20., 16.)).clip(Rect::new(0., 0., 5., 5.)));
+        let mut inner = Canvas::new();
+        inner.shape(Shape::rect(Rect::new(0., 0., 3., 3.)).fill(hex(0)));
+        piece.composite(
+            Composite::new(inner.clone())
+                .blend_mode(BlendMode::Multiply)
+                .background_blur(2., Clip::rect(Rect::new(0., 0., 3., 3.))),
+        );
+        piece.masked(Mask::new(MaskType::Alpha, inner.clone()), inner);
+
+        let mut canvas = Canvas::new();
+        canvas.shape(Shape::rect(Rect::new(0., 0., 1., 1.)).fill(hex(0)));
+        canvas.append_at(piece.clone(), [30., 40.]);
+        // The host's own item is untouched and the piece comes after it.
+        assert_eq!(canvas.items().len(), 5);
+        let Item::Shape(own) = &canvas.items()[0] else {
+            panic!()
+        };
+        assert_eq!(own.transform, Transform::IDENTITY);
+        let Item::Shape(s) = &canvas.items()[1] else {
+            panic!()
+        };
+        assert_eq!(s.transform, at(30., 40.));
+        // A clip that already had a transform keeps it and moves after it.
+        assert_eq!(s.clip_transform, at(31., 41.));
+        assert_eq!(s.clips[0].transform, at(30., 40.));
+        // The shape's own box is not edited: placement is in the transform.
+        assert_eq!(s.rect, Rect::new(1., 2., 10., 10.));
+        let Item::Text(t) = &canvas.items()[2] else {
+            panic!()
+        };
+        assert_eq!(
+            (t.transform, t.clip_transform),
+            (at(30., 40.), at(30., 40.))
+        );
+        let Item::Composite(c) = &canvas.items()[3] else {
+            panic!()
+        };
+        assert_eq!(c.effect_transform, at(30., 40.));
+        assert_eq!(
+            c.background_blur.as_ref().unwrap().1.transform,
+            at(30., 40.)
+        );
+        let Item::Shape(inside) = &c.content.items()[0] else {
+            panic!()
+        };
+        assert_eq!(inside.transform, at(30., 40.));
+        let Item::Masked(m) = &canvas.items()[4] else {
+            panic!()
+        };
+        for canvas in [&m.mask.canvas, &m.content] {
+            let Item::Shape(s) = &canvas.items()[0] else {
+                panic!()
+            };
+            assert_eq!(s.transform, at(30., 40.));
+        }
+        // Moving twice adds up; an already transformed item keeps its turn.
+        let mut turned = Canvas::new();
+        let rotated = Transform::new([[0., -1., 0.], [1., 0., 0.]]);
+        turned.shape(Shape::rect(Rect::new(0., 0., 4., 2.)).transform(rotated));
+        let mut twice = Canvas::new();
+        twice.append_at(turned, [5., 6.]);
+        let mut again = Canvas::new();
+        again.append_at(twice, [1., 1.]);
+        let Item::Shape(s) = &again.items()[0] else {
+            panic!()
+        };
+        assert_eq!(s.transform, Transform::new([[0., -1., 6.], [1., 0., 7.]]));
     }
 
     #[test]

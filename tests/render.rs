@@ -3618,3 +3618,69 @@ fn responsive_baselines_match_live_figma_and_cache() {
         assert_eq!(canvas, before);
     }
 }
+
+/// A piece drawn with its top left at `(x, y)`, written out by hand.
+fn placed_piece(x: f32, y: f32) -> Canvas {
+    use figleaf::{BlendMode, Composite, Mask, MaskType};
+    let mut c = Canvas::new();
+    // A rounded fill with a gradient, an outside stroke, a drop shadow and a
+    // rounded clip, as an exported frame has.
+    c.shape(
+        Shape::rect(Rect::new(x + 2., y + 2., 30., 20.))
+            .radius(6.)
+            .gradient(
+                LinearGradient::horizontal()
+                    .stop(0., hex(0xFF0000))
+                    .stop(1., hex(0x0000FF)),
+            )
+            .stroke(1., hex(0x00AA00), StrokeAlign::Outside)
+            .shadow(Shadow::drop(hexa(0x00000066), [0., 2.], 4.))
+            .clip_rounded(Rect::new(x, y, 36., 26.), 8.),
+    );
+    // An isolated, translucent group and a masked group.
+    let mut group = Canvas::new();
+    group.shape(Shape::rect(Rect::new(x + 40., y + 4., 12., 12.)).fill(hex(0xFFAA00)));
+    c.composite(
+        Composite::new(group)
+            .opacity(0.5)
+            .blend_mode(BlendMode::Normal),
+    );
+    let mut source = Canvas::new();
+    source.shape(Shape::ellipse(Rect::new(x + 40., y + 24., 14., 14.)).fill(hex(0xFFFFFF)));
+    let mut content = Canvas::new();
+    content.shape(Shape::rect(Rect::new(x + 38., y + 22., 18., 18.)).fill(hex(0x8800FF)));
+    c.masked(Mask::new(MaskType::Alpha, source), content);
+    c
+}
+
+#[test]
+fn append_at_places_a_piece_exactly_where_writing_it_there_would() {
+    let (x, y) = (20., 12.);
+    let by_hand = draw(&placed_piece(x, y));
+    let mut moved = Canvas::new();
+    moved.append_at(placed_piece(0., 0.), [x, y]);
+    let moved = draw(&moved);
+    let mut worst = 0;
+    for py in 0..60 {
+        for px in 0..100 {
+            let (a, b) = (by_hand.pixel(px, py), moved.pixel(px, py));
+            worst = worst.max((0..4).map(|i| a[i].abs_diff(b[i])).max().unwrap());
+        }
+    }
+    // The same pixels, bar float rounding in the moved transform.
+    assert!(worst <= 1, "largest channel difference {worst}");
+    // And it did draw something there, not nothing twice.
+    assert!(by_hand.pixel(26, 20)[3] > 200 && by_hand.pixel(2, 2)[3] == 0);
+    // A fractional move is allowed and still draws.
+    let mut half = Canvas::new();
+    half.append_at(placed_piece(0., 0.), [x + 0.5, y + 0.5]);
+    let half = draw(&half);
+    assert!(half.pixel(26, 20)[3] > 200);
+    // A non-finite move is reported, not drawn and not a panic.
+    let gpu = Gpu::new();
+    let mut renderer = Renderer::new(&gpu.device, wgpu::TextureFormat::Rgba8Unorm);
+    let mut bad = Canvas::new();
+    bad.append_at(placed_piece(0., 0.), [f32::NAN, 0.]);
+    gpu.render(&mut renderer, &bad, [100, 60], 1., [0.; 4], &mut NoText);
+    assert!(!renderer.problems().is_empty());
+}

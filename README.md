@@ -86,9 +86,18 @@ was selected:
 - With auto layout the file also has `selection_layout(..)`, which returns the
   solved rectangles without drawing: use it for hit testing.
 
-The selection always lands at the origin. There is no call yet to move a
-whole exported piece, so export the frame that holds everything you want
-placed together, or write the placement by hand.
+The selection always lands at the origin. To put it somewhere else, draw it
+into its own canvas and add that to yours at an offset:
+
+```rust
+let mut piece = Canvas::new();
+toolbar::draw_selection(&mut piece, Some([width, 32.]))?;
+canvas.append_at(piece, [0., 40.]);   // 40 down from the top
+```
+
+The whole piece moves together: shapes, text, clips, shadows, masks and
+effects. [examples/place_export.rs](examples/place_export.rs) places one export
+twice at different sizes.
 
 ### 4. Draw it
 
@@ -101,7 +110,7 @@ let mut text = CoreText::new(&[Some(FontSource { bytes: FONT, axes: &[] })])?;
 
 // When the interface changes, or the window resizes.
 let mut canvas = Canvas::new();
-toolbar::draw_selection(&mut canvas, Some([width, 32.]))?;
+toolbar::draw_selection(&mut canvas, Some([width, 32.]))?;   // or canvas.append_at(..), above
 let report = renderer.prepare(&device, &queue, &canvas, [width_px, height_px], scale, &mut text)?;
 
 // Inside your own render pass, every frame.

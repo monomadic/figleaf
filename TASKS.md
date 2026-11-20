@@ -6,6 +6,10 @@ changes priorities. Extend the library/renderer and plugin together where applic
 Completed implementation notes and comparisons are in the
 [progress archive](docs/progress-archive.md); dated claims there are historical.
 
+Placing an exported piece (2026-11-20): `Canvas::append_at(piece, offset)`
+moves a whole canvas, clips, effects and masks included; checked pixel for
+pixel against writing the same piece at the offset by hand, not against Figma.
+
 ## Ordered queue — 2026-11-20
 
 1. **Text completeness — completed 2026-11-20 within the documented scope.**

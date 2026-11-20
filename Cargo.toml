@@ -54,6 +54,10 @@ required-features = ["wgpu", "text-coretext"]
 name = "abner_button_bar"
 required-features = ["wgpu", "text-coretext"]
 
+[[example]]
+name = "place_export"
+required-features = ["wgpu"]
+
 [[test]]
 name = "render"
 required-features = ["wgpu"]
