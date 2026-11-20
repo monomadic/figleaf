@@ -1288,6 +1288,20 @@ impl Text {
     }
     #[cfg(feature = "wgpu")]
     pub(crate) fn needs_layout(&self) -> bool {
+        self.has_rich_style()
+            || ((!self.string.is_ascii() || self.text_truncation != text::TextTruncation::Disabled)
+                && !self.uses_single_line_truncation())
+    }
+
+    #[cfg(feature = "wgpu")]
+    pub(crate) fn uses_single_line_truncation(&self) -> bool {
+        self.text_truncation == text::TextTruncation::Ending
+            && !self.wrap
+            && self.string.chars().all(text::latin_char)
+    }
+
+    #[cfg(feature = "wgpu")]
+    fn has_rich_style(&self) -> bool {
         !self.open_type_features.is_empty()
             || self.list_options != text::ListOptions::None
             || self.indentation != 0
@@ -1302,8 +1316,6 @@ impl Text {
             || !self.stroke_paints.is_empty()
             || !self.stroke_blend_modes.is_empty()
             || !self.runs.is_empty()
-            || !self.string.is_ascii()
-            || self.text_truncation != text::TextTruncation::Disabled
             || self.max_lines.is_some()
             || self.text_decoration != text::TextDecoration::None
             || self.decoration_options != text::DecorationOptions::default()

@@ -2585,6 +2585,59 @@ fn decorated_case_text_measures_wraps_and_caches_without_style_leaks() {
 
 #[test]
 #[cfg(feature = "text-coretext")]
+fn plain_truncated_labels_use_cached_glyph_masks() {
+    use figleaf::text::{FontSource, TextRun, TextTruncation, coretext::CoreText};
+
+    let mut backend = CoreText::new(&[Some(FontSource {
+        bytes: include_bytes!("../fonts/JetBrainsMono-wght-2.211.ttf"),
+        axes: &[],
+    })])
+    .unwrap();
+    let gpu = Gpu::new();
+    let target = [480, 200];
+    let scale = 2.;
+    let mut renderer = Renderer::new(&gpu.device, gpu.format);
+    let make = |rich, width| {
+        let mut canvas = Canvas::new();
+        let label = "Alpha · Beta gamma delta";
+        let rect = Rect::new(10., 10., width, 28.);
+        let text = if rich {
+            Text::rich(vec![TextRun::new(label).size(20., 28.)], rect)
+        } else {
+            Text::new(label, rect).size(20., 28.)
+        };
+        canvas.text(text.text_truncation(TextTruncation::Ending));
+        canvas
+    };
+    for width in [144., 220.] {
+        let plain = make(false, width);
+        let report = renderer
+            .prepare(&gpu.device, &gpu.queue, &plain, target, scale, &mut backend)
+            .unwrap();
+        assert_eq!(report.textures_created, 1, "only the line's glyph mask");
+        assert!(report.uploaded_bytes < u64::from(target[0] * target[1]));
+        let actual = gpu.render(&mut renderer, &plain, target, scale, [0.; 4], &mut backend);
+        assert!(renderer.problems().is_empty());
+        assert!(actual.rgba.iter().any(|&byte| byte != 0));
+        let warm = renderer
+            .prepare(&gpu.device, &gpu.queue, &plain, target, scale, &mut backend)
+            .unwrap();
+        assert!(!warm.changed && warm.uploaded_bytes == 0 && warm.textures_created == 0);
+        let expected = gpu.render(
+            &mut renderer,
+            &make(true, width),
+            target,
+            scale,
+            [0.; 4],
+            &mut backend,
+        );
+        assert!(renderer.problems().is_empty());
+        assert_eq!(actual.rgba, expected.rgba);
+    }
+}
+
+#[test]
+#[cfg(feature = "text-coretext")]
 fn truncated_text_matches_visible_literal_and_caches_limit_changes_and_errors() {
     use figleaf::{
         paint::Align,

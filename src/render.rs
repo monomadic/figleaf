@@ -55,12 +55,13 @@ struct MaskKey {
     drop: Option<u32>,
 }
 
-/// A wrapped paragraph: its string, style and box width.
+/// Cached line layout for plain text, keyed independently of its paint position.
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct WrapKey {
     string: String,
     style: [u32; 4],
     width: u32,
+    ellipsize: bool,
 }
 
 fn style_bits(s: text::Style) -> [u32; 4] {
@@ -1014,19 +1015,29 @@ impl Renderer {
                     ) {
                         problem = Some("invalid text shadow");
                     }
+                    let ellipsize = t.uses_single_line_truncation();
+                    if ellipsize && let Err(error) = text::validate_truncation(t.rect.h, None) {
+                        problem.get_or_insert(error.0);
+                    }
                     let lines = match problem {
                         Some(_) => Vec::new(),
-                        None if !t.wrap => vec![t.string.clone()],
+                        None if !t.wrap && !ellipsize => vec![t.string.clone()],
                         None => {
                             let key = WrapKey {
                                 string: t.string.clone(),
                                 style: style_bits(t.style()),
                                 width: t.rect.w.to_bits(),
+                                ellipsize,
                             };
                             let slot = self.wraps.entry(key).or_insert_with(|| {
-                                let lines = text::wrap(text, &t.string, t.style(), t.rect.w)
-                                    .map(|lines| lines.into_iter().map(|l| l.text).collect())
-                                    .map_err(|e| e.0);
+                                let lines = if ellipsize {
+                                    ellipsized_line(text, t)
+                                } else {
+                                    text::wrap(text, &t.string, t.style(), t.rect.w).map(|lines| {
+                                        lines.into_iter().map(|line| line.text).collect()
+                                    })
+                                }
+                                .map_err(|e| e.0);
                                 (lines, true)
                             });
                             slot.1 = true;
@@ -1488,6 +1499,27 @@ impl Renderer {
         }
         flush(pass, &mut run);
     }
+}
+
+/// Reuse rich text's grapheme-aware fit, then paint the result as a glyph mask.
+fn ellipsized_line(backend: &mut dyn Backend, t: &crate::Text) -> Result<Vec<String>, Error> {
+    let runs = t.layout_source()?;
+    // A single line always remains visible, regardless of the validated box height.
+    text::layout_text(
+        backend,
+        &runs,
+        [t.rect.w, 0.],
+        false,
+        text::ParagraphStyle::default(),
+        t.text_truncation,
+        None,
+    )
+    .map(|lines| {
+        lines
+            .into_iter()
+            .map(|line| line.runs.into_iter().map(|run| run.text).collect())
+            .collect()
+    })
 }
 
 /// One line as a mask just wide enough for it.
