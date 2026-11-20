@@ -108,11 +108,76 @@ Unavailable variables, unresolved aliases and unsupported resulting features
 suppress all Rust. A selection/page change or newer generation discards pending
 lookup results. Generate again after editing variables to refresh the snapshot.
 
+## Exporting without the plugin
+
+The same exporter runs from the command line on a **snapshot**: the selected
+hierarchy's Plugin API values, saved as JSON. This is the path for an agent,
+which cannot click the plugin in Figma Desktop but can run Plugin API code
+through Figma's MCP server (`use_figma`), and for regenerating code from a
+snapshot kept beside it.
+
+```
+node plugin/cli.js request <node-id> [part]   # the code for one use_figma call
+node plugin/cli.js join <part.json>...        # parts -> one snapshot (stdout)
+node plugin/cli.js export <snapshot.json>     # snapshot -> Rust (stdout)
+```
+
+**For an agent, step by step:**
+
+1. Find the node id (Figma's `node-id=441-430` in a link is `441:430`). Snapshot
+   the smallest hierarchy you need, one variant rather than its whole set:
+   snapshots carry outline geometry and add up fast.
+2. Run `node plugin/cli.js request 441:430` and send its output, unchanged, as
+   the `code` of one `use_figma` call on that file. It is
+   [plugin/snapshot.js](snapshot.js) plus one line that runs it. It only reads.
+3. The call returns one part: `{"figleafSnapshotPart": 0, "parts": N, "length",
+   "hash", "data"}`. Save that object exactly as returned, for example to
+   `441-430.part0.json`. If `parts` is more than 1, run `request <node-id> 1`,
+   `2`, and so on, and save each.
+4. `node plugin/cli.js join 441-430.part*.json > 441-430.json`. It refuses parts
+   cut from different snapshots (the design changed between calls) and a
+   missing part, and checks the hash: a copying mistake is caught here, not in
+   the Rust.
+5. `node plugin/cli.js export 441-430.json > src/ui/pill.rs`. On failure it
+   prints each layer's path, node id and reason, and exits 1, exactly as the
+   plugin refuses.
+
+Keep the snapshot beside the generated file if the code should be
+regenerable without Figma; export it again after the exporter changes.
+
+**What a snapshot is.** The Plugin API's own values under its own names (the
+shape of the `*-reference.json` fixtures), plus what the exporter would
+otherwise ask Figma for: each bound variable's value resolved at each node
+that consumes it, and the nodes behind pattern paints. It is not a figleaf
+scene format, and the CLI only replays it into `exporter.js`, `variables.js`
+and `assets.js`, so its Rust is the plugin's for the same values. A text
+layer's glyph outlines are left out (the exporter emits text, not glyphs).
+Hidden layers are kept as `{id, name, type, visible: false}`. Figma's `mixed`
+is `{"$mixed": true}`. The text is ASCII (other characters `\u`-escaped) and
+cut into 20,000-character parts, which stay under the ~48 KB a `use_figma`
+result may carry.
+
+**What it cannot do.** Image fills: the CLI has no image decoder and refuses
+them by name; use the plugin for those hierarchies. Variables are resolved
+when the snapshot is taken, like the plugin's; take it again after editing
+them. One `use_figma` call is limited to about 50 KB of code; the request is
+about 9 KB.
+
+**Checked:** every reference fixture survives snapshot, parts, join and
+export with Rust identical to the exporter's own; a property the exporter
+reads but the snapshot leaves out fails `snapshot.test.js`. Those tests use
+the fixtures with Figma's methods put back, not Figma. Against a real file
+(2026-11-20): Switchblade's `Tag pill / Form=Outline` (one part, 6.7 KB) and
+`Form=Excluded` (two parts) were snapshotted through `use_figma`, and the
+Outline variant was joined and exported, with its five variable bindings
+resolved in Figma and named in the output.
+
 ## Validation
 
 ```
 node plugin/build.js --check
 node --test plugin/exporter.test.js
+node --test plugin/snapshot.test.js
 ```
 
 Tests compile and execute generated Rust, check diagnostics, clipping, escaping,

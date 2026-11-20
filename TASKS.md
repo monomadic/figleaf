@@ -6,6 +6,12 @@ changes priorities. Extend the library/renderer and plugin together where applic
 Completed implementation notes and comparisons are in the
 [progress archive](docs/progress-archive.md); dated claims there are historical.
 
+Exporting without the plugin (2026-11-20): `plugin/snapshot.js` snapshots a
+hierarchy through Figma's MCP `use_figma` and `node plugin/cli.js export` runs
+the plugin's exporter on it, so an agent can export without Figma Desktop.
+Checked on Switchblade's Tag pill; image fills still need the plugin
+([steps and limits](plugin/README.md#exporting-without-the-plugin)).
+
 Placing an exported piece (2026-11-20): `Canvas::append_at(piece, offset)`
 moves a whole canvas, clips, effects and masks included; checked pixel for
 pixel against writing the same piece at the offset by hand, not against Figma.

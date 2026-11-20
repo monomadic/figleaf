@@ -16,11 +16,16 @@ values. README.md has the steps under "Using figleaf in an app".
 - No file format, no scene or widget runtime, no input handling. The host owns
   state, events and its render pass. If a change needs one of those, stop and
   ask.
-- When putting a design into a host: use the plugin's output where the plugin
+- When putting a design into a host: use the exporter's output where it
   accepts the selection, and write calls by hand for small controls or for a
-  piece it refuses. An agent cannot click the plugin in Figma Desktop; ask the
-  owner to run it and paste the result, or hand-write from values read through
-  Figma's API.
+  piece it refuses. An agent cannot click the plugin in Figma Desktop; run the
+  same exporter through `node plugin/cli.js` on a snapshot taken with Figma's
+  MCP `use_figma` tool (plugin/README.md, "Exporting without the plugin"),
+  or ask the owner to run the plugin and paste the result.
+- `plugin/snapshot.js` (runs inside Figma) and `plugin/cli.js` share the
+  plugin's exporter: never fork its logic into them. When the exporter starts
+  reading a new node property, add it to `FIGLEAF_SNAPSHOT_PROPS`;
+  `snapshot.test.js` fails until you do.
 - Read TASKS.md and work on its first unmet task unless the user changes it.
 - New API should read like Figma's inspector: same names, same numbers.
 - Prefer the general mechanism over one that only fits the example.
@@ -51,5 +56,7 @@ Validate with:
     cargo clippy --all-targets --all-features --locked -- -D warnings
     cargo test --locked
     cargo clippy --all-targets --locked -- -D warnings
+    node plugin/build.js --check
+    node --test plugin/exporter.test.js plugin/snapshot.test.js
 
 `--all-features` needs macOS with clang. The GPU tests need a working adapter.

@@ -33,6 +33,13 @@ Development → Import plugin from manifest, and choose
 component, run **figleaf — Rust**, click **Generate Rust** and copy the result.
 The plugin only shows code: it writes no files and changes nothing in Figma.
 
+**Or, as an agent, from the command line.** An agent cannot click the plugin,
+but it can run Plugin API code through Figma's MCP server. `node
+plugin/cli.js request <node-id>` prints a read-only snapshot call to send
+through `use_figma`; `join` and `export` turn what comes back into the same
+Rust the plugin shows. The steps, and what it cannot export, are in
+[Exporting without the plugin](plugin/README.md#exporting-without-the-plugin).
+
 Paste the code into its own module in the app, for example
 `src/ui/toolbar.rs`. Treat it as generated: when the design changes, export
 again and replace the file. Its comments carry each layer's name and Figma
