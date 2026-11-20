@@ -859,7 +859,7 @@ This first export stage covers nested horizontal/vertical stacks, fixed/hug/fill
 min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
 hidden-child exclusion and absolute/plain children pinned left/top. Solved bounds
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
-text-based hug/automatic-height measurement is supported below. Unsupported stack wrapping, grid,
+text-based hug/automatic-height measurement is supported below. Unsupported vertical wrapping, grid,
 baseline, negative gaps, other constraints, transformed nodes, groups,
 patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
@@ -889,7 +889,7 @@ shaping, fallback, automatic line heights and line limits. Paints/effects do not
 inflate layout dimensions. The general solver callback retains no scene or font
 state and adds no dependencies. Use the same source text/styles and backend for
 measurement and rendering; unsupported fonts/limits are errors, not authored-height
-fallbacks. Wrapped-stack export remains unsupported.
+fallbacks. Horizontal wrapped-stack export is supported.
 
 `cargo run --example responsive_text --all-features --locked` compares one generated
 hierarchy at [320](docs/responsive-text-320-compare.png),
@@ -920,3 +920,25 @@ hug/fill sizing and width-dependent text measurement without new dependencies.
 match live Figma at two widths; the simple solid-border rendering was checked at
 240 pixels. Synthetic tests additionally cover measured text and absolute offsets.
 This is bounded fixture evidence, not live development-plugin UI validation.
+
+### Wrapped responsive layout
+
+Horizontal wrapping exports `Node::wrap(row_gap)` and
+`counter_axis_align_content(AlignContent::Auto | SpaceBetween)`. Each row solves
+fixed/hug/fill widths and min/max independently. Wrapped height follows the rows,
+including width-dependent text measurement and inside borders. Absolute and
+hidden children do not participate in row breaking.
+
+Automatic track placement follows counter-axis alignment. When every flow child
+fills vertically, tracks start at their minimum heights and share spare height;
+authored fill heights do not inflate tracks. Space-between distributes spare
+height between rows (zero gap when overflowing); a single row follows alignment.
+Vertical wrapping, baseline alignment and negative row gaps still hard-error.
+
+`cargo run --example responsive_wrap --all-features --locked` compares generated
+Rust at [240](docs/responsive-wrap-240-compare.png),
+[360](docs/responsive-wrap-360-compare.png) and
+[480](docs/responsive-wrap-480-compare.png) pixels wide. All 16 rectangles match
+live Figma captures; all three solid-shape renders were visually reviewed and
+unchanged canvases upload nothing. Nested measured text is covered synthetically;
+this does not claim complete layout parity or live plugin UI validation.

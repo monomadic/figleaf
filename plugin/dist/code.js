@@ -590,7 +590,8 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const i=layoutNodes.size;layoutNodes.set(n,i);
       const mode=n.layoutMode??'NONE', stack=['HORIZONTAL','VERTICAL'].includes(mode);
       if(!['NONE','HORIZONTAL','VERTICAL'].includes(mode))throw Error('Responsive grid/unknown layout is unsupported.');
-      if(n.layoutWrap && n.layoutWrap!=='NO_WRAP')throw Error('Responsive wrapping is not implemented yet.');
+      if(n.layoutWrap && !['NO_WRAP','WRAP'].includes(n.layoutWrap))throw Error('Unknown responsive wrapping mode.');
+      if(n.layoutWrap==='WRAP' && mode!=='HORIZONTAL')throw Error('Responsive wrapping requires horizontal auto layout.');
       if(n.layoutPositioning && !['AUTO','ABSOLUTE'].includes(n.layoutPositioning))throw Error('Unknown layout positioning.');
       const t=n.relativeTransform;inverse(t);
       if(t[0][0]!==1||t[0][1]!==0||t[1][0]!==0||t[1][1]!==1)throw Error('Responsive rotated, scaled or skewed nodes are unsupported.');
@@ -622,6 +623,13 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
           const align={INSIDE:'Inside',CENTER:'Center',OUTSIDE:'Outside'}[n.strokeAlign??'INSIDE'];
           if(!align)throw Error('Unknown layout stroke alignment.');
           if(weights.some(v=>v>0))expr+=`.stroke_weights(${array(weights)}).stroke_align(StrokeAlign::${align}).strokes_included_in_layout(true)`;
+        }
+        if(n.layoutWrap==='WRAP') {
+          const gap=n.counterAxisSpacing??0;
+          number(gap);if(gap<0)throw Error('Responsive negative row gaps are unsupported.');
+          const content={AUTO:'Auto',SPACE_BETWEEN:'SpaceBetween'}[n.counterAxisAlignContent??'AUTO'];
+          if(!content)throw Error('Unknown wrapped track alignment.');
+          expr+=`.wrap(${number(gap)}).counter_axis_align_content(figleaf::layout::AlignContent::${content})`;
         }
         const padding=[n.paddingLeft??0,n.paddingTop??0,n.paddingRight??0,n.paddingBottom??0],gap=n.itemSpacing??0;
         [...padding,gap].forEach(v=>{number(v);if(v<0)throw Error('Responsive negative padding/gaps are unsupported.');});

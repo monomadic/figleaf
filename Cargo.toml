@@ -180,3 +180,7 @@ required-features = ["wgpu", "text-coretext"]
 [[example]]
 name = "responsive_strokes"
 required-features = ["wgpu"]
+
+[[example]]
+name = "responsive_wrap"
+required-features = ["wgpu"]

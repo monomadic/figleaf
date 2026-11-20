@@ -887,7 +887,7 @@ test('responsive auto layout compiles and matches Figma at three root sizes',()=
 });
 test('unsupported responsive behavior gives layer-specific errors and no Rust',()=>{
   for(const patch of [
-    {layoutMode:'GRID'},{layoutWrap:'WRAP'},{counterAxisAlignItems:'BASELINE'},
+    {layoutMode:'GRID'},{layoutWrap:'WRAP'},{layoutWrap:'UNKNOWN'},{counterAxisAlignItems:'BASELINE'},
     {paddingLeft:-1},{itemSpacing:-2},{minWidth:-1},{maxWidth:100},{width:NaN},
     {relativeTransform:[[0,-1,0],[1,0,0]]},
     {strokesIncludedInLayout:true,strokes:[solid],strokeTopWeight:-2},
@@ -953,4 +953,28 @@ test('layout stroke paint visibility counts zero opacity and multiple paints onc
     const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
     assert.equal((r.code.match(/strokes_included_in_layout\(true\)/g)||[]).length,expected);
   }
+});
+test('wrapped generated layout matches live Figma at three widths',()=>{
+  const root=require('./responsive-wrap-reference.json');
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_wrap.rs'),'utf8'));
+  const checks=require('./responsive-wrap-sizes.json').map(({size,boxes})=>`let actual=selection_layout(Some([${size.map(x=>Number.isInteger(x)?x+'.0':String(x))}])).unwrap();${boxes.map((b,i)=>`assert_eq!(actual[${i}],Rect::new(${b.rect.map(x=>Number.isInteger(x)?x+'.0':String(x))}),${JSON.stringify(b.name)});`).join('')}`).join('\n');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-wrap-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('wrapped export validates row gaps and distribution without partial Rust',()=>{
+  for(const patch of [{counterAxisSpacing:-1},{counterAxisSpacing:NaN},{counterAxisAlignContent:'BOGUS'},{layoutMode:'VERTICAL'},{counterAxisAlignItems:'BASELINE'}]) {
+    const root=structuredClone(require('./responsive-wrap-reference.json'));
+    Object.assign(root.children[0],patch);
+    const r=exportHierarchy([root]);assert.equal(r.code,null);
+    assert.ok(r.errors.some(e=>e.nodeId===root.children[0].id));
+  }
+  const root=structuredClone(require('./responsive-wrap-reference.json'));
+  root.children[0].counterAxisSpacing=null;
+  assert.deepEqual(exportHierarchy([root]).errors,[]);
 });

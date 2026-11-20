@@ -23,8 +23,10 @@ Completed implementation notes and comparisons are in the
    nested hug sizing and native plugin calls, [reviewed at three widths](docs/responsive-text-480-compare.png).
    **Stroke-inclusive layout done (2026-11-20):** visible inside borders, individual
    widths, hug/fill and measured content; [reviewed fixture](docs/responsive-strokes-240-compare.png).
-   **Next:** wrapped layout export, then constraints, baseline alignment,
-   wrapped-line distribution, implicit border minimum-size expansion, rotated children and grid layout. Keep state and resize events
+   **Horizontal wrapping done (2026-11-20):** row breaking, row gaps, hug heights,
+   fill-track stretching and space-between distribution; [reviewed at three widths](docs/responsive-wrap-360-compare.png).
+   **Next:** constraints, baseline alignment, vertical wrapping, implicit border
+   minimum-size expansion, rotated children and grid layout. Keep state and resize events
    in the host; add no scene runtime.
    **Done when:** the same generated panel lays out at several supplied sizes
    without re-export, agrees with corresponding Figma layouts, and reports

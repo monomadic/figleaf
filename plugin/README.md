@@ -357,7 +357,7 @@ absolute children. Plain frames preserve child offsets. Hidden layers do not
 participate. Draw calls use solved bounds and translations, including clips;
 layout errors return before appending paint. The plugin still only displays code.
 
-Wrapped/grid layout, baseline alignment, negative gaps, non-left/top constraints,
+Vertical wrapping/grid layout, baseline alignment, negative gaps, non-left/top constraints,
 rotated/scaled/skewed nodes, groups,
 pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
@@ -396,3 +396,10 @@ the same content area; absolute children retain their offsets.
 The generated layout matches ten live Figma rectangles at two widths; see the
 [border comparison](../docs/responsive-strokes-240-compare.png). Reopen the local
 development plugin to load the rebuilt bundle.
+
+Horizontal wrapped auto layout now exports row gaps and automatic/space-between
+track distribution. Fixed/hug/fill sizing, min/max, inside borders, absolute
+children and measured text retain the responsive layout path. Invalid row gaps,
+unknown distribution, vertical wrapping and baseline alignment produce layer
+errors and no Rust. The [three-width fixture](../docs/responsive-wrap-360-compare.png)
+checks row breaking, hug height, fill-height stretching and row distribution.

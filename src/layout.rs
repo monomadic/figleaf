@@ -6,8 +6,8 @@
 //! a size, and draw each thing at the rectangle it gets. Borrowed from figui,
 //! where it was checked against positions Figma recorded.
 //!
-//! Not covered: baseline alignment, rotated children, grid layout, "space
-//! between" for wrapped lines, and constraints other than "keep the authored
+//! Not covered: baseline alignment, rotated children, vertical wrapping, grid
+//! layout, and constraints other than "keep the authored
 //! offset". Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
 //! measurement callback (for example [`crate::Text::measure`]).
 //!
@@ -42,6 +42,13 @@ pub enum Direction {
     Vertical,
 }
 
+/// Figma's distribution of wrapped tracks along the counter axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlignContent {
+    Auto,
+    SpaceBetween,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AutoLayout {
     pub direction: Direction,
@@ -55,6 +62,7 @@ pub struct AutoLayout {
     pub wrap: bool,
     /// The gap between wrapped lines.
     pub counter_spacing: f32,
+    pub counter_align_content: AlignContent,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -156,8 +164,13 @@ impl<'a> Solver<'a> {
             sum + l.spacing * flow.len().saturating_sub(1) as f32
         } else {
             let lines = self.lines_of(i, l, &flow);
-            let heights: f32 = lines.iter().map(|line| self.thickness(line)).sum();
-            heights + l.counter_spacing * lines.len().saturating_sub(1) as f32
+            let heights: f32 = lines.iter().map(|line| self.track_thickness(line, l)).sum();
+            heights
+                + if l.wrap && l.counter_align_content == AlignContent::SpaceBetween {
+                    0.
+                } else {
+                    l.counter_spacing
+                } * lines.len().saturating_sub(1) as f32
         };
         content + start + end
     }
@@ -186,6 +199,21 @@ impl<'a> Solver<'a> {
         line.iter()
             .map(|&c| self.nodes[c].min[self.axis])
             .fold(measured, f32::max)
+    }
+
+    fn track_thickness(&mut self, line: &[usize], l: AutoLayout) -> f32 {
+        if l.wrap
+            && line
+                .iter()
+                .all(|&c| self.nodes[c].sizing[self.axis] == Sizing::Fill)
+        {
+            // Figma ignores authored fill heights when sizing a wrapped track.
+            line.iter()
+                .map(|&c| self.nodes[c].min[self.axis])
+                .fold(1., f32::max)
+        } else {
+            self.thickness(line)
+        }
     }
 
     /// Breaks a wrapping stack's children into lines that fit `inner`. A
@@ -268,18 +296,44 @@ impl<'a> Solver<'a> {
             // placed as a block by the counter alignment.
             let mut bands = vec![(start, inner)];
             if l.wrap {
-                let thick: Vec<f32> = lines.iter().map(|line| self.thickness(line)).collect();
-                let gaps = l.counter_spacing * lines.len().saturating_sub(1) as f32;
-                let spare = inner - thick.iter().sum::<f32>() - gaps;
-                let mut pos = match l.counter_align {
-                    Align::Center => start + spare / 2.,
-                    Align::Max => start + spare,
-                    _ => start,
+                let mut thick: Vec<f32> = lines
+                    .iter()
+                    .map(|line| self.track_thickness(line, l))
+                    .collect();
+                let total: f32 = thick.iter().sum();
+                let between = l.counter_align_content == AlignContent::SpaceBetween;
+                let gap = if between && lines.len() > 1 {
+                    ((inner - total) / (lines.len() - 1) as f32).max(0.)
+                } else if between {
+                    0.
+                } else {
+                    l.counter_spacing
+                };
+                let spare = inner - total - gap * lines.len().saturating_sub(1) as f32;
+                let stretch = !between
+                    && !flow.is_empty()
+                    && flow
+                        .iter()
+                        .all(|&c| self.nodes[c].sizing[self.axis] == Sizing::Fill);
+                if stretch {
+                    let extra = spare.max(0.) / thick.len() as f32;
+                    for t in &mut thick {
+                        *t += extra;
+                    }
+                }
+                let mut pos = if stretch || (between && lines.len() > 1) {
+                    start
+                } else {
+                    match l.counter_align {
+                        Align::Center => start + spare / 2.,
+                        Align::Max => start + spare,
+                        _ => start,
+                    }
                 };
                 bands.clear();
                 for t in thick {
                     bands.push((pos, t));
-                    pos += t + l.counter_spacing;
+                    pos += t + gap;
                 }
             }
             for (line, (start, inner)) in lines.iter().zip(bands) {
@@ -511,6 +565,7 @@ impl Node {
             counter_align: Align::Min,
             wrap: false,
             counter_spacing: 0.,
+            counter_align_content: AlignContent::Auto,
         });
         n
     }
@@ -592,6 +647,11 @@ impl Node {
         (l.wrap, l.counter_spacing) = (true, gap_between_lines);
         self
     }
+    /// Distribution between wrapped tracks; independent of item alignment.
+    pub fn counter_axis_align_content(mut self, align: AlignContent) -> Self {
+        self.stack_mut().counter_align_content = align;
+        self
+    }
     fn stack_mut(&mut self) -> &mut AutoLayout {
         self.layout.get_or_insert(AutoLayout {
             direction: Direction::Horizontal,
@@ -601,6 +661,7 @@ impl Node {
             counter_align: Align::Min,
             wrap: false,
             counter_spacing: 0.,
+            counter_align_content: AlignContent::Auto,
         })
     }
 }
@@ -761,6 +822,7 @@ mod tests {
             counter_align,
             wrap: false,
             counter_spacing: 0.,
+            counter_align_content: AlignContent::Auto,
         });
         n
     }
@@ -1145,5 +1207,84 @@ mod stroke_tests {
             tree.node_mut(tree.root()).stroke_weights = [weight; 4];
             assert!(tree.solve([100., 100.]).is_err());
         }
+    }
+}
+
+#[cfg(test)]
+mod wrapped_measurement_tests {
+    use super::*;
+
+    #[test]
+    fn nested_wrapped_measured_leaves_set_track_and_parent_heights() {
+        let mut tree = Tree::new(Node::column().padding(5.).gap(7.));
+        let wrap = tree.add(
+            tree.root(),
+            Node::row().width(Sizing::Fill).gap(10.).wrap(6.),
+        );
+        let text = tree.add(
+            wrap,
+            Node::fixed([999., 999.])
+                .width(Sizing::Fill)
+                .height(Sizing::Hug)
+                .min([60., 0.])
+                .max([100., f32::INFINITY]),
+        );
+        let fixed = tree.add(wrap, Node::fixed([70., 20.]));
+        let absolute = tree.add(wrap, Node::fixed([1., 1.]).absolute([2., 3.]));
+        let footer = tree.add(tree.root(), Node::fixed([10., 10.]));
+        for (width, text_width, fixed_y, wrap_height) in
+            [(130., 100., 46., 66.), (200., 100., 0., 40.)]
+        {
+            let solved = tree
+                .solve_measured([Some(width), None], |id, width| {
+                    assert_eq!(id, text);
+                    assert_eq!(width, Some(text_width));
+                    Ok(Some([text_width, 40.]))
+                })
+                .unwrap();
+            assert_eq!(solved[wrap].h, wrap_height);
+            assert_eq!(solved[fixed].y, 5. + fixed_y);
+            assert_eq!(solved[footer].y, 5. + wrap_height + 7.);
+            assert_eq!(solved[absolute], Rect::new(7., 8., 1., 1.));
+            assert_eq!(solved.size(), [width, 10. + wrap_height + 7. + 10.]);
+        }
+    }
+
+    #[test]
+    fn wrapped_fill_tracks_ignore_authored_heights_and_distribute_spare_space() {
+        let mut tree = Tree::new(
+            Node::row()
+                .gap(10.)
+                .wrap(12.)
+                .padding(10.)
+                .align(Align::Min, Align::Center),
+        );
+        let mut ids = Vec::new();
+        for i in 0..4 {
+            ids.push(
+                tree.add(
+                    tree.root(),
+                    Node::fixed([50., 999.])
+                        .height(Sizing::Fill)
+                        .min([0., if i == 0 { 90. } else { 10. }]),
+                ),
+            );
+        }
+        let solved = tree.solve([140., 160.]).unwrap();
+        assert_eq!(solved[ids[0]], Rect::new(10., 10., 50., 104.));
+        assert_eq!(solved[ids[2]], Rect::new(10., 126., 50., 24.));
+        tree.node_mut(tree.root())
+            .layout
+            .as_mut()
+            .unwrap()
+            .counter_align_content = AlignContent::SpaceBetween;
+        let solved = tree.solve([140., 160.]).unwrap();
+        assert_eq!(solved[ids[0]], Rect::new(10., 10., 50., 90.));
+        assert_eq!(solved[ids[2]], Rect::new(10., 140., 50., 10.));
+        let overflow = tree.solve([140., 80.]).unwrap();
+        assert_eq!(
+            overflow[ids[2]].y, 100.,
+            "overflowing tracks have zero distributed gap"
+        );
     }
 }
