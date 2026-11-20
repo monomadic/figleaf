@@ -1,0 +1,269 @@
+[
+  {
+    "size": [
+      360,
+      220
+    ],
+    "boxes": [
+      {
+        "name": "Responsive grid and rotation validation",
+        "rect": [
+          0,
+          0,
+          360,
+          220
+        ]
+      },
+      {
+        "name": "Rotated frame",
+        "rect": [
+          18,
+          48,
+          60,
+          28
+        ]
+      },
+      {
+        "name": "Nested fill",
+        "rect": [
+          23.46484375,
+          49.46484375,
+          52,
+          19.999998092651367
+        ]
+      },
+      {
+        "name": "Spanning row",
+        "rect": [
+          110,
+          18,
+          232,
+          70
+        ]
+      },
+      {
+        "name": "Fixed row item",
+        "rect": [
+          118,
+          26,
+          24,
+          24
+        ]
+      },
+      {
+        "name": "Fill row item",
+        "rect": [
+          150,
+          26,
+          184,
+          24
+        ]
+      },
+      {
+        "name": "Centered cell",
+        "rect": [
+          43,
+          140,
+          30,
+          24
+        ]
+      },
+      {
+        "name": "Limited fill",
+        "rect": [
+          110,
+          127,
+          73.33333587646484,
+          50
+        ]
+      },
+      {
+        "name": "End aligned cell",
+        "rect": [
+          302,
+          182,
+          40,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      280,
+      180
+    ],
+    "boxes": [
+      {
+        "name": "Responsive grid and rotation validation",
+        "rect": [
+          0,
+          0,
+          280,
+          180
+        ]
+      },
+      {
+        "name": "Rotated frame",
+        "rect": [
+          18,
+          48,
+          60,
+          28
+        ]
+      },
+      {
+        "name": "Nested fill",
+        "rect": [
+          23.46484375,
+          49.46484375,
+          52,
+          19.999998092651367
+        ]
+      },
+      {
+        "name": "Spanning row",
+        "rect": [
+          110,
+          18,
+          152,
+          70
+        ]
+      },
+      {
+        "name": "Fixed row item",
+        "rect": [
+          118,
+          26,
+          24,
+          24
+        ]
+      },
+      {
+        "name": "Fill row item",
+        "rect": [
+          150,
+          26,
+          104,
+          24
+        ]
+      },
+      {
+        "name": "Centered cell",
+        "rect": [
+          43,
+          120,
+          30,
+          24
+        ]
+      },
+      {
+        "name": "Limited fill",
+        "rect": [
+          110,
+          107,
+          46.66666793823242,
+          50
+        ]
+      },
+      {
+        "name": "End aligned cell",
+        "rect": [
+          222,
+          142,
+          40,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "size": [
+      480,
+      260
+    ],
+    "boxes": [
+      {
+        "name": "Responsive grid and rotation validation",
+        "rect": [
+          0,
+          0,
+          480,
+          260
+        ]
+      },
+      {
+        "name": "Rotated frame",
+        "rect": [
+          18,
+          48,
+          60,
+          28
+        ]
+      },
+      {
+        "name": "Nested fill",
+        "rect": [
+          23.46484375,
+          49.46484375,
+          52,
+          19.999998092651367
+        ]
+      },
+      {
+        "name": "Spanning row",
+        "rect": [
+          110,
+          18,
+          352,
+          70
+        ]
+      },
+      {
+        "name": "Fixed row item",
+        "rect": [
+          118,
+          26,
+          24,
+          24
+        ]
+      },
+      {
+        "name": "Fill row item",
+        "rect": [
+          150,
+          26,
+          304,
+          24
+        ]
+      },
+      {
+        "name": "Centered cell",
+        "rect": [
+          43,
+          160,
+          30,
+          24
+        ]
+      },
+      {
+        "name": "Limited fill",
+        "rect": [
+          110,
+          147,
+          113.33333587646484,
+          50
+        ]
+      },
+      {
+        "name": "End aligned cell",
+        "rect": [
+          422,
+          222,
+          40,
+          20
+        ]
+      }
+    ]
+  }
+]

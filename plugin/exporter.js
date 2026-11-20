@@ -233,7 +233,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if (layoutNodes.has(n)) {
         const i = layoutNodes.get(n);
         layoutRects.set(box, `Rect::new(0.0, 0.0, boxes[${i}].w, boxes[${i}].h)`);
-        layoutTransforms.set(world, `Transform::translation(boxes[${i}].x, boxes[${i}].y)`);
+        layoutTransforms.set(world, world[0][0]===1&&world[0][1]===0&&world[1][0]===0&&world[1][1]===1 ? `Transform::translation(boxes[${i}].x, boxes[${i}].y)` : `Transform::new([[${number(world[0][0])}, ${number(world[0][1])}, boxes[${i}].x], [${number(world[1][0])}, ${number(world[1][1])}, boxes[${i}].y]])`);
       }
       if (n.width < 0 || n.height < 0) reject('Negative dimensions are unsupported.');
       const segments=n.type==='TEXT'&&n.getStyledTextSegments?n.getStyledTextSegments(['fontName','fontSize','fills','textCase','textDecoration','textDecorationStyle','textDecorationOffset','textDecorationThickness','textDecorationColor','textDecorationSkipInk','letterSpacing','lineHeight','listOptions','listSpacing','indentation','paragraphSpacing','paragraphIndent','openTypeFeatures','boundVariables']):null;
@@ -597,14 +597,16 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
     try {
       if(depth>128 || layoutNodes.size>=5000)throw Error('Responsive layout exceeds hierarchy limits.');
       const i=layoutNodes.size;layoutNodes.set(n,i);
-      const mode=n.layoutMode??'NONE', stack=['HORIZONTAL','VERTICAL'].includes(mode);
-      if(!['NONE','HORIZONTAL','VERTICAL'].includes(mode))throw Error('Responsive grid/unknown layout is unsupported.');
+      const mode=n.layoutMode??'NONE', grid=mode==='GRID', stack=['HORIZONTAL','VERTICAL','GRID'].includes(mode);
+      if(!['NONE','HORIZONTAL','VERTICAL','GRID'].includes(mode))throw Error('Unknown responsive layout mode.');
       if(n.layoutWrap && !['NO_WRAP','WRAP'].includes(n.layoutWrap))throw Error('Unknown responsive wrapping mode.');
-      if(n.layoutWrap==='WRAP' && !stack)throw Error('Responsive wrapping requires auto layout.');
+      if(n.layoutWrap==='WRAP' && (!stack||grid))throw Error('Responsive wrapping requires auto layout.');
       if(n.layoutPositioning && !['AUTO','ABSOLUTE'].includes(n.layoutPositioning))throw Error('Unknown layout positioning.');
       const t=n.relativeTransform;inverse(t);
-      if(t[0][0]!==1||t[0][1]!==0||t[1][0]!==0||t[1][1]!==1)throw Error('Responsive rotated, scaled or skewed nodes are unsupported.');
-      const inFlow=parent!==null&&['HORIZONTAL','VERTICAL'].includes(parent.layoutMode)&&n.layoutPositioning!=='ABSOLUTE';
+      const rotated=Math.abs(t[0][0]-1)>1e-6||Math.abs(t[0][1])>1e-6||Math.abs(t[1][0])>1e-6||Math.abs(t[1][1]-1)>1e-6;
+      if(Math.abs(t[0][0]-t[1][1])>1e-6||Math.abs(t[0][1]+t[1][0])>1e-6||Math.abs(t[0][0]**2+t[1][0]**2-1)>1e-6)throw Error('Responsive scaled or skewed nodes are unsupported.');
+      const rotation=Math.atan2(t[0][1],t[0][0])*180/Math.PI;
+      const inFlow=parent!==null&&['HORIZONTAL','VERTICAL','GRID'].includes(parent.layoutMode)&&n.layoutPositioning!=='ABSOLUTE';
       baselineScope ||= inFlow && parent.counterAxisAlignItems==='BASELINE';
       const sizing=[n.layoutSizingHorizontal??'FIXED',n.layoutSizingVertical??'FIXED'];
       if(baselineScope && sizing[1]==='FILL')throw Error('Fill-height baseline dependencies are unsupported.');
@@ -615,6 +617,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       if(n.type==='GROUP')throw Error('Responsive groups require group-bound recomputation and are unsupported.');
       const constraints=[n.constraints?.horizontal??'MIN',n.constraints?.vertical??'MIN'];
       const constrained=parent!==null&&!inFlow;
+      if(rotated&&(sizing.some(v=>v!=='FIXED')||baselineScope||constrained&&constraints.some(c=>c!=='MIN')))throw Error('Rotated responsive nodes require fixed sizing, min constraints and no baseline alignment.');
       if(constrained && constraints.some(c=>!['MIN','CENTER','MAX','STRETCH','SCALE'].includes(c)))throw Error('Unknown responsive constraint.');
       if(constrained)constraints.forEach((c,a)=>{
         if(['STRETCH','SCALE'].includes(c)&&sizing[a]!=='FIXED')throw Error('Stretch/scale constraints require fixed sizing on that axis.');
@@ -633,6 +636,32 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
       const resizes=!parent||constrained&&parentResizes&&constraints.some(c=>['STRETCH','SCALE'].includes(c))||sizing.some(v=>v!=='FIXED')||min.some((v,a)=>v>[n.width,n.height][a])||max.some((v,a)=>v<[n.width,n.height][a]);
       if(resizes&&(['VECTOR','BOOLEAN_OPERATION','LINE'].includes(n.type)||(n.cornerSmoothing??0)>0||n.variableWidthStrokeProperties?.widthProfile&&n.variableWidthStrokeProperties.widthProfile!=='UNIFORM'||n.complexStrokeProperties?.type&&n.complexStrokeProperties.type!=='BASIC'))throw Error('Responsive resizing of resolved path/stroke geometry is unsupported.');
       let expr=stack?`Node::${mode==='HORIZONTAL'?'row':'column'}().size(${array([n.width,n.height])})`:`Node::fixed(${array([n.width,n.height])})`;
+      if(grid) {
+        const trackCode=(tracks,count,axis)=>{
+          if(!Number.isInteger(count)||count<1||count>1024||!Array.isArray(tracks)||tracks.length!==count)throw Error('Invalid grid track count.');
+          return `vec![${tracks.map(t=>{
+            if(t.type==='HUG')return 'figleaf::layout::GridTrack::Hug';
+            if(!['FIXED','FLEX'].includes(t.type))throw Error('Unknown grid track type.');
+            const value=t.value??(t.type==='FLEX'?1:NaN);number(value);
+            if(value<0||t.type==='FLEX'&&(value===0||sizing[axis]==='HUG'))throw Error('Invalid fractional or fixed grid track.');
+            return `figleaf::layout::GridTrack::${t.type==='FIXED'?'Fixed':'Flex'}(${number(value)})`;
+          }).join(', ')}]`;
+        };
+        const gaps=[n.gridColumnGap,n.gridRowGap];gaps.forEach(v=>{number(v);if(v<0)throw Error('Negative grid gaps are unsupported.');});
+        expr=`Node::grid(${trackCode(n.gridColumnSizes,n.gridColumnCount,0)}, ${trackCode(n.gridRowSizes,n.gridRowCount,1)}).size(${array([n.width,n.height])}).grid_gaps(${gaps.map(number).join(', ')})`;
+      }
+      if(rotated)expr+=`.rotation(${number(rotation)})`;
+      if(inFlow&&parent.layoutMode==='GRID') {
+        const anchors=[n.gridColumnAnchorIndex,n.gridRowAnchorIndex],spans=[n.gridColumnSpan,n.gridRowSpan];
+        const tracks=[parent.gridColumnSizes,parent.gridRowSizes];
+        for(let a=0;a<2;a++) {
+          if(!Number.isInteger(anchors[a])||anchors[a]<0||!Number.isInteger(spans[a])||spans[a]<1||!Array.isArray(tracks[a])||anchors[a]+spans[a]>tracks[a].length)throw Error('Invalid grid cell.');
+          if(spans[a]>1&&tracks[a].slice(anchors[a],anchors[a]+spans[a]).some(t=>t.type==='HUG')&&tracks[a].slice(anchors[a],anchors[a]+spans[a]).some(t=>t.type==='FLEX'))throw Error('Spans mixing hug and fractional grid tracks are unsupported.');
+        }
+        const align=[n.gridChildHorizontalAlign,n.gridChildVerticalAlign].map(a=>({AUTO:'Min',MIN:'Min',CENTER:'Center',MAX:'Max'}[a]));
+        if(align.some(a=>!a))throw Error('Unknown grid cell alignment.');
+        expr+=`.grid_cell(${[...anchors,...spans].join(', ')}).grid_align(${align.map(a=>'LayoutAlign::'+a).join(', ')})`;
+      }
       expr+=`.width(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[0]]}).height(Sizing::${{FIXED:'Fixed',HUG:'Hug',FILL:'Fill'}[sizing[1]]})`;
       expr+=`.min(${array(min)}).max([${max.map(v=>v===Infinity?'f32::INFINITY':number(v)).join(', ')}])`;
       if(baselineText.has(n))expr+='.measure_baseline()';
@@ -657,7 +686,7 @@ function exportHierarchy(selection, colorProfile = 'SRGB', verifiedBindings = ne
         [...padding,gap].forEach(v=>{number(v);if(v<0)throw Error('Responsive negative padding/gaps are unsupported.');});
         const primary={MIN:'Min',CENTER:'Center',MAX:'Max',SPACE_BETWEEN:'SpaceBetween'}[n.primaryAxisAlignItems??'MIN'];
         const counter={MIN:'Min',CENTER:'Center',MAX:'Max',BASELINE:'Baseline'}[n.counterAxisAlignItems??'MIN'];
-        if(!primary||!counter)throw Error('Responsive baseline/unknown alignment is unsupported.');
+        if(!primary||!counter||grid&&(primary!=='Min'||counter!=='Min'))throw Error('Responsive baseline/unknown alignment is unsupported.');
         expr+=`.paddings(${array(padding)}).gap(${number(gap)}).align(LayoutAlign::${primary}, LayoutAlign::${counter})`;
       }
       layoutLines.push(`    // ${comment(path)} [${comment(n.id)}]`);

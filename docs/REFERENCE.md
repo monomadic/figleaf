@@ -820,12 +820,12 @@ Layout is solved before drawing, so invalid sizes leave the caller's canvas inta
 The host still owns resize events, state and render passes; no scene runtime or
 new dependencies are introduced.
 
-This first export stage covers nested horizontal/vertical stacks, fixed/hug/fill,
+Responsive export covers nested horizontal/vertical stacks, fixed/hug/fill,
 min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
 hidden-child exclusion and absolute/plain children with resize constraints. Solved bounds
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
-text-based hug/automatic-height measurement is supported below. Unsupported grid,
-vertical baseline alignment, negative gaps, transformed nodes, groups,
+text-based hug/automatic-height measurement, grids and fixed-size rotations are supported below.
+Vertical baseline alignment, negative gaps, scaled/skewed nodes, groups,
 patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
 export errors. Static exports retain their previous transform/geometry support.
@@ -1002,3 +1002,48 @@ and [requested 2×3](responsive-border-min-2-compare.png) layouts to Figma. The 
 expands to 20×20. All nine captured rectangles and three renders match this fixture;
 unchanged canvases upload nothing. Synthetic tests cover explicit maximum conflicts,
 fill redistribution and wrapped minimum sizes. This is bounded fixture evidence.
+
+### Grids and rotated layout children
+
+```rust
+use figleaf::layout::{Node, Tree, GridTrack, Sizing, Align};
+let mut tree = Tree::new(Node::grid(
+    vec![GridTrack::Fixed(80.), GridTrack::Flex(1.), GridTrack::Flex(2.)],
+    vec![GridTrack::Hug, GridTrack::Flex(1.)],
+).size([360., 220.]).padding(16.).grid_gaps(12., 14.));
+let child = tree.add(tree.root(), Node::fixed([60., 28.])
+    .rotation(30.).grid_cell(0, 0, 1, 1));
+let solved = tree.solve([480., 260.])?;
+let local_box = figleaf::Rect::new(0., 0., solved[child].w, solved[child].h);
+let transform = solved.transform(child);
+# Ok::<(), figleaf::Error>(())
+```
+
+Tracks are columns then rows; gaps follow the same order. Fractional tracks
+share remaining inner space by weight; fixed tracks keep their pixel size even
+if the grid overflows. Hug tracks include non-fill content and fill minima.
+Spanning content distributes any deficit equally among its hug tracks.
+`grid_cell(column, row, column_span, row_span)` uses zero-based anchors and
+positive spans. `grid_align(horizontal, vertical)` accepts Min, Center or Max;
+Figma AUTO means Min. Fill respects min/max within its cell. Empty hug tracks
+are zero. A hug axis cannot contain fractional tracks, and spans combining hug
+and fractional tracks fail rather than approximate the interaction.
+
+`rotation(degrees)` uses Figma's positive counter-clockwise convention. Rotated
+nodes require fixed local dimensions and min constraints, without baseline
+coupling. Stacks, wrapping and grids reserve their axis-aligned envelope;
+children inside a rotated frame still solve in its local dimensions. Absolute
+positions name the local origin. `Solved[id]` gives the root-relative local origin
+and local dimensions; `Solved::transform(id)` also includes ancestor rotations.
+Apply that transform to a shape at `(0, 0)` rather than treating its rectangle
+as an axis-aligned world box. Scaled/skewed responsive nodes remain unsupported.
+
+`cargo run --example responsive_grid --all-features --locked` renders a shared
+plugin export at [280×180](responsive-grid-280-compare.png),
+[360×220](responsive-grid-360-compare.png) and [480×260](responsive-grid-480-compare.png).
+All nine local origins/sizes agree with Figma within 0.005 pixels (Figma absolute
+transforms lose precision far from the page origin). All three images were
+visually inspected; mean channel differences are 0.18, 0.16 and 0.15/255.
+Repeated preparation uploads nothing. Grid text measurement and malformed inputs
+have synthetic tests; the visual fixture covers nested fill, unequal fractions,
+spans, limited fill alignment, rotation and stroke-inclusive padding.

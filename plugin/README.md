@@ -414,7 +414,7 @@ them. The [text completeness comparison](../docs/text-completeness-compare.png) 
 Unicode, inherited decorations, blends and advanced strokes. Source snapshots and
 generated-code compilation are fixture evidence, not live development-plugin UI validation.
 
-## Responsive layout — first stage
+## Responsive layout
 
 Nested horizontal/vertical stacks export ordinary `layout::Tree` calls: fixed,
 hug and fill axes, min/max, padding, nonnegative gaps, alignment and constrained
@@ -422,8 +422,8 @@ absolute children. Plain frames apply their children's resize constraints. Hidde
 participate. Draw calls use solved bounds and translations, including clips;
 layout errors return before appending paint. The plugin still only displays code.
 
-Grid layout, vertical baseline alignment, negative gaps,
-rotated/scaled/skewed nodes, groups,
+Vertical baseline alignment, negative gaps,
+scaled/skewed nodes, groups,
 pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
 Fixed-height text can wrap in its solved width; auto-height text uses the measured
@@ -503,3 +503,24 @@ this behavior; no additional snapshot properties are required. Fill frames reser
 that space before sharing the remainder. Responsive inside frame borders paint
 above children, including overflow at small sizes. See the
 [minimum-size comparison](../docs/responsive-border-min-2-compare.png).
+
+### Grid layout and rotated children
+
+Grids export `Node::grid(columns, rows)`, fixed/fractional/hug `GridTrack`s,
+`grid_gaps`, explicit `grid_cell` anchors/spans and `grid_align`. Padding,
+stroke-inclusive borders, min/max, fill, nested stacks and measured text use the
+same solver. AUTO cell alignment maps to start. The current cell placement is
+preserved for manual and auto-populated grids; the host owns changes to children.
+
+Fixed-size rotations export `.rotation(degrees)` and composed drawing transforms.
+Flow spacing uses the rotated envelope; descendants lay out in the local box.
+Rotated hug/fill sizes, non-min constraints and baseline coupling hard-error.
+Spans can cross fixed/fractional tracks or fixed/hug tracks; a span mixing hug
+and fractional tracks is unsupported. Fractional tracks require a non-hug axis.
+Malformed tracks, cells and alignments return layer-specific errors and no Rust.
+
+The [combined fixture](../docs/responsive-grid-360-compare.png) was exported once,
+compiled, rendered and reviewed beside Figma at three root sizes. This verifies
+fixture output, not the live plugin UI lifecycle. Reopen the development plugin
+to load the rebuilt `dist/code.js`. The snapshot/CLI uses the same exporter and
+includes the new grid properties.

@@ -28,31 +28,14 @@ pixel against writing the same piece at the offset by hand, not against Figma.
    and [final comparison](docs/text-completeness-compare.png). Unsupported color fonts,
    keycap sequences, layout controls and advanced font options still hard-error.
 
-2. **Responsive layout export and solver gaps.** Export Figma auto layout as
-   calls to the existing solver instead of only fixed drawing coordinates.
-   **First stage done (2026-11-20):** nested horizontal/vertical fixed, hug and fill,
-   min/max, padding, nonnegative gaps, alignment and left/top absolute children;
-   [one export reviewed at three sizes](docs/responsive-layout-480-compare.png).
-   **Measured text done (2026-11-20):** intrinsic width and width-dependent height,
-   nested hug sizing and native plugin calls, [reviewed at three widths](docs/responsive-text-480-compare.png).
-   **Stroke-inclusive layout done (2026-11-20):** visible inside borders, individual
-   widths, hug/fill and measured content; [reviewed fixture](docs/responsive-strokes-240-compare.png).
-   **Horizontal wrapping done (2026-11-20):** row breaking, row gaps, hug heights,
-   fill-track stretching and space-between distribution; [reviewed at three widths](docs/responsive-wrap-360-compare.png).
-   **Resize constraints done (2026-11-20):** plain/absolute min, center, max, stretch
-   and scale; [reviewed at three sizes](docs/responsive-constraints-300-compare.png).
-   **Baseline alignment done (2026-11-20):** horizontal/wrapped rows, nested first
-   baselines, fixed/hug text and native measurement; [reviewed at two widths](docs/responsive-baseline-400-compare.png).
-   Fill-height cycles and vertically resizing baseline text still hard-error.
-   **Vertical wrapping done (2026-11-20):** columns, hug-width propagation, fill
-   stretching and bounded text remeasurement; [reviewed at three heights](docs/responsive-vertical-wrap-360-compare.png).
-   **Implicit frame minima done (2026-11-21):** padding/inside-border expansion,
-   fill redistribution and responsive border paint order; [reviewed undersized frame](docs/responsive-border-min-2-compare.png).
-   **Next:** rotated children and grid layout. Keep state and resize events
-   in the host; add no scene runtime.
-   **Done when:** the same generated panel lays out at several supplied sizes
-   without re-export, agrees with corresponding Figma layouts, and reports
-   unsupported layout semantics. Test text reflow and nested sizing dependencies.
+2. **Responsive layout export and solver — completed 2026-11-21 within the
+   documented scope.** Nested stacks, wrapping, measured text, constraints,
+   baseline alignment, stroke-inclusive minima, grids and fixed-size rotated
+   children now export solver calls. See the [completion evidence and boundaries](docs/progress-archive.md#responsive-layout-completion--2026-11-21)
+   and [three-size grid comparison](docs/responsive-grid-360-compare.png).
+   Rotated hug/fill dimensions, rotated constraint/baseline combinations and
+   spans mixing hug with fractional tracks still hard-error, along with the
+   previously documented group/resolved-geometry and cyclic layout exceptions.
 
 3. **Live plugin validation.** Run the development plugin inside Figma Desktop
    against representative complete panels, including text, variables in different
@@ -100,7 +83,7 @@ pixel against writing the same piece at the offset by hand, not against Figma.
   Support has explicit exceptions and resource limits; see the [reference](docs/REFERENCE.md).
 - **Text/layout:** supported BMP scripts with explicit styled runs/fallback through CoreText, wrapping
   and text shadows;
-  fixed/hug/fill auto layout with horizontal and vertical wrapping. Text measurement is
+  fixed/hug/fill stacks and grids, fixed-size rotated children, and horizontal/vertical wrapping. Text measurement is
   supplied by the caller. Remaining text styling and layout semantics are above.
 - **Plugin:** static selected-hierarchy Rust output, resolved variable values
   and embedded image data. Responsive selections include solver calls. Live bindings, interactions and

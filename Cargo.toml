@@ -204,3 +204,7 @@ required-features = ["wgpu"]
 [[example]]
 name = "responsive_border_min"
 required-features = ["wgpu"]
+
+[[example]]
+name = "responsive_grid"
+required-features = ["wgpu"]

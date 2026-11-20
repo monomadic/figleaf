@@ -1,19 +1,19 @@
 //! Figma auto layout solver: fixed, hug and fill sizing, horizontal and vertical
-//! stacks, wrapping, padding, gaps, alignment, absolute children and min/max
+//! stacks, grids, fixed-size rotations, wrapping, padding, gaps, alignment, absolute children and min/max
 //! limits.
 //!
 //! Build a [`Tree`] from the values in Figma's auto layout panel, solve it for
 //! a size, and draw each thing at the rectangle it gets. Borrowed from figui,
 //! where it was checked against positions Figma recorded.
 //!
-//! Not covered: fill-height baseline cycles, rotated children, grid
-//! layout and constraint-driven flipped geometry. Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
+//! Not covered: fill-height baseline cycles, dynamic rotated dimensions, spans
+//! mixing hug and fractional tracks, and constraint-driven flipped geometry. Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
 //! measurement callback (for example [`crate::Text::measure`]).
 //!
 //! Widths are solved first and heights second. Vertical wrapping repeats these
 //! passes until track membership and boxes settle, remeasuring text at each width.
 //! Cyclic dependencies or dependencies requiring more than 64 passes return errors.
-use crate::{Error, Rect, StrokeAlign};
+use crate::{Error, Rect, StrokeAlign, Transform};
 use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -84,6 +84,45 @@ pub struct AutoLayout {
     pub counter_align_content: AlignContent,
 }
 
+/// A grid track in pixels, fractions of remaining space, or content size.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GridTrack {
+    Fixed(f32),
+    Flex(f32),
+    Hug,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Grid {
+    /// Horizontal columns, then vertical rows.
+    pub tracks: [Vec<GridTrack>; 2],
+    /// Column gap, row gap.
+    pub gaps: [f32; 2],
+}
+
+/// Explicit grid placement; indices are zero based, spans are positive.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GridCell {
+    pub column: usize,
+    pub row: usize,
+    pub column_span: usize,
+    pub row_span: usize,
+    /// Horizontal, vertical. Min corresponds to Figma's AUTO default.
+    pub align: [Align; 2],
+}
+
+impl Default for GridCell {
+    fn default() -> Self {
+        Self {
+            column: 0,
+            row: 0,
+            column_span: 1,
+            row_span: 1,
+            align: [Align::Min; 2],
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     /// Index of the parent, which must come earlier. `None` only for the root.
@@ -104,6 +143,11 @@ pub struct Node {
     /// Takes part in its parent's stack: visible and not absolutely positioned.
     pub in_flow: bool,
     pub layout: Option<AutoLayout>,
+    pub grid: Option<Grid>,
+    pub grid_cell: GridCell,
+    /// Figma degrees, positive counter-clockwise. Rotated nodes currently
+    /// require fixed dimensions; their descendants can still be responsive.
+    pub rotation: f32,
     /// Visible stroke widths: top, right, bottom, left. Use zero when all
     /// stroke paints are hidden or absent; visible zero-opacity paints count.
     pub stroke_weights: [f32; 4],
@@ -126,6 +170,9 @@ impl Node {
             max: [f32::INFINITY; 2],
             in_flow: true,
             layout: None,
+            grid: None,
+            grid_cell: GridCell::default(),
+            rotation: 0.,
             stroke_weights: [0.; 4],
             stroke_align: StrokeAlign::Inside,
             strokes_included_in_layout: false,
@@ -180,12 +227,112 @@ impl<'a> Solver<'a> {
             _ => n.size[self.axis],
         };
         let v = self.clamp(i, v);
+        let v = if self.rotated_flow(i) {
+            let b = rotation_bounds(n);
+            [b.w, b.h][self.axis]
+        } else {
+            v
+        };
         self.measured[i] = Some(v);
         v
     }
 
+    fn rotated_flow(&self, i: usize) -> bool {
+        let n = &self.nodes[i];
+        n.rotation != 0. && n.in_flow && n.parent.is_some_and(|p| self.nodes[p].layout.is_some())
+    }
+
+    fn grid_tracks(&mut self, i: usize, available: Option<f32>) -> Vec<f32> {
+        let g = self.nodes[i].grid.as_ref().unwrap();
+        let tracks = g.tracks[self.axis].clone();
+        let gap = g.gaps[self.axis];
+        let mut sizes: Vec<f32> = tracks
+            .iter()
+            .map(|t| match t {
+                GridTrack::Fixed(v) => *v,
+                _ => 0.,
+            })
+            .collect();
+        for c in self.flow(i) {
+            let n = &self.nodes[c];
+            let cell = n.grid_cell;
+            let anchor = [cell.column, cell.row][self.axis];
+            let span = [cell.column_span, cell.row_span][self.axis];
+            if span == 1 && tracks[anchor] == GridTrack::Hug {
+                let contribution = if n.sizing[self.axis] == Sizing::Fill {
+                    self.clamp(c, 0.)
+                } else {
+                    self.measure(c)
+                };
+                sizes[anchor] = sizes[anchor].max(contribution);
+            }
+        }
+        let mut spanning = self.flow(i);
+        spanning.sort_by_key(|&c| {
+            [
+                self.nodes[c].grid_cell.column_span,
+                self.nodes[c].grid_cell.row_span,
+            ][self.axis]
+        });
+        for c in spanning {
+            let n = &self.nodes[c];
+            let cell = n.grid_cell;
+            let anchor = [cell.column, cell.row][self.axis];
+            let span = [cell.column_span, cell.row_span][self.axis];
+            let hugs = tracks[anchor..anchor + span]
+                .iter()
+                .filter(|&&t| t == GridTrack::Hug)
+                .count();
+            if span > 1 && hugs > 0 {
+                let contribution = if n.sizing[self.axis] == Sizing::Fill {
+                    self.clamp(c, 0.)
+                } else {
+                    self.measure(c)
+                };
+                let existing =
+                    sizes[anchor..anchor + span].iter().sum::<f32>() + gap * (span - 1) as f32;
+                let extra = (contribution - existing).max(0.) / hugs as f32;
+                for k in anchor..anchor + span {
+                    if tracks[k] == GridTrack::Hug {
+                        sizes[k] += extra;
+                    }
+                }
+            }
+        }
+        if let Some(available) = available {
+            let remaining = (available
+                - sizes.iter().sum::<f32>()
+                - gap * sizes.len().saturating_sub(1) as f32)
+                .max(0.);
+            let weight: f64 = tracks
+                .iter()
+                .map(|t| {
+                    if let GridTrack::Flex(v) = t {
+                        f64::from(*v)
+                    } else {
+                        0.
+                    }
+                })
+                .sum();
+            for (size, track) in sizes.iter_mut().zip(tracks) {
+                if let GridTrack::Flex(v) = track {
+                    *size = (f64::from(remaining) * f64::from(v) / weight) as f32;
+                }
+            }
+        }
+        sizes
+    }
+
     fn hug(&mut self, i: usize, l: AutoLayout) -> f32 {
         let (start, end) = pads(&self.nodes[i], l, self.axis);
+        if let Some(g) = &self.nodes[i].grid {
+            let gap = g.gaps[self.axis];
+            let sizes = self.grid_tracks(i, None);
+            return start
+                + end
+                + sizes.iter().sum::<f32>()
+                + gap * sizes.len().saturating_sub(1) as f32;
+        }
         let flow: Vec<usize> = self.flow(i);
         // Figma output: a hugging frame with nothing in its flow keeps its size.
         if flow.is_empty() {
@@ -356,6 +503,41 @@ impl<'a> Solver<'a> {
 
     /// Places the children of `i`, whose size on this axis is `size`.
     fn arrange(&mut self, i: usize, size: f32, out: &mut [[f32; 2]]) {
+        let size = if self.rotated_flow(i) {
+            local_size(&self.nodes[i])[self.axis]
+        } else {
+            size
+        };
+        if let Some(grid) = self.nodes[i].grid.clone() {
+            let (start, end) = pads(&self.nodes[i], self.nodes[i].layout.unwrap(), self.axis);
+            let tracks = self.grid_tracks(i, Some(size - start - end));
+            for c in self.children[i].clone() {
+                if self.nodes[c].in_flow {
+                    let cell = self.nodes[c].grid_cell;
+                    let anchor = [cell.column, cell.row][self.axis];
+                    let span = [cell.column_span, cell.row_span][self.axis];
+                    let gap = grid.gaps[self.axis];
+                    let pos = start + tracks[..anchor].iter().sum::<f32>() + gap * anchor as f32;
+                    let extent =
+                        tracks[anchor..anchor + span].iter().sum::<f32>() + gap * (span - 1) as f32;
+                    let extent_child = if self.nodes[c].sizing[self.axis] == Sizing::Fill {
+                        self.clamp(c, extent)
+                    } else {
+                        self.measure(c)
+                    };
+                    let align = match cell.align[self.axis] {
+                        Align::Center => 0.5,
+                        Align::Max => 1.,
+                        _ => 0.,
+                    };
+                    out[c] = [pos + (extent - extent_child) * align, extent_child];
+                } else {
+                    out[c] = self.constrained(c, i, size);
+                }
+                self.arrange(c, out[c][1], out);
+            }
+            return;
+        }
         let Some(l) = self.nodes[i].layout else {
             for c in self.children[i].clone() {
                 out[c] = self.constrained(c, i, size);
@@ -555,6 +737,75 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
             Some(p) if p < i => children[p].push(i),
             _ => return Err(Error("layout parents must precede children")),
         }
+        if !n.rotation.is_finite() {
+            return Err(Error("invalid layout rotation"));
+        }
+        if n.rotation != 0.
+            && (n.sizing != [Sizing::Fixed; 2]
+                || n.constraints != [Constraint::Min; 2]
+                || n.measure_baseline
+                || n.first_baseline.is_some())
+        {
+            return Err(Error(
+                "rotated layout nodes require fixed sizing, min constraints and no baseline",
+            ));
+        }
+        if let Some(g) = &n.grid {
+            if n.layout.is_none()
+                || g.gaps.iter().any(|v| !v.is_finite() || *v < 0.)
+                || g.tracks.iter().any(|tracks| {
+                    tracks.is_empty()
+                        || tracks.len() > 1024
+                        || tracks.iter().any(|t| match t {
+                            GridTrack::Fixed(v) => !v.is_finite() || *v < 0.,
+                            GridTrack::Flex(v) => !v.is_finite() || *v <= 0.,
+                            GridTrack::Hug => false,
+                        })
+                })
+            {
+                return Err(Error("invalid grid tracks or gaps"));
+            }
+            if (0..2).any(|a| {
+                n.sizing[a] == Sizing::Hug
+                    && g.tracks[a].iter().any(|t| matches!(t, GridTrack::Flex(_)))
+            }) {
+                return Err(Error("fractional grid tracks require a non-hug axis"));
+            }
+            if n.layout.is_some_and(|l| {
+                l.wrap || l.primary_align != Align::Min || l.counter_align != Align::Min
+            }) {
+                return Err(Error("grid requires cell alignment and no wrapping"));
+            }
+        }
+        if let Some(g) = n
+            .parent
+            .and_then(|p| nodes[p].grid.as_ref())
+            .filter(|_| n.in_flow)
+        {
+            let c = n.grid_cell;
+            for a in 0..2 {
+                let anchor = [c.column, c.row][a];
+                let span = [c.column_span, c.row_span][a];
+                if span == 0
+                    || anchor
+                        .checked_add(span)
+                        .is_none_or(|end| end > g.tracks[a].len())
+                    || !matches!(c.align[a], Align::Min | Align::Center | Align::Max)
+                {
+                    return Err(Error("invalid grid cell"));
+                }
+                if span > 1
+                    && g.tracks[a][anchor..anchor + span].contains(&GridTrack::Hug)
+                    && g.tracks[a][anchor..anchor + span]
+                        .iter()
+                        .any(|t| matches!(t, GridTrack::Flex(_)))
+                {
+                    return Err(Error(
+                        "spans mixing hug and fractional grid tracks are unsupported",
+                    ));
+                }
+            }
+        }
         let finite = n
             .size
             .iter()
@@ -627,6 +878,9 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
             while let Some(c) = pending.pop() {
                 if nodes[c].sizing[1] == Sizing::Fill {
                     return Err(Error("fill-height baseline dependencies are unsupported"));
+                }
+                if nodes[c].rotation != 0. {
+                    return Err(Error("rotated baseline descendants are unsupported"));
                 }
                 pending.extend(&children[c]);
             }
@@ -709,6 +963,7 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
         }
         lines = s.lines;
     }
+    local_rects(nodes, &mut out);
     for (n, rect) in nodes.iter().zip(&out) {
         validate_bounds(n, rect)?;
     }
@@ -760,6 +1015,8 @@ fn solve_coupled(
             .map(|(x, y)| Rect::new(x[0], y[0], x[1], y[1]))
             .collect();
         if previous.as_ref() == Some(&rects) && old_lines == lines {
+            let mut rects = rects;
+            local_rects(nodes, &mut rects);
             for (n, rect) in nodes.iter().zip(&rects) {
                 validate_bounds(n, rect)?;
             }
@@ -770,6 +1027,54 @@ fn solve_coupled(
     Err(Error(
         "wrapped layout dependencies did not converge within 64 passes",
     ))
+}
+
+fn local_size(n: &Node) -> [f32; 2] {
+    [0, 1].map(|a| {
+        n.size[a]
+            .min(n.max[a])
+            .max(n.min[a])
+            .max(implicit_min(n, a))
+    })
+}
+
+fn rotation(n: &Node) -> Transform {
+    let (sin, cos) = (f64::from(n.rotation).to_radians()).sin_cos();
+    Transform::new([[cos as f32, sin as f32, 0.], [-sin as f32, cos as f32, 0.]])
+}
+
+fn rotation_bounds(n: &Node) -> Rect {
+    let [w, h] = local_size(n);
+    rotation(n).bounds(Rect::new(0., 0., w, h))
+}
+
+// Flow placement uses the rotated envelope; painting and descendant layout
+// use the original local box. Absolute offsets already name the local origin.
+fn local_rects(nodes: &[Node], rects: &mut [Rect]) {
+    for (i, n) in nodes.iter().enumerate() {
+        if n.rotation != 0. && n.in_flow && n.parent.is_some_and(|p| nodes[p].layout.is_some()) {
+            let bounds = rotation_bounds(n);
+            let [w, h] = local_size(n);
+            rects[i] = Rect::new(rects[i].x - bounds.x, rects[i].y - bounds.y, w, h);
+        }
+    }
+}
+
+fn root_relative(nodes: &[Node], mut rects: Vec<Rect>) -> Result<Solved, Error> {
+    let mut transforms = vec![Transform::IDENTITY; nodes.len()];
+    for (i, n) in nodes.iter().enumerate() {
+        let mut transform = rotation(n);
+        transform.0[0][2] = rects[i].x;
+        transform.0[1][2] = rects[i].y;
+        if let Some(parent) = n.parent {
+            transform = transforms[parent].compose(transform);
+        }
+        transforms[i] = transform;
+        rects[i].x = transform.0[0][2];
+        rects[i].y = transform.0[1][2];
+        validate_bounds(n, &rects[i])?;
+    }
+    Ok(Solved { rects, transforms })
 }
 
 /// Auto-layout padding and included inside borders cannot be compressed.
@@ -792,6 +1097,52 @@ fn validate_bounds(n: &Node, rect: &Rect) -> Result<(), Error> {
 
 /// Builders named after Figma's auto layout panel.
 impl Node {
+    /// Figma rotation in degrees; fixed local dimensions, no baseline coupling.
+    pub fn rotation(mut self, degrees: f32) -> Self {
+        self.rotation = degrees;
+        self
+    }
+    /// Grid with explicit columns and rows. Children specify their grid cell.
+    pub fn grid(columns: Vec<GridTrack>, rows: Vec<GridTrack>) -> Self {
+        let mut node = Self::row();
+        node.grid = Some(Grid {
+            tracks: [columns, rows],
+            gaps: [0.; 2],
+        });
+        node
+    }
+    /// Column and row spacing, in pixels.
+    pub fn grid_gaps(mut self, column: f32, row: f32) -> Self {
+        self.grid
+            .get_or_insert(Grid {
+                tracks: [vec![], vec![]],
+                gaps: [0.; 2],
+            })
+            .gaps = [column, row];
+        self
+    }
+    /// Zero-based column/row anchors and positive column/row spans.
+    pub fn grid_cell(
+        mut self,
+        column: usize,
+        row: usize,
+        column_span: usize,
+        row_span: usize,
+    ) -> Self {
+        self.grid_cell = GridCell {
+            column,
+            row,
+            column_span,
+            row_span,
+            ..self.grid_cell
+        };
+        self
+    }
+    /// Cell alignment for each axis: Min (including AUTO), Center, or Max.
+    pub fn grid_align(mut self, horizontal: Align, vertical: Align) -> Self {
+        self.grid_cell.align = [horizontal, vertical];
+        self
+    }
     /// A leaf, or a plain frame whose children keep their offsets.
     pub fn fixed(size: [f32; 2]) -> Self {
         Self::at(None, [0.; 2], size)
@@ -969,14 +1320,7 @@ impl Tree {
     }
     /// Places every node with the root at `size`.
     pub fn solve(&self, size: [f32; 2]) -> Result<Solved, Error> {
-        let mut rects = solve(&self.nodes, size)?;
-        // Parents come first, so one pass turns parent-relative into absolute.
-        for i in 1..rects.len() {
-            let p = rects[self.nodes[i].parent.unwrap()];
-            rects[i] = rects[i].translate([p.x, p.y]);
-            validate_bounds(&self.nodes[i], &rects[i])?;
-        }
-        Ok(Solved { rects })
+        root_relative(&self.nodes, solve(&self.nodes, size)?)
     }
     /// Solve intrinsic leaf sizes without retaining content or a text backend.
     /// Each root axis can be supplied or left natural. For hug-width leaves the
@@ -1056,19 +1400,14 @@ impl Tree {
             Ok(())
         };
         if has_vertical_wrap(&nodes) {
-            let mut rects = solve_coupled(
+            let rects = solve_coupled(
                 &mut nodes,
                 &self.nodes,
                 &children,
                 size,
                 &mut measure_heights,
             )?;
-            for i in 1..rects.len() {
-                let parent = nodes[i].parent.unwrap();
-                rects[i] = rects[i].translate([rects[parent].x, rects[parent].y]);
-                validate_bounds(&nodes[i], &rects[i])?;
-            }
-            return Ok(Solved { rects });
+            return root_relative(&nodes, rects);
         }
         let mut widths = Solver::new(&nodes, &self.nodes, &children, 0, vec![None; nodes.len()]);
         let width = match size[0] {
@@ -1093,13 +1432,8 @@ impl Tree {
             .zip(&y)
             .map(|(x, y)| Rect::new(x[0], y[0], x[1], y[1]))
             .collect();
-        for i in 0..rects.len() {
-            if let Some(p) = nodes[i].parent {
-                rects[i] = rects[i].translate([rects[p].x, rects[p].y]);
-            }
-            validate_bounds(&nodes[i], &rects[i])?;
-        }
-        Ok(Solved { rects })
+        local_rects(&nodes, &mut rects);
+        root_relative(&nodes, rects)
     }
 
     /// Places every node with the root at the size its own sizing gives:
@@ -1109,13 +1443,20 @@ impl Tree {
     }
 }
 
-/// Root-relative rectangles, indexed by [`NodeId`].
+/// Root-relative local origins and local dimensions, indexed by [`NodeId`].
+/// Use [`Solved::transform`] to paint rotated boxes and their descendants.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Solved {
     rects: Vec<Rect>,
+    transforms: Vec<Transform>,
 }
 
 impl Solved {
+    /// Local-to-root transform, including all ancestor rotations and placement.
+    pub fn transform(&self, id: NodeId) -> Transform {
+        self.transforms[id.0]
+    }
+
     pub fn size(&self) -> [f32; 2] {
         [self.rects[0].w, self.rects[0].h]
     }
@@ -1898,5 +2239,134 @@ mod implicit_min_tests {
         let result = tree.solve_natural().unwrap();
         assert_eq!(result[a], Rect::new(0., 0., 35., 20.));
         assert_eq!(result[b], Rect::new(0., 24., 35., 20.));
+    }
+}
+
+#[cfg(test)]
+mod grid_rotation_tests {
+    use super::*;
+    #[test]
+    fn grid_tracks_spans_alignment_and_absolute_children() {
+        let mut tree = Tree::new(
+            Node::grid(
+                vec![
+                    GridTrack::Fixed(50.),
+                    GridTrack::Flex(1.),
+                    GridTrack::Flex(2.),
+                ],
+                vec![GridTrack::Fixed(40.), GridTrack::Flex(1.)],
+            )
+            .size([320., 140.])
+            .padding(10.)
+            .grid_gaps(10., 10.),
+        );
+        let span = tree.add(tree.root(), Node::fill().grid_cell(1, 0, 2, 1));
+        let end = tree.add(
+            tree.root(),
+            Node::fixed([20., 10.])
+                .grid_cell(2, 1, 1, 1)
+                .grid_align(Align::Max, Align::Max),
+        );
+        let absolute = tree.add(tree.root(), Node::fixed([5., 5.]).absolute([3., 4.]));
+        let solved = tree.solve([320., 140.]).unwrap();
+        assert_eq!(solved[span], Rect::new(70., 10., 240., 40.));
+        assert_eq!(solved[end], Rect::new(290., 120., 20., 10.));
+        assert_eq!(solved[absolute], Rect::new(3., 4., 5., 5.));
+        let smaller = tree.solve([230., 110.]).unwrap();
+        assert_eq!(smaller[span].w, 150.);
+    }
+    #[test]
+    fn hug_grid_spans_distribute_only_missing_content_and_measure_text() {
+        let mut tree = Tree::new(
+            Node::grid(
+                vec![GridTrack::Hug, GridTrack::Hug],
+                vec![GridTrack::Hug, GridTrack::Hug],
+            )
+            .width(Sizing::Hug)
+            .height(Sizing::Hug)
+            .grid_gaps(10., 5.),
+        );
+        tree.add(tree.root(), Node::fixed([100., 30.]).grid_cell(0, 0, 2, 1));
+        let a = tree.add(tree.root(), Node::fixed([20., 20.]).grid_cell(0, 1, 1, 1));
+        let b = tree.add(tree.root(), Node::fixed([10., 20.]).grid_cell(1, 1, 1, 1));
+        let solved = tree.solve_natural().unwrap();
+        assert_eq!(solved.size(), [100., 55.]);
+        assert_eq!(solved[b].x, 60.);
+        tree.node_mut(a).sizing[0] = Sizing::Fill;
+        let solved = tree.solve_natural().unwrap();
+        assert_eq!(solved[a].w, 40.);
+        assert_eq!(solved[b].x, 50.);
+        let mut tree = Tree::new(
+            Node::grid(vec![GridTrack::Flex(1.)], vec![GridTrack::Hug])
+                .size([100., 1.])
+                .height(Sizing::Hug)
+                .padding(10.),
+        );
+        let text = tree.add(
+            tree.root(),
+            Node::fixed([1., 1.])
+                .width(Sizing::Fill)
+                .height(Sizing::Hug),
+        );
+        let solved = tree
+            .solve_measured([Some(100.), None], |id, width| {
+                Ok((id == text).then(|| [width.unwrap(), (200. / width.unwrap()).ceil() * 10.]))
+            })
+            .unwrap();
+        assert_eq!(solved.size(), [100., 50.]);
+        assert_eq!(solved[text], Rect::new(10., 10., 80., 30.));
+    }
+    #[test]
+    fn rotation_uses_envelopes_and_composes_descendant_placement() {
+        let mut tree = Tree::new(
+            Node::row()
+                .width(Sizing::Hug)
+                .height(Sizing::Hug)
+                .padding(10.)
+                .gap(5.),
+        );
+        let rotated = tree.add(
+            tree.root(),
+            Node::row().size([60., 20.]).rotation(90.).padding(2.),
+        );
+        let nested = tree.add(rotated, Node::fill());
+        let sibling = tree.add(tree.root(), Node::fixed([30., 10.]));
+        let solved = tree.solve_natural().unwrap();
+        assert_eq!(solved.size(), [75., 80.]);
+        assert_eq!(solved[rotated], Rect::new(10., 70., 60., 20.));
+        assert_eq!(solved[sibling].x, 35.);
+        assert_eq!(solved[nested], Rect::new(12., 68., 56., 16.));
+        let p = solved.transform(nested).point([10., 0.]);
+        assert!((p[0] - 12.).abs() < 0.0001 && (p[1] - 58.).abs() < 0.0001);
+        let measured = tree.solve_measured([None, None], |_, _| Ok(None)).unwrap();
+        assert_eq!(solved, measured);
+    }
+    #[test]
+    fn invalid_grid_and_rotation_semantics_fail_closed() {
+        for track in [
+            GridTrack::Flex(0.),
+            GridTrack::Fixed(-1.),
+            GridTrack::Flex(f32::NAN),
+        ] {
+            assert!(
+                Tree::new(Node::grid(vec![track], vec![GridTrack::Hug]))
+                    .solve([100., 100.])
+                    .is_err()
+            );
+        }
+        let mut tree = Tree::new(Node::grid(
+            vec![GridTrack::Hug, GridTrack::Flex(1.)],
+            vec![GridTrack::Hug],
+        ));
+        let child = tree.add(tree.root(), Node::fixed([10., 10.]).grid_cell(0, 0, 2, 1));
+        assert!(tree.solve([100., 100.]).is_err());
+        tree.node_mut(child).grid_cell.column_span = 0;
+        assert!(tree.solve([100., 100.]).is_err());
+        let mut tree = Tree::new(Node::row());
+        let child = tree.add(tree.root(), Node::fill().rotation(30.));
+        assert!(tree.solve([100., 100.]).is_err());
+        tree.node_mut(child).sizing = [Sizing::Fixed; 2];
+        tree.node_mut(child).rotation = f32::NAN;
+        assert!(tree.solve([100., 100.]).is_err());
     }
 }

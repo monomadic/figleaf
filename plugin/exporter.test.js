@@ -889,7 +889,7 @@ test('unsupported responsive behavior gives layer-specific errors and no Rust',(
   for(const patch of [
     {layoutMode:'GRID'},{layoutMode:'NONE',layoutWrap:'WRAP'},{layoutWrap:'UNKNOWN'},{counterAxisAlignItems:'BASELINE'},
     {paddingLeft:-1},{itemSpacing:-2},{minWidth:-1},{maxWidth:100},{width:NaN},
-    {relativeTransform:[[0,-1,0],[1,0,0]]},
+    {relativeTransform:[[2,0,0],[0,1,0]]},
     {strokesIncludedInLayout:true,strokes:[solid],strokeTopWeight:-2},
   ]) {
     const root=structuredClone(require('./responsive-layout-reference.json'));Object.assign(root,patch);
@@ -1040,4 +1040,35 @@ test('implicit border minima match live Figma at three requested sizes',()=>{
     fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'}');
     execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('grid tracks, spans and rotated descendants match Figma at three sizes',()=>{
+  const root=require('./responsive-grid-reference.json');
+  const r=exportHierarchy([root]);assert.deepEqual(r.errors,[]);
+  assert.equal(r.code,fs.readFileSync(path.resolve(__dirname,'../examples/generated/responsive_grid.rs'),'utf8'));
+  const num=x=>Number.isInteger(x)?x+'.0':String(x);
+  // Figma absolute transforms lose subpixel precision far from the page origin.
+  const checks=require('./responsive-grid-sizes.json').map(({size,boxes})=>`let actual=selection_layout(Some([${size.map(num)}])).unwrap();${boxes.map((b,i)=>`for (a,b) in [actual[${i}].x,actual[${i}].y,actual[${i}].w,actual[${i}].h].iter().zip([${b.rect.map(num)}]) {assert!((a-b).abs()<0.005, "{} != {} in ${b.name}",a,b);}`).join('')}`).join('\n');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'figleaf-grid-'));
+  try {
+    execFileSync('rustc',['--edition=2024','--crate-name=figleaf','--crate-type=rlib',path.resolve(__dirname,'../src/lib.rs'),'-o',path.join(tmp,'libfigleaf.rlib')]);
+    fs.writeFileSync(path.join(tmp,'main.rs'),r.code+'\nfn main(){'+checks+'}');
+    execFileSync('rustc',['--edition=2024',path.join(tmp,'main.rs'),'--extern',`figleaf=${path.join(tmp,'libfigleaf.rlib')}`,'-o',path.join(tmp,'main')]);execFileSync(path.join(tmp,'main'));
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+test('invalid grid tracks, cells and dynamic rotation produce no partial code',()=>{
+  for(const mutate of [
+    n=>n.gridColumnSizes[1].value=0,
+    n=>n.gridColumnSizes[0].type='UNKNOWN',
+    n=>n.gridRowGap=-1,
+    n=>n.children[1].gridColumnSpan=99,
+    n=>n.children[1].gridColumnSpan=0,
+    n=>n.children[1].gridChildHorizontalAlign='UNKNOWN',
+    n=>n.gridColumnSizes[1].type='HUG',
+    n=>n.children[0].layoutSizingHorizontal='FILL',
+    n=>n.children[0].relativeTransform=[[2,0,0],[0,1,0]],
+  ]) {
+    const root=structuredClone(require('./responsive-grid-reference.json'));mutate(root);
+    const result=exportHierarchy([root]);assert.equal(result.code,null);assert.ok(result.errors.length);
+  }
 });

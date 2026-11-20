@@ -771,3 +771,57 @@ All ten rectangles in one generated hierarchy match live Figma at widths
 remain; this is not pixel parity. Tests cover callbacks, nested dependencies,
 line limits, failures, compilation and zero unchanged-canvas uploads. Temporary
 Figma fixtures were removed; running development-plugin UI validation is still open.
+
+## Responsive layout completion — 2026-11-21
+
+Part 2 is complete within the supported scope, rather than a claim that every
+Figma layout combination works. The plugin remains read-only and shows Rust;
+the host owns events, state and supplied sizes. Default builds gained no dependencies.
+
+2. **Responsive layout export and solver gaps.** Export Figma auto layout as
+   calls to the existing solver instead of only fixed drawing coordinates.
+   **First stage done (2026-11-20):** nested horizontal/vertical fixed, hug and fill,
+   min/max, padding, nonnegative gaps, alignment and left/top absolute children;
+   [one export reviewed at three sizes](docs/responsive-layout-480-compare.png).
+   **Measured text done (2026-11-20):** intrinsic width and width-dependent height,
+   nested hug sizing and native plugin calls, [reviewed at three widths](docs/responsive-text-480-compare.png).
+   **Stroke-inclusive layout done (2026-11-20):** visible inside borders, individual
+   widths, hug/fill and measured content; [reviewed fixture](docs/responsive-strokes-240-compare.png).
+   **Horizontal wrapping done (2026-11-20):** row breaking, row gaps, hug heights,
+   fill-track stretching and space-between distribution; [reviewed at three widths](docs/responsive-wrap-360-compare.png).
+   **Resize constraints done (2026-11-20):** plain/absolute min, center, max, stretch
+   and scale; [reviewed at three sizes](docs/responsive-constraints-300-compare.png).
+   **Baseline alignment done (2026-11-20):** horizontal/wrapped rows, nested first
+   baselines, fixed/hug text and native measurement; [reviewed at two widths](docs/responsive-baseline-400-compare.png).
+   Fill-height cycles and vertically resizing baseline text still hard-error.
+   **Vertical wrapping done (2026-11-20):** columns, hug-width propagation, fill
+   stretching and bounded text remeasurement; [reviewed at three heights](docs/responsive-vertical-wrap-360-compare.png).
+   **Implicit frame minima done (2026-11-21):** padding/inside-border expansion,
+   fill redistribution and responsive border paint order; [reviewed undersized frame](docs/responsive-border-min-2-compare.png).
+   **Final stage completed below:** rotated children and grid layout.
+   **Done when:** the same generated panel lays out at several supplied sizes
+   without re-export, agrees with corresponding Figma layouts, and reports
+   unsupported layout semantics. Test text reflow and nested sizing dependencies.
+
+**Final stage:** explicit grid columns/rows with fixed, fractional and hug tracks,
+cell anchors/spans, start/center/end alignment, padding/borders, nested stacks and
+measured text. Fixed-size rotated nodes reserve their rotated envelope and compose
+ancestor transforms for painting and clipping. Their children can still use fill,
+hug, wrapping and constraints in the unrotated local box.
+
+One shared-exporter snapshot produces Rust checked against all nine node boxes
+at three root sizes, without re-exporting. The `responsive_grid` example was run
+and its [280](responsive-grid-280-compare.png), [360](responsive-grid-360-compare.png)
+and [480](responsive-grid-480-compare.png) comparisons were visually inspected beside
+Figma PNGs. Mean channel differences are 0.18, 0.16 and 0.15/255; this is fixture
+agreement, not pixel parity. Repeat preparation reported `changed: false`, zero
+uploads and zero created textures. Grid hug/span allocation was also probed in
+Figma; width-dependent grid text measurement has synthetic solver coverage.
+
+Boundaries remain hard errors: rotated hug/fill sizing, rotated non-min constraints
+and baseline coupling; spans mixing hug and fractional tracks; fractional tracks
+on a hugging axis; fill-height baseline cycles, nonconvergent wrapping dependencies,
+scaled/skewed responsive nodes, groups, resizing resolved geometry and patterns
+sourced from inside the responsive selection. Grid placement exports the current
+hierarchy's explicit cells, including cells Figma populated automatically; changing
+the set of children remains host-owned. Live plugin UI validation is part 3.
