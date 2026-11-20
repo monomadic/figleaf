@@ -824,7 +824,7 @@ This first export stage covers nested horizontal/vertical stacks, fixed/hug/fill
 min/max, padding, nonnegative gaps, start/center/end/space-between alignment,
 hidden-child exclusion and absolute/plain children with resize constraints. Solved bounds
 also drive paints and clips. Fixed-height text can wrap inside a solved width;
-text-based hug/automatic-height measurement is supported below. Unsupported vertical wrapping, grid,
+text-based hug/automatic-height measurement is supported below. Unsupported grid,
 vertical baseline alignment, negative gaps, transformed nodes, groups,
 patterns sourced inside the selection and resizing of
 resolved path/stroke geometry give hard
@@ -898,7 +898,7 @@ Automatic track placement follows counter-axis alignment. When every flow child
 fills vertically, tracks start at their minimum heights and share spare height;
 authored fill heights do not inflate tracks. Space-between distributes spare
 height between rows (zero gap when overflowing); a single row follows alignment.
-Vertical wrapping and negative row gaps still hard-error.
+Negative row/column gaps still hard-error.
 
 `cargo run --example responsive_wrap --all-features --locked` compares generated
 Rust at [240](responsive-wrap-240-compare.png),
@@ -963,3 +963,24 @@ visually reviewed: positions match and small font-rasterization differences
 remain. Tests cover native font metrics, empty/blank first lines, nested baselines,
 failed measurement and unchanged-canvas caching. This is fixture evidence, not
 live development-plugin UI validation or universal text parity.
+
+### Vertical wrapped responsive layout
+
+`Node::column().wrap(column_gap)` flows down, then starts a new column.
+Fixed/hug/fill sizes, min/max, inside borders, absolute children, automatic
+stretching and space-between track distribution use the same settings as rows.
+Vertical wrapping introduces height-to-width dependencies: the solver repeats
+width placement, text measurement and height placement until both track membership
+and boxes settle. It retains no layout state between calls and adds no dependency.
+Non-converging dependencies or those requiring more than 64 passes return an error
+before generated drawing appends any paint. Measurement callbacks can be called
+more than once and must return consistent metrics for the same width.
+
+The plugin and snapshot CLI share the exporter and accept vertical wrapping.
+`cargo run --example responsive_vertical_wrap --all-features --locked` compares
+16 rectangles at heights [240](responsive-vertical-wrap-240-compare.png),
+[360](responsive-vertical-wrap-360-compare.png) and
+[480](responsive-vertical-wrap-480-compare.png) with live Figma captures. All three
+renders were visually reviewed; unchanged canvases upload nothing. Nested hug
+propagation, width-dependent text and a deliberately oscillating layout are
+synthetic tests, not whole-panel or live plugin UI validation.

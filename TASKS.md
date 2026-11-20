@@ -40,7 +40,9 @@ pixel against writing the same piece at the offset by hand, not against Figma.
    **Baseline alignment done (2026-11-20):** horizontal/wrapped rows, nested first
    baselines, fixed/hug text and native measurement; [reviewed at two widths](docs/responsive-baseline-400-compare.png).
    Fill-height cycles and vertically resizing baseline text still hard-error.
-   **Next:** vertical wrapping, implicit border
+   **Vertical wrapping done (2026-11-20):** columns, hug-width propagation, fill
+   stretching and bounded text remeasurement; [reviewed at three heights](docs/responsive-vertical-wrap-360-compare.png).
+   **Next:** implicit border
    minimum-size expansion, rotated children and grid layout. Keep state and resize events
    in the host; add no scene runtime.
    **Done when:** the same generated panel lays out at several supplied sizes
@@ -93,11 +95,11 @@ pixel against writing the same piece at the offset by hand, not against Figma.
   Support has explicit exceptions and resource limits; see the [reference](docs/REFERENCE.md).
 - **Text/layout:** supported BMP scripts with explicit styled runs/fallback through CoreText, wrapping
   and text shadows;
-  fixed/hug/fill auto layout with horizontal wrapping. Text measurement is
+  fixed/hug/fill auto layout with horizontal and vertical wrapping. Text measurement is
   supplied by the caller. Remaining text styling and layout semantics are above.
 - **Plugin:** static selected-hierarchy Rust output, resolved variable values
-  and embedded image data. It does not yet export responsive solver calls,
-  live bindings, interactions or component state. See [plugin limits](plugin/README.md).
+  and embedded image data. Responsive selections include solver calls. Live bindings, interactions and
+  component state remain unsupported. See [plugin limits](plugin/README.md).
 - **Compositing:** the enclosing exported canvas supplies the backdrop. Existing
   host pixels and ancestors outside the selection are not implicitly included.
   Filtering/antialiasing remain approximate; supported does not mean pixel-identical.

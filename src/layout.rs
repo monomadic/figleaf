@@ -6,12 +6,13 @@
 //! a size, and draw each thing at the rectangle it gets. Borrowed from figui,
 //! where it was checked against positions Figma recorded.
 //!
-//! Not covered: fill-height baseline cycles, rotated children, vertical wrapping, grid
+//! Not covered: fill-height baseline cycles, rotated children, grid
 //! layout and constraint-driven flipped geometry. Intrinsic leaves can use [`Tree::solve_measured`] with a host-owned
 //! measurement callback (for example [`crate::Text::measure`]).
 //!
-//! Widths are solved first and heights second. The only thing heights take
-//! from widths is where wrapping stacks break and the measured height of leaves.
+//! Widths are solved first and heights second. Vertical wrapping repeats these
+//! passes until track membership and boxes settle, remeasuring text at each width.
+//! Cyclic dependencies or dependencies requiring more than 64 passes return errors.
 use crate::{Error, Rect, StrokeAlign};
 use std::ops::Index;
 
@@ -76,7 +77,7 @@ pub struct AutoLayout {
     pub primary_align: Align,
     pub counter_align: Align,
     /// Figma's "wrap": children that don't fit start a new line. Horizontal
-    /// stacks only.
+    /// or vertical stacks.
     pub wrap: bool,
     /// The gap between wrapped lines.
     pub counter_spacing: f32,
@@ -605,9 +606,6 @@ fn children_of(nodes: &[Node]) -> Result<Vec<Vec<usize>>, Error> {
                     "baseline alignment requires a horizontal counter axis",
                 ));
             }
-            if l.wrap && l.direction == Direction::Vertical {
-                return Err(Error("only horizontal stacks wrap"));
-            }
             if l.counter_align == Align::SpaceBetween {
                 return Err(Error("space between applies to the primary axis only"));
             }
@@ -645,6 +643,16 @@ pub fn measure(nodes: &[Node]) -> Result<[f32; 2], Error> {
             "baseline measurement requires solve_measured_with_baselines",
         ));
     }
+    if has_vertical_wrap(nodes) {
+        let rects = solve_coupled(
+            &mut nodes.to_vec(),
+            nodes,
+            &children,
+            [None, None],
+            |_, _| Ok(()),
+        )?;
+        return Ok([rects[0].w, rects[0].h]);
+    }
     let mut s = Solver::new(nodes, nodes, &children, 0, vec![None; nodes.len()]);
     let width = s.measure(0);
     // Heights depend on where wrapping stacks break at that width.
@@ -669,6 +677,15 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
     if !root_size.iter().all(|v| v.is_finite() && *v >= 0.) {
         return Err(Error("invalid layout input"));
     }
+    if has_vertical_wrap(nodes) {
+        return solve_coupled(
+            &mut nodes.to_vec(),
+            nodes,
+            &children,
+            root_size.map(Some),
+            |_, _| Ok(()),
+        );
+    }
     let mut out = vec![Rect::default(); nodes.len()];
     let mut lines = vec![None; nodes.len()];
     for (axis, &root) in root_size.iter().enumerate() {
@@ -690,6 +707,63 @@ pub fn solve(nodes: &[Node], root_size: [f32; 2]) -> Result<Vec<Rect>, Error> {
         validate_bounds(n, rect)?;
     }
     Ok(out)
+}
+
+fn has_vertical_wrap(nodes: &[Node]) -> bool {
+    nodes.iter().any(|n| {
+        n.layout
+            .is_some_and(|l| l.wrap && l.direction == Direction::Vertical)
+    })
+}
+
+/// Resolve cross-axis wrapping dependencies without retaining layout state.
+/// A full pass places widths, remeasures leaves at those widths, then places
+/// heights. Repeat until both boxes and track membership are stable. Cyclic
+/// or excessively deep dependencies fail rather than returning stale boxes.
+fn solve_coupled(
+    nodes: &mut [Node],
+    reference: &[Node],
+    children: &[Vec<usize>],
+    root_size: [Option<f32>; 2],
+    mut measure_heights: impl FnMut(&mut [Node], &[[f32; 2]]) -> Result<(), Error>,
+) -> Result<Vec<Rect>, Error> {
+    let mut lines = vec![None; nodes.len()];
+    let mut previous = None;
+    for _ in 0..64 {
+        let old_lines = lines.clone();
+        let mut axes = [vec![[0.; 2]; nodes.len()], vec![[0.; 2]; nodes.len()]];
+        for axis in 0..2 {
+            let mut solver = Solver::new(nodes, reference, children, axis, lines);
+            let root = match root_size[axis] {
+                Some(size) => solver.clamp(0, size),
+                None => solver.measure(0),
+            };
+            axes[axis][0] = [0., root];
+            solver.arrange(0, root, &mut axes[axis]);
+            lines = solver.lines;
+            if axis == 0 {
+                if axes[0].iter().any(|v| !v[1].is_finite() || v[1] < 0.) {
+                    return Err(Error("invalid coupled layout width"));
+                }
+                measure_heights(nodes, &axes[0])?;
+            }
+        }
+        let rects: Vec<Rect> = axes[0]
+            .iter()
+            .zip(&axes[1])
+            .map(|(x, y)| Rect::new(x[0], y[0], x[1], y[1]))
+            .collect();
+        if previous.as_ref() == Some(&rects) && old_lines == lines {
+            for (n, rect) in nodes.iter().zip(&rects) {
+                validate_bounds(n, rect)?;
+            }
+            return Ok(rects);
+        }
+        previous = Some(rects);
+    }
+    Err(Error(
+        "wrapped layout dependencies did not converge within 64 passes",
+    ))
 }
 
 fn validate_bounds(n: &Node, rect: &Rect) -> Result<(), Error> {
@@ -828,7 +902,7 @@ impl Node {
         (l.primary_align, l.counter_align) = (primary, counter);
         self
     }
-    /// Figma's "wrap", with the gap between lines. Horizontal stacks only.
+    /// Figma's "wrap", with the gap between lines. Horizontal or vertical stacks.
     pub fn wrap(mut self, gap_between_lines: f32) -> Self {
         let l = self.stack_mut();
         (l.wrap, l.counter_spacing) = (true, gap_between_lines);
@@ -944,6 +1018,49 @@ impl Tree {
                 }
             }
         }
+        let mut measure_heights = |nodes: &mut [Node], x: &[[f32; 2]]| -> Result<(), Error> {
+            for (i, node) in nodes.iter_mut().enumerate() {
+                if node.layout.is_none() && (node.sizing[1] == Sizing::Hug || node.measure_baseline)
+                {
+                    if !children[i].is_empty() {
+                        return Err(Error("measured layout requires a leaf"));
+                    }
+                    let measured = measure(NodeId(i), Some(x[i][1]))?;
+                    if node.measure_baseline && measured.is_none_or(|m| m.first_baseline.is_none())
+                    {
+                        return Err(Error("text measurement did not supply a first baseline"));
+                    }
+                    if let Some(measured) = measured {
+                        let size = check(measured.size)?;
+                        if node.sizing[1] == Sizing::Hug {
+                            node.size[1] = size[1];
+                        }
+                        if measured.first_baseline.is_some_and(|b| !b.is_finite()) {
+                            return Err(Error("invalid measured first baseline"));
+                        }
+                        if node.measure_baseline {
+                            node.first_baseline = measured.first_baseline;
+                        }
+                    }
+                }
+            }
+            Ok(())
+        };
+        if has_vertical_wrap(&nodes) {
+            let mut rects = solve_coupled(
+                &mut nodes,
+                &self.nodes,
+                &children,
+                size,
+                &mut measure_heights,
+            )?;
+            for i in 1..rects.len() {
+                let parent = nodes[i].parent.unwrap();
+                rects[i] = rects[i].translate([rects[parent].x, rects[parent].y]);
+                validate_bounds(&nodes[i], &rects[i])?;
+            }
+            return Ok(Solved { rects });
+        }
         let mut widths = Solver::new(&nodes, &self.nodes, &children, 0, vec![None; nodes.len()]);
         let width = match size[0] {
             Some(v) => widths.clamp(0, v),
@@ -953,29 +1070,7 @@ impl Tree {
         x[0] = [0., width];
         widths.arrange(0, width, &mut x);
         let wrapped_lines = widths.lines;
-        for (i, node) in nodes.iter_mut().enumerate() {
-            if node.layout.is_none() && (node.sizing[1] == Sizing::Hug || node.measure_baseline) {
-                if !children[i].is_empty() {
-                    return Err(Error("measured layout requires a leaf"));
-                }
-                let measured = measure(NodeId(i), Some(x[i][1]))?;
-                if node.measure_baseline && measured.is_none_or(|m| m.first_baseline.is_none()) {
-                    return Err(Error("text measurement did not supply a first baseline"));
-                }
-                if let Some(measured) = measured {
-                    let size = check(measured.size)?;
-                    if node.sizing[1] == Sizing::Hug {
-                        node.size[1] = size[1];
-                    }
-                    if measured.first_baseline.is_some_and(|b| !b.is_finite()) {
-                        return Err(Error("invalid measured first baseline"));
-                    }
-                    if node.measure_baseline {
-                        node.first_baseline = measured.first_baseline;
-                    }
-                }
-            }
-        }
+        measure_heights(&mut nodes, &x)?;
         let mut heights = Solver::new(&nodes, &self.nodes, &children, 1, wrapped_lines);
         let height = match size[1] {
             Some(v) => heights.clamp(0, v),
@@ -1225,7 +1320,7 @@ mod tree_tests {
         assert_eq!(s[b], Rect::new(0., 15., 70., 20.));
         assert_eq!(s[c], Rect::new(80., 15., 20., 20.));
         let column = Tree::new(Node::column().wrap(4.));
-        assert!(column.solve([10., 10.]).is_err());
+        assert!(column.solve([10., 10.]).is_ok());
     }
 
     #[test]
@@ -1659,5 +1754,63 @@ mod baseline_tests {
                 .solve([100., 100.])
                 .is_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod vertical_wrap_tests {
+    use super::*;
+
+    #[test]
+    fn vertical_wrap_recomputes_hug_width_and_nested_parent_size() {
+        let mut tree = Tree::new(Node::row().size([1., 140.]).width(Sizing::Hug).gap(7.));
+        let column = tree.add(
+            tree.root(),
+            Node::column().height(Sizing::Fill).wrap(12.).gap(10.),
+        );
+        let ids = [30., 40., 50., 60.].map(|w| tree.add(column, Node::fixed([w, 50.])));
+        let sibling = tree.add(tree.root(), Node::fixed([20., 30.]));
+        let result = tree.solve_natural().unwrap();
+        assert_eq!(result.size(), [139., 140.]);
+        assert_eq!(result[ids[2]], Rect::new(52., 0., 50., 50.));
+        assert_eq!(result[sibling].x, 119.);
+        tree.node_mut(tree.root()).size[1] = 240.;
+        let result = tree.solve_natural().unwrap();
+        assert_eq!(result.size(), [87., 240.]);
+        assert_eq!(result[ids[3]], Rect::new(0., 180., 60., 50.));
+        assert_eq!(result[sibling].x, 67.);
+    }
+
+    #[test]
+    fn vertical_wrap_remeasures_text_at_final_column_width() {
+        let mut tree = Tree::new(Node::column().size([100., 100.]).wrap(10.).gap(5.));
+        let a = tree.add(
+            tree.root(),
+            Node::fixed([1., 1.])
+                .width(Sizing::Fill)
+                .height(Sizing::Hug),
+        );
+        let b = tree.add(
+            tree.root(),
+            Node::fixed([1., 1.])
+                .width(Sizing::Fill)
+                .height(Sizing::Hug),
+        );
+        let result = tree
+            .solve_measured([Some(100.), Some(100.)], |_, width| {
+                let width = width.unwrap();
+                Ok(Some([width, if width < 60. { 80. } else { 55. }]))
+            })
+            .unwrap();
+        assert_eq!(result[a], Rect::new(0., 0., 45., 80.));
+        assert_eq!(result[b], Rect::new(55., 0., 45., 80.));
+        assert_eq!(tree.node(a).size, [1., 1.]);
+        let error = tree
+            .solve_measured([Some(100.), Some(100.)], |_, width| {
+                let width = width.unwrap();
+                Ok(Some([width, if width < 60. { 20. } else { 60. }]))
+            })
+            .unwrap_err();
+        assert!(error.0.contains("did not converge"));
     }
 }

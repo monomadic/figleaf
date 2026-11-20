@@ -422,7 +422,7 @@ absolute children. Plain frames apply their children's resize constraints. Hidde
 participate. Draw calls use solved bounds and translations, including clips;
 layout errors return before appending paint. The plugin still only displays code.
 
-Vertical wrapping/grid layout, vertical baseline alignment, negative gaps,
+Grid layout, vertical baseline alignment, negative gaps,
 rotated/scaled/skewed nodes, groups,
 pattern sources inside the responsive selection and
 responsive resizing of resolved geometry hard-error.
@@ -465,7 +465,7 @@ development plugin to load the rebuilt bundle.
 Horizontal wrapped auto layout now exports row gaps and automatic/space-between
 track distribution. Fixed/hug/fill sizing, min/max, inside borders, absolute
 children and measured text retain the responsive layout path. Invalid row gaps,
-unknown distribution and vertical wrapping produce layer
+unknown distribution produce layer
 errors and no Rust. The [three-width fixture](../docs/responsive-wrap-360-compare.png)
 checks row breaking, hug height, fill-height stretching and row distribution.
 
@@ -484,3 +484,11 @@ per-track wrapped alignment. Shapes without text align by their bottom edge.
 Fill-height dependencies, vertical baseline stacks and baseline text with
 vertically stretching/scaling constraints hard-error. Missing fonts or baseline
 measurements fail before drawing. See the [two-width comparison](../docs/responsive-baseline-400-compare.png).
+
+Vertical wrapped auto layout also exports `Node::column().wrap(column_gap)`.
+Hug-width columns, fill-width stretching, min/max, inside borders and space-between
+track distribution were [checked at three heights](../docs/responsive-vertical-wrap-360-compare.png).
+The solver remeasures text while resolving width/height dependencies; cycles or
+layouts that do not settle within 64 passes return an error before drawing.
+The fixture was captured through `snapshot.js` and exported with `cli.js`, using
+the same exporter as the read-only plugin. No new node properties were needed.
